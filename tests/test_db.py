@@ -122,6 +122,23 @@ def test_recent_sessions_returns_most_recent_first_limited(conn):
     assert indexes == [6, 5, 4, 3, 2]
 
 
+def test_all_sessions_returns_every_row_most_recent_first(conn):
+    for i in range(12):
+        db.insert_session(
+            conn,
+            exercise_type="scale",
+            exercise_spec={"index": i},
+            audio_path=f"/tmp/{i}.wav",
+            measurements={"i": i},
+            coaching_md=f"feedback {i}",
+        )
+
+    sessions = db.all_sessions(conn)
+
+    assert len(sessions) == 12
+    assert [s["exercise_spec"]["index"] for s in sessions] == list(range(11, -1, -1))
+
+
 def test_recent_sessions_handles_null_exercise_spec(conn):
     db.insert_session(
         conn,
