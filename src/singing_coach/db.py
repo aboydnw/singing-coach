@@ -104,16 +104,22 @@ def insert_session(
     return cursor.lastrowid
 
 
+def _hydrate(row) -> dict:
+    d = dict(row)
+    spec_json = d.pop("exercise_spec_json")
+    d["exercise_spec"] = json.loads(spec_json) if spec_json is not None else None
+    d["measurements"] = json.loads(d.pop("measurements_json"))
+    return d
+
+
 def recent_sessions(conn: sqlite3.Connection, limit: int = 5) -> list[dict]:
     rows = conn.execute(
         "SELECT * FROM sessions ORDER BY id DESC LIMIT ?",
         (limit,),
     ).fetchall()
-    sessions = []
-    for row in rows:
-        d = dict(row)
-        spec_json = d.pop("exercise_spec_json")
-        d["exercise_spec"] = json.loads(spec_json) if spec_json is not None else None
-        d["measurements"] = json.loads(d.pop("measurements_json"))
-        sessions.append(d)
-    return sessions
+    return [_hydrate(row) for row in rows]
+
+
+def all_sessions(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute("SELECT * FROM sessions ORDER BY id DESC").fetchall()
+    return [_hydrate(row) for row in rows]
