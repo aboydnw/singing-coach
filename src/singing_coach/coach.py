@@ -70,4 +70,7 @@ def coach(
             }
         ],
     )
-    return next(block.text for block in response.content if block.type == "text")
+    for block in response.content:
+        if getattr(block, "type", None) == "text" and getattr(block, "text", None):
+            return block.text
+    raise RuntimeError("Anthropic response did not include a text content block")
