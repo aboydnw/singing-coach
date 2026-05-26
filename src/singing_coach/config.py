@@ -34,5 +34,14 @@ def load_api_key() -> str:
 
 def save_api_key(key: str) -> None:
     USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    USER_CONFIG_FILE.write_text(f"{API_KEY_VAR}={key}\n")
-    USER_CONFIG_FILE.chmod(0o600)
+    data = f"{API_KEY_VAR}={key}\n"
+    tmp_path = USER_CONFIG_FILE.with_name(USER_CONFIG_FILE.name + ".tmp")
+    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(data)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, USER_CONFIG_FILE)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise

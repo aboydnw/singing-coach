@@ -46,6 +46,16 @@ def insert_calibration(
     tessitura_low: int | None,
     tessitura_high: int | None,
 ) -> int:
+    if range_low > range_high:
+        raise ValueError("range_low must be <= range_high")
+    if (tessitura_low is None) != (tessitura_high is None):
+        raise ValueError("tessitura_low and tessitura_high must both be set or both be None")
+    if tessitura_low is not None and tessitura_high is not None:
+        if tessitura_low > tessitura_high:
+            raise ValueError("tessitura_low must be <= tessitura_high")
+        if tessitura_low < range_low or tessitura_high > range_high:
+            raise ValueError("tessitura must be within calibrated range")
+
     cursor = conn.execute(
         """
         INSERT INTO calibration

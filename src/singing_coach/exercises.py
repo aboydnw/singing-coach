@@ -34,9 +34,10 @@ def next_exercise(calibration: dict, session_index: int) -> dict:
     range_high = calibration["range_high_midi"]
 
     max_starting = min(tessitura_high, range_high - span)
-    starting_options = max(1, max_starting - tessitura_low + 1)
+    min_starting = min(tessitura_low, max_starting)
+    starting_options = max(1, max_starting - min_starting + 1)
     walk_position = (session_index // len(TYPE_ROTATION)) % starting_options
-    starting_note = tessitura_low + walk_position
+    starting_note = min_starting + walk_position
 
     target_notes = [starting_note + offset for offset in shape]
     starting_name = midi_to_name(starting_note)
