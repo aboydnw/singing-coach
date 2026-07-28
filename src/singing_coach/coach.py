@@ -1,13 +1,11 @@
-"""Anthropic coaching wrapper. Sends measurements + history to Claude for feedback."""
+"""Anthropic coaching wrapper. Structured feedback via tool use, with session memory."""
 
 import json
 
 import anthropic
 
 from singing_coach import config
-
-MODEL = "claude-sonnet-4-6"
-MAX_TOKENS = 1024
+from singing_coach.models import CoachingResult, ExerciseSpec, FocusArea, Measurements
 
 SYSTEM_PROMPT = """You are a vocal coach giving measurement-backed feedback after a sung exercise.
 Be specific, actionable, and musically literate. Lead with the single most important thing to work on.
@@ -22,40 +20,114 @@ Measurement glossary:
 - vibrato_extent_cents: Vibrato depth. Wide-but-controlled is ~50-100 cents.
 - f1_mean, f2_mean: First/second formant means. Useful proxies for vowel placement and
   open-throat technique.
-"""
+- accuracy: Per-note pitch accuracy against the exercise's targets. cents_off is signed:
+  negative = flat, positive = sharp. Within ±25 cents is on pitch; beyond ±50 is clearly off.
+
+The history block contains recent sessions, newest first, including the advice you gave after
+each one. Follow up on your own prior advice: if the singer worked on what you suggested,
+say whether the numbers moved and acknowledge progress or regression before introducing
+anything new."""
+
+COACHING_TOOL = {
+    "name": "give_coaching",
+    "description": "Deliver structured coaching feedback for the sung attempt.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "focus_area": {
+                "type": "string",
+                "enum": [f.value for f in FocusArea],
+                "description": "The single skill most worth working on next.",
+            },
+            "top_issue": {
+                "type": "string",
+                "description": "One-line headline of the most important thing to work on.",
+            },
+            "why": {
+                "type": "string",
+                "description": (
+                    "What the measurements show and why it matters, in plain language a "
+                    "non-expert singer understands. Reference prior sessions when relevant."
+                ),
+            },
+            "drill": {
+                "type": "string",
+                "description": "One concrete drill to practice before the next attempt.",
+            },
+            "encouragement": {
+                "type": "string",
+                "description": "One genuine, specific positive from this attempt.",
+            },
+        },
+        "required": ["focus_area", "top_issue", "why", "drill", "encouragement"],
+    },
+}
 
 
 def _build_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=config.load_api_key())
+    return anthropic.Anthropic(
+        api_key=config.load_api_key(),
+        timeout=config.coach_timeout_s(),
+        max_retries=2,
+    )
+
+
+def _history_payload(history: list[dict]) -> list[dict]:
+    entries = []
+    for h in history:
+        measurements = h.get("measurements")
+        if isinstance(measurements, Measurements):
+            measurements = measurements.model_dump(exclude_none=True)
+        entry = {
+            "ts": h.get("ts"),
+            "exercise_type": h.get("exercise_type"),
+            "measurements": measurements,
+        }
+        coaching = h.get("coaching")
+        if isinstance(coaching, CoachingResult):
+            entry["advice_given"] = {
+                "focus_area": coaching.focus_area.value,
+                "top_issue": coaching.top_issue,
+                "drill": coaching.drill,
+            }
+        entries.append(entry)
+    return entries
 
 
 def _format_user_message(
-    exercise_spec: dict | None, measurements: dict, history: list[dict]
+    exercise_spec: ExerciseSpec | None,
+    measurements: Measurements,
+    history: list[dict],
 ) -> str:
     blocks = []
     if exercise_spec is not None:
-        blocks.append(f"<exercise>\n{json.dumps(exercise_spec, indent=2)}\n</exercise>")
+        blocks.append(
+            f"<exercise>\n{exercise_spec.model_dump_json(indent=2)}\n</exercise>"
+        )
     blocks.append(
-        f"<measurements>\n{json.dumps(measurements, indent=2)}\n</measurements>"
+        "<measurements>\n"
+        f"{measurements.model_dump_json(indent=2, exclude_none=True)}\n"
+        "</measurements>"
     )
-    history_payload = [h.get("measurements", h) for h in history]
-    blocks.append(f"<history>\n{json.dumps(history_payload, indent=2)}\n</history>")
+    blocks.append(
+        f"<history>\n{json.dumps(_history_payload(history), indent=2)}\n</history>"
+    )
     blocks.append(
         "<task>Coach me. Lead with the most important thing to work on. "
-        "Specific, actionable.</task>"
+        "Specific, actionable. Follow up on your prior advice if history shows any.</task>"
     )
     return "\n\n".join(blocks)
 
 
 def coach(
-    exercise_spec: dict | None,
-    measurements: dict,
+    exercise_spec: ExerciseSpec | None,
+    measurements: Measurements,
     history: list[dict],
-) -> str:
+) -> CoachingResult:
     client = _build_client()
     response = client.messages.create(
-        model=MODEL,
-        max_tokens=MAX_TOKENS,
+        model=config.coach_model(),
+        max_tokens=config.coach_max_tokens(),
         system=[
             {
                 "type": "text",
@@ -63,6 +135,8 @@ def coach(
                 "cache_control": {"type": "ephemeral"},
             }
         ],
+        tools=[COACHING_TOOL],
+        tool_choice={"type": "tool", "name": "give_coaching"},
         messages=[
             {
                 "role": "user",
@@ -71,6 +145,6 @@ def coach(
         ],
     )
     for block in response.content:
-        if getattr(block, "type", None) == "text" and getattr(block, "text", None):
-            return block.text
-    raise RuntimeError("Anthropic response did not include a text content block")
+        if getattr(block, "type", None) == "tool_use":
+            return CoachingResult.model_validate(block.input)
+    raise RuntimeError("Anthropic response did not include coaching tool output")

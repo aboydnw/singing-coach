@@ -16,6 +16,7 @@ dependencies = [
     "anthropic>=0.40",
     "gradio>=4.44",
     "matplotlib>=3.8",
+    "pydantic>=2.7",
 ]
 
 [project.optional-dependencies]
