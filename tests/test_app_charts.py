@@ -3,8 +3,16 @@ import numpy as np
 
 matplotlib.use("Agg")
 
-from singing_coach import app
-from singing_coach.models import Measurements, NoteAccuracy, PitchAccuracy
+from pathlib import Path
+
+from singing_coach import app, session_service
+from singing_coach.models import (
+    Calibration,
+    ExerciseSpec,
+    Measurements,
+    NoteAccuracy,
+    PitchAccuracy,
+)
 
 
 def _session(ts: str, measurements: Measurements, exercise_type: str = "scale") -> dict:
@@ -71,3 +79,163 @@ def test_metrics_markdown_reports_straight_tone_as_minimal_vibrato():
         Measurements(vibrato_rate_hz=0.0, vibrato_extent_cents=0.0)
     )
     assert "minimal" in md
+
+
+def test_launch_allows_serving_recordings_from_the_data_dir(monkeypatch):
+    captured = {}
+
+    class FakeApp:
+        def launch(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(app, "_build_ui", lambda: FakeApp())
+    monkeypatch.setattr(app.session_service, "ensure_dirs", lambda: None)
+    app.main()
+
+    assert str(session_service.RECORDINGS_DIR) in captured["allowed_paths"]
+
+
+def test_calibration_summary_prompts_when_never_calibrated():
+    assert "No calibration yet" in app._calibration_summary(None)
+
+
+def test_calibration_summary_shows_saved_range_and_tessitura():
+    summary = app._calibration_summary(
+        Calibration(
+            range_low_midi=48,
+            range_high_midi=64,
+            tessitura_low_midi=51,
+            tessitura_high_midi=58,
+        )
+    )
+    assert "C3" in summary
+    assert "E4" in summary
+    assert "D#3" in summary
+
+
+def test_load_calibration_prefills_the_four_notes_from_storage(monkeypatch):
+    monkeypatch.setattr(
+        app.session_service,
+        "latest_calibration",
+        lambda: Calibration(
+            range_low_midi=48,
+            range_high_midi=64,
+            tessitura_low_midi=51,
+            tessitura_high_midi=58,
+        ),
+    )
+    _summary, low_comf, high_comf, low_edge, high_edge, *labels = app._load_calibration()
+
+    assert (low_comf, high_comf, low_edge, high_edge) == (51, 58, 48, 64)
+    assert all("saved" in label for label in labels)
+
+
+def test_load_calibration_leaves_notes_empty_when_never_calibrated(monkeypatch):
+    monkeypatch.setattr(app.session_service, "latest_calibration", lambda: None)
+    _summary, *notes_and_labels = app._load_calibration()
+
+    assert notes_and_labels[:4] == [None, None, None, None]
+
+
+def test_load_exercise_points_at_calibration_when_there_is_none(monkeypatch):
+    monkeypatch.setattr(app.session_service, "next_exercise", lambda: None)
+    spec, md = app._load_exercise()
+
+    assert spec is None
+    assert "Calibrate" in md
+
+
+def test_load_exercise_describes_the_notes_to_sing(monkeypatch):
+    monkeypatch.setattr(
+        app.session_service,
+        "next_exercise",
+        lambda: ExerciseSpec(
+            type="scale",
+            target_notes_midi=[60, 62, 64],
+            duration_per_note_s=2.0,
+            vowel="ah",
+            display_name="5-note scale",
+        ),
+    )
+    spec, md = app._load_exercise()
+
+    assert spec is not None
+    assert "C4" in md
+    assert "ah" in md
+
+
+def test_next_exercise_clears_the_previous_session_id(monkeypatch):
+    monkeypatch.setattr(app.session_service, "next_exercise", lambda: None)
+    outputs = app._next_exercise()
+
+    assert outputs[-1] is None
+
+
+def test_run_analysis_explains_that_nothing_was_recorded():
+    status, *rest = app._run_analysis(None, None)
+
+    assert "record" in status.lower()
+    assert rest[5] is None
+
+
+def test_run_analysis_reports_a_pipeline_failure_instead_of_raising(monkeypatch):
+    def boom(audio_path, spec):
+        raise RuntimeError("pitch model unavailable")
+
+    monkeypatch.setattr(app.session_service, "analyze_session", boom)
+    status, *rest = app._run_analysis("/tmp/attempt.wav", None)
+
+    assert "failed" in status.lower()
+    assert rest[5] is None
+
+
+def test_run_analysis_reports_success_and_the_saved_session(monkeypatch):
+    monkeypatch.setattr(
+        app.session_service,
+        "analyze_session",
+        lambda audio_path, spec: _analysis_result(coaching_error=None),
+    )
+    status, *rest = app._run_analysis("/tmp/attempt.wav", None)
+
+    assert "complete" in status.lower()
+    assert rest[5] == 7
+
+
+def test_analysis_outputs_keep_measurements_when_coaching_fails():
+    status, plot, metrics, coaching, error, retry, session_id, _playback = (
+        app._analysis_outputs(_analysis_result(coaching_error="429 rate limited"), None)
+    )
+
+    assert "coaching" in status.lower()
+    assert plot["visible"] is True
+    assert "how you did" in metrics
+    assert coaching == ""
+    assert "429 rate limited" in error
+    assert retry["visible"] is True
+    assert session_id == 7
+
+
+def _analysis_result(coaching_error: str | None) -> session_service.AnalysisResult:
+    from singing_coach.models import CoachingResult, FocusArea
+
+    coaching = (
+        None
+        if coaching_error
+        else CoachingResult(
+            focus_area=FocusArea.pitch_accuracy,
+            top_issue="Flat on the top note",
+            why="You ran out of breath.",
+            drill="Sirens.",
+            encouragement="Good work.",
+        )
+    )
+    return session_service.AnalysisResult(
+        session_id=7,
+        saved_path=Path("/tmp/attempt.wav"),
+        measurements=Measurements(hnr_mean=22.0),
+        times=np.array([0.0, 0.01]),
+        f0=np.array([220.0, 220.0]),
+        confidence=np.array([0.9, 0.9]),
+        coaching=coaching,
+        coaching_error=coaching_error,
+    )
