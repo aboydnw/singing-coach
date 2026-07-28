@@ -7,11 +7,23 @@ import parselmouth
 from parselmouth.praat import call
 
 from singing_coach import pitch
+from singing_coach.models import Measurements
 
 VIBRATO_BAND_HZ = (3.0, 8.0)
 
+Contour = tuple[np.ndarray, np.ndarray, np.ndarray]
 
-def analyze(audio_path: Path) -> dict[str, float]:
+
+def _clean(value: float) -> float | None:
+    return float(value) if np.isfinite(value) else None
+
+
+def analyze(audio_path: Path, contour: Contour | None = None) -> Measurements:
+    """Measure voice quality for a recording.
+
+    Pass a precomputed pitch contour (times, f0, confidence) to avoid re-running
+    the CREPE model when the caller already has one.
+    """
     sound = parselmouth.Sound(str(audio_path))
 
     pitch_obj = sound.to_pitch()
@@ -27,29 +39,31 @@ def analyze(audio_path: Path) -> dict[str, float]:
         0, 0, 0.0001, 0.02, 1.3, 1.6,
     )
     harmonicity = sound.to_harmonicity()
-    hnr_mean = float(call(harmonicity, "Get mean", 0, 0))
+    hnr_mean = call(harmonicity, "Get mean", 0, 0)
 
     formant = sound.to_formant_burg()
-    f1_mean = float(call(formant, "Get mean", 1, 0, 0, "Hertz"))
-    f2_mean = float(call(formant, "Get mean", 2, 0, 0, "Hertz"))
+    f1_mean = call(formant, "Get mean", 1, 0, 0, "Hertz")
+    f2_mean = call(formant, "Get mean", 2, 0, 0, "Hertz")
 
-    vibrato_rate, vibrato_extent = _vibrato_from_contour(sound)
+    if contour is None:
+        samples = sound.values[0].astype(np.float32)
+        sr = int(sound.sampling_frequency)
+        contour = pitch.predict(samples, sr)
+    vibrato_rate, vibrato_extent = _vibrato_from_contour(contour)
 
-    return {
-        "jitter_local": float(jitter_local),
-        "shimmer_local": float(shimmer_local),
-        "hnr_mean": hnr_mean,
-        "vibrato_rate_hz": vibrato_rate,
-        "vibrato_extent_cents": vibrato_extent,
-        "f1_mean": f1_mean,
-        "f2_mean": f2_mean,
-    }
+    return Measurements(
+        jitter_local=_clean(jitter_local),
+        shimmer_local=_clean(shimmer_local),
+        hnr_mean=_clean(hnr_mean),
+        vibrato_rate_hz=vibrato_rate,
+        vibrato_extent_cents=vibrato_extent,
+        f1_mean=_clean(f1_mean),
+        f2_mean=_clean(f2_mean),
+    )
 
 
-def _vibrato_from_contour(sound: parselmouth.Sound) -> tuple[float, float]:
-    samples = sound.values[0].astype(np.float32)
-    sr = int(sound.sampling_frequency)
-    times, f0, confidence = pitch.predict(samples, sr)
+def _vibrato_from_contour(contour: Contour) -> tuple[float, float]:
+    times, f0, confidence = contour
     stable_mask = (confidence > 0.5) & (f0 > 0)
     if stable_mask.sum() < 16:
         return 0.0, 0.0
