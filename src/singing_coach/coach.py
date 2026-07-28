@@ -1,10 +1,15 @@
-"""Anthropic coaching wrapper. Structured feedback via tool use, with session memory."""
+"""Coaching. Structured feedback with session memory, from a local or hosted model.
+
+The prompt and the output schema are shared across backends; only the transport
+differs. Anthropic enforces the schema through tool use, Ollama through
+schema-constrained decoding, and both hand back the same dict.
+"""
 
 import json
 
 import anthropic
 
-from singing_coach import config
+from singing_coach import coach_ollama, config
 from singing_coach.models import CoachingResult, ExerciseSpec, FocusArea, Measurements
 
 SYSTEM_PROMPT = """You are a vocal coach giving measurement-backed feedback after a sung exercise.
@@ -28,39 +33,41 @@ each one. Follow up on your own prior advice: if the singer worked on what you s
 say whether the numbers moved and acknowledge progress or regression before introducing
 anything new."""
 
+COACHING_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "focus_area": {
+            "type": "string",
+            "enum": [f.value for f in FocusArea],
+            "description": "The single skill most worth working on next.",
+        },
+        "top_issue": {
+            "type": "string",
+            "description": "One-line headline of the most important thing to work on.",
+        },
+        "why": {
+            "type": "string",
+            "description": (
+                "What the measurements show and why it matters, in plain language a "
+                "non-expert singer understands. Reference prior sessions when relevant."
+            ),
+        },
+        "drill": {
+            "type": "string",
+            "description": "One concrete drill to practice before the next attempt.",
+        },
+        "encouragement": {
+            "type": "string",
+            "description": "One genuine, specific positive from this attempt.",
+        },
+    },
+    "required": ["focus_area", "top_issue", "why", "drill", "encouragement"],
+}
+
 COACHING_TOOL = {
     "name": "give_coaching",
     "description": "Deliver structured coaching feedback for the sung attempt.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "focus_area": {
-                "type": "string",
-                "enum": [f.value for f in FocusArea],
-                "description": "The single skill most worth working on next.",
-            },
-            "top_issue": {
-                "type": "string",
-                "description": "One-line headline of the most important thing to work on.",
-            },
-            "why": {
-                "type": "string",
-                "description": (
-                    "What the measurements show and why it matters, in plain language a "
-                    "non-expert singer understands. Reference prior sessions when relevant."
-                ),
-            },
-            "drill": {
-                "type": "string",
-                "description": "One concrete drill to practice before the next attempt.",
-            },
-            "encouragement": {
-                "type": "string",
-                "description": "One genuine, specific positive from this attempt.",
-            },
-        },
-        "required": ["focus_area", "top_issue", "why", "drill", "encouragement"],
-    },
+    "input_schema": COACHING_SCHEMA,
 }
 
 
@@ -119,16 +126,7 @@ def _format_user_message(
     return "\n\n".join(blocks)
 
 
-def coach(
-    exercise_spec: ExerciseSpec | None,
-    measurements: Measurements,
-    history: list[dict],
-) -> CoachingResult:
-    """Ask Claude for structured feedback on one attempt.
-
-    History carries the advice given after prior sessions so the coach can follow
-    up on itself. Pass exercise_spec=None for free-sing, where there are no targets.
-    """
+def _coach_via_anthropic(user_message: str) -> dict:
     client = _build_client()
     response = client.messages.create(
         model=config.coach_model(),
@@ -142,14 +140,36 @@ def coach(
         ],
         tools=[COACHING_TOOL],
         tool_choice={"type": "tool", "name": "give_coaching"},
-        messages=[
-            {
-                "role": "user",
-                "content": _format_user_message(exercise_spec, measurements, history),
-            }
-        ],
+        messages=[{"role": "user", "content": user_message}],
     )
     for block in response.content:
         if getattr(block, "type", None) == "tool_use":
-            return CoachingResult.model_validate(block.input)
+            return block.input
     raise RuntimeError("Anthropic response did not include coaching tool output")
+
+
+def coach(
+    exercise_spec: ExerciseSpec | None,
+    measurements: Measurements,
+    history: list[dict],
+) -> CoachingResult:
+    """Ask the configured model for structured feedback on one attempt.
+
+    History carries the advice given after prior sessions so the coach can follow
+    up on itself. Pass exercise_spec=None for free-sing, where there are no targets.
+    """
+    user_message = _format_user_message(exercise_spec, measurements, history)
+    backend = config.coach_backend()
+
+    if backend == config.OLLAMA_BACKEND:
+        payload = coach_ollama.generate(SYSTEM_PROMPT, user_message, COACHING_SCHEMA)
+    elif backend == config.ANTHROPIC_BACKEND:
+        payload = _coach_via_anthropic(user_message)
+    else:
+        raise RuntimeError(
+            f"Unknown coaching backend {backend!r}. "
+            f"Set {config.BACKEND_VAR} to "
+            f"{config.OLLAMA_BACKEND!r} or {config.ANTHROPIC_BACKEND!r}."
+        )
+
+    return CoachingResult.model_validate(payload)

@@ -1,6 +1,6 @@
 import pytest
 
-from singing_coach import coach
+from singing_coach import coach, coach_ollama, config
 from singing_coach.models import CoachingResult, ExerciseSpec, Measurements
 
 COACHING_INPUT = {
@@ -41,6 +41,7 @@ class FakeClient:
 @pytest.fixture
 def fake_client(monkeypatch):
     client = FakeClient()
+    monkeypatch.setenv(config.BACKEND_VAR, config.ANTHROPIC_BACKEND)
     monkeypatch.setattr(coach, "_build_client", lambda: client)
     return client
 
@@ -150,5 +151,42 @@ def test_raises_when_no_tool_output(fake_client, monkeypatch):
     monkeypatch.setattr(
         fake_client.messages, "create", lambda **kwargs: EmptyMessage()
     )
+    with pytest.raises(RuntimeError):
+        coach.coach(exercise_spec=None, measurements=MEASUREMENTS, history=[])
+
+
+def test_coaching_tool_and_local_format_share_one_schema():
+    assert coach.COACHING_TOOL["input_schema"] is coach.COACHING_SCHEMA
+
+
+def test_coach_defaults_to_the_local_backend(monkeypatch):
+    monkeypatch.delenv(config.BACKEND_VAR, raising=False)
+    monkeypatch.setattr(config, "setting", lambda name: None)
+    calls = {}
+
+    def fake_generate(system_prompt, user_message, schema):
+        calls["schema"] = schema
+        calls["system"] = system_prompt
+        return COACHING_INPUT
+
+    monkeypatch.setattr(coach_ollama, "generate", fake_generate)
+    result = coach.coach(exercise_spec=SCALE_SPEC, measurements=MEASUREMENTS, history=[])
+
+    assert isinstance(result, CoachingResult)
+    assert calls["schema"] is coach.COACHING_SCHEMA
+    assert "jitter" in calls["system"].lower()
+
+
+def test_coach_routes_to_ollama_when_configured(monkeypatch):
+    monkeypatch.setenv(config.BACKEND_VAR, config.OLLAMA_BACKEND)
+    monkeypatch.setattr(
+        coach_ollama, "generate", lambda system, user, schema: COACHING_INPUT
+    )
+    result = coach.coach(exercise_spec=None, measurements=MEASUREMENTS, history=[])
+    assert result.focus_area.value == "breath_support"
+
+
+def test_coach_rejects_an_unknown_backend(monkeypatch):
+    monkeypatch.setenv(config.BACKEND_VAR, "gpt-at-home")
     with pytest.raises(RuntimeError):
         coach.coach(exercise_spec=None, measurements=MEASUREMENTS, history=[])

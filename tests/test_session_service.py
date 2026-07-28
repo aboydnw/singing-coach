@@ -56,7 +56,7 @@ def fake_coach(monkeypatch):
 def test_analyze_session_persists_and_returns_everything(service_env, recording, fake_coach):
     result = session_service.analyze_session(str(recording), SPEC)
 
-    assert result.session_id > 0
+    assert isinstance(result.session_id, str)
     assert result.saved_path.exists()
     assert isinstance(result.measurements, Measurements)
     assert result.coaching == COACHING
@@ -120,9 +120,16 @@ def test_retry_coaching_updates_the_session(service_env, recording, monkeypatch)
 
 
 def test_retry_coaching_unknown_session(service_env):
-    coaching, error = session_service.retry_coaching(9999)
+    coaching, error = session_service.retry_coaching("no-such-session")
     assert coaching is None
     assert error is not None
+
+
+def test_audio_available_tracks_the_file_not_the_path(service_env, recording):
+    assert session_service.audio_available(recording) is True
+    assert session_service.audio_available(service_env / "gone.wav") is False
+    assert session_service.audio_available("") is False
+    assert session_service.audio_available(None) is False
 
 
 def test_next_exercise_requires_calibration(service_env):

@@ -12,7 +12,16 @@ import numpy as np
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
-from singing_coach import audio_io, config, exercises, pitch, session_service, tone_gen
+from singing_coach import (
+    audio_io,
+    auth,
+    coach_ollama,
+    config,
+    exercises,
+    pitch,
+    session_service,
+    tone_gen,
+)
 from singing_coach.models import Calibration, ExerciseSpec, Measurements
 
 CREAM = "#FFF8EF"
@@ -352,7 +361,10 @@ def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec
     )
     metrics = _metrics_markdown(result.measurements)
     plot_update = gr.update(value=fig, visible=True)
-    playback_update = gr.update(value=str(result.saved_path), visible=True)
+    playback_update = gr.update(
+        value=str(result.saved_path),
+        visible=session_service.audio_available(result.saved_path),
+    )
     if result.coaching_error:
         return (
             "⚠️ **Measurements saved, but the coaching call failed.** "
@@ -473,6 +485,69 @@ def _on_retry(session_id):
     return coaching.to_markdown(), ""
 
 
+NO_AUDIO_NOTE = "— recorded on another device"
+
+
+def _account_status() -> str:
+    """Where sync stands: unconfigured, signed out, or signed in and backing up."""
+    if not auth.is_configured():
+        return (
+            "### Backup is off\n"
+            "No Supabase project configured, so history lives only on this machine. "
+            f"Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` to `{config.USER_CONFIG_FILE}` "
+            "to turn on backup and multi-device sync."
+        )
+    user = auth.current_user()
+    if user is None:
+        return (
+            "### Signed out\n"
+            "Your singing is still saved locally — it just isn't backed up. "
+            "Sign in to back it up and pull in history from your other devices."
+        )
+    return f"### Signed in as {user['email']}\nEvery session is backed up as you go."
+
+
+def _backend_status() -> str:
+    """Which model is doing the coaching, and whether it can actually be reached."""
+    if config.uses_anthropic():
+        return f"Coaching via the Anthropic API (`{config.coach_model()}`) — billed per session."
+    ready, message = coach_ollama.availability()
+    return ("🟢 " if ready else "⚠️ ") + message
+
+
+def _session_rows(sessions: list[dict]) -> str:
+    if not sessions:
+        return "No sessions yet."
+    lines = ["| when | exercise | focus | audio |", "|---|---|---|---|"]
+    for session in sessions[:20]:
+        when = session["ts"][:16].replace("T", " ")
+        coaching = session.get("coaching")
+        focus = coaching.focus_area.value.replace("_", " ") if coaching else "—"
+        has_audio = session_service.audio_available(session.get("audio_path"))
+        lines.append(
+            f"| {when} | {session['exercise_type']} | {focus} | "
+            f"{'▶ on this device' if has_audio else NO_AUDIO_NOTE} |"
+        )
+    return "\n".join(lines)
+
+
+def _playable_choices(sessions: list[dict]) -> list[tuple[str, str]]:
+    return [
+        (f"{s['ts'][:16].replace('T', ' ')} · {s['exercise_type']}", s["id"])
+        for s in sessions
+        if session_service.audio_available(s.get("audio_path"))
+    ]
+
+
+def _play_session(session_id, sessions_by_id: dict):
+    if not session_id:
+        return gr.update(visible=False)
+    path = sessions_by_id.get(session_id)
+    if not session_service.audio_available(path):
+        return gr.update(visible=False)
+    return gr.update(value=path, visible=True)
+
+
 def _refresh_progress(filter_choice: str):
     sessions = session_service.all_sessions()
     if filter_choice == "Exercises only":
@@ -481,15 +556,26 @@ def _refresh_progress(filter_choice: str):
         sessions = [s for s in sessions if s["exercise_type"] == "free"]
     fig = _progress_chart(sessions)
     noun = "session" if len(sessions) == 1 else "sessions"
-    return fig, f"**{len(sessions)} {noun} logged.**"
+    paths = {s["id"]: s.get("audio_path") for s in sessions}
+    return (
+        fig,
+        f"**{len(sessions)} {noun} logged.**",
+        _session_rows(sessions),
+        gr.update(choices=_playable_choices(sessions), value=None),
+        paths,
+        gr.update(visible=False),
+    )
 
 
 def _build_ui() -> gr.Blocks:
-    try:
-        config.load_api_key()
-        has_key = True
-    except config.MissingApiKeyError:
-        has_key = False
+    if not config.uses_anthropic():
+        has_key = True  # local coaching needs no API key, so skip first-run setup
+    else:
+        try:
+            config.load_api_key()
+            has_key = True
+        except config.MissingApiKeyError:
+            has_key = False
 
     with gr.Blocks(title="singing-coach") as app:
         gr.Markdown(HEADER_MD, elem_id="app-header")
@@ -695,20 +781,88 @@ def _build_ui() -> gr.Blocks:
                     progress_plot = gr.Plot(label="Trends over time")
                     session_count = gr.Markdown()
 
+                    gr.Markdown("#### Session history")
+                    session_table = gr.Markdown()
+                    session_paths = gr.State(value={})
+                    with gr.Row():
+                        session_picker = gr.Dropdown(
+                            choices=[], label="Listen back to a session", value=None
+                        )
+                    session_audio = gr.Audio(label="Recording", visible=False)
+
+                    progress_outputs = [
+                        progress_plot,
+                        session_count,
+                        session_table,
+                        session_picker,
+                        session_paths,
+                        session_audio,
+                    ]
+
                     refresh_btn.click(
-                        _refresh_progress,
-                        inputs=progress_filter,
-                        outputs=[progress_plot, session_count],
+                        _refresh_progress, inputs=progress_filter, outputs=progress_outputs
                     )
                     progress_filter.change(
-                        _refresh_progress,
-                        inputs=progress_filter,
-                        outputs=[progress_plot, session_count],
+                        _refresh_progress, inputs=progress_filter, outputs=progress_outputs
                     )
                     progress_tab.select(
-                        _refresh_progress,
-                        inputs=progress_filter,
-                        outputs=[progress_plot, session_count],
+                        _refresh_progress, inputs=progress_filter, outputs=progress_outputs
+                    )
+                    session_picker.change(
+                        _play_session,
+                        inputs=[session_picker, session_paths],
+                        outputs=session_audio,
+                    )
+
+                with gr.Tab("Account") as account_tab:
+                    account_status = gr.Markdown()
+                    backend_status = gr.Markdown()
+
+                    with gr.Row():
+                        email_input = gr.Textbox(label="Email")
+                        password_input = gr.Textbox(label="Password", type="password")
+                    with gr.Row():
+                        sign_in_btn = gr.Button("Sign in", variant="primary")
+                        sign_up_btn = gr.Button("Create account")
+                        sign_out_btn = gr.Button("Sign out")
+                    with gr.Row():
+                        sync_btn = gr.Button("Sync now")
+                    account_message = gr.Markdown()
+
+                    def _refresh_account():
+                        return _account_status(), _backend_status()
+
+                    def _on_sign_in(email, password):
+                        _user, message = session_service.sign_in(email or "", password or "")
+                        return message, _account_status()
+
+                    def _on_sign_up(email, password):
+                        _user, message = session_service.sign_up(email or "", password or "")
+                        return message, _account_status()
+
+                    def _on_sign_out():
+                        auth.sign_out()
+                        return "Signed out. Your local history is untouched.", _account_status()
+
+                    def _on_sync():
+                        return session_service.sync_now().summary(), _account_status()
+
+                    sign_in_btn.click(
+                        _on_sign_in,
+                        inputs=[email_input, password_input],
+                        outputs=[account_message, account_status],
+                    )
+                    sign_up_btn.click(
+                        _on_sign_up,
+                        inputs=[email_input, password_input],
+                        outputs=[account_message, account_status],
+                    )
+                    sign_out_btn.click(
+                        _on_sign_out, outputs=[account_message, account_status]
+                    )
+                    sync_btn.click(_on_sync, outputs=[account_message, account_status])
+                    account_tab.select(
+                        _refresh_account, outputs=[account_status, backend_status]
                     )
 
         def _save_key(key):
@@ -745,12 +899,14 @@ def _build_ui() -> gr.Blocks:
 
         app.load(_load_calibration, outputs=calibration_outputs)
         app.load(_load_exercise, outputs=exercise_outputs)
+        app.load(_refresh_account, outputs=[account_status, backend_status])
 
     return app
 
 
 def main() -> None:
     session_service.ensure_dirs()
+    session_service.restore_session()
     _build_ui().launch(
         inbrowser=True,
         theme=THEME,
