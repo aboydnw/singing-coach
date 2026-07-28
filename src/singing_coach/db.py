@@ -170,23 +170,34 @@ def insert_session(
 
 
 def update_coaching(
-    conn: sqlite3.Connection, session_id: str, coaching: CoachingResult
+    conn: sqlite3.Connection,
+    session_id: str,
+    coaching: CoachingResult,
+    user_id: str | None = None,
 ) -> None:
     """Replace the stored coaching for a session, after a successful retry.
 
-    Clears synced_at so the corrected row is pushed again.
+    Scoped to the account so one signed-in user cannot overwrite another's session
+    on a shared machine. Clears synced_at so the corrected row is pushed again.
     """
     conn.execute(
-        "UPDATE sessions SET coaching_md = ?, coaching_json = ?, synced_at = NULL WHERE id = ?",
-        (coaching.to_markdown(), coaching.model_dump_json(), session_id),
+        "UPDATE sessions SET coaching_md = ?, coaching_json = ?, synced_at = NULL "
+        "WHERE id = ? AND user_id IS ?",
+        (coaching.to_markdown(), coaching.model_dump_json(), session_id, user_id),
     )
     conn.commit()
 
 
-def get_session(conn: sqlite3.Connection, session_id: str) -> dict | None:
-    """One session with its JSON columns hydrated into models, or None if absent."""
+def get_session(
+    conn: sqlite3.Connection, session_id: str, user_id: str | None = None
+) -> dict | None:
+    """One session with its JSON columns hydrated into models, or None if absent.
+
+    Scoped to the account: the local database can hold rows for several accounts
+    once history has been pulled down or adopted.
+    """
     row = conn.execute(
-        "SELECT * FROM sessions WHERE id = ?", (session_id,)
+        "SELECT * FROM sessions WHERE id = ? AND user_id IS ?", (session_id, user_id)
     ).fetchone()
     return _hydrate(row) if row is not None else None
 
