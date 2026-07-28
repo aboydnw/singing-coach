@@ -75,3 +75,23 @@ def test_save_api_key_sets_mode_0600(isolated_paths):
 def test_save_then_load_round_trip(isolated_paths):
     config.save_api_key("sk-round-trip")
     assert config.load_api_key() == "sk-round-trip"
+
+
+def test_coach_model_defaults(monkeypatch):
+    monkeypatch.delenv("SINGING_COACH_MODEL", raising=False)
+    assert config.coach_model() == config.DEFAULT_COACH_MODEL
+
+
+def test_coach_model_env_override(monkeypatch):
+    monkeypatch.setenv("SINGING_COACH_MODEL", "claude-custom")
+    assert config.coach_model() == "claude-custom"
+
+
+def test_coach_max_tokens_env_override(monkeypatch):
+    monkeypatch.setenv("SINGING_COACH_MAX_TOKENS", "2048")
+    assert config.coach_max_tokens() == 2048
+
+
+def test_coach_timeout_env_override(monkeypatch):
+    monkeypatch.setenv("SINGING_COACH_TIMEOUT_S", "15.5")
+    assert config.coach_timeout_s() == 15.5

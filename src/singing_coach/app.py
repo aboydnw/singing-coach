@@ -1,45 +1,105 @@
-"""Gradio UI for singing-coach. Thin glue over the analysis and service modules."""
+"""Gradio UI for singing-coach. Thin glue over session_service; no business logic."""
 
-import json
-import shutil
-import uuid
-from datetime import date
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import gradio as gr
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 
-from singing_coach import (
-    audio_io,
-    coach,
-    config,
-    db,
-    exercises,
-    pitch,
-    tone_gen,
-    voice_qa,
+from singing_coach import audio_io, config, exercises, pitch, session_service, tone_gen
+from singing_coach.models import ExerciseSpec, Measurements
+
+CREAM = "#FFF8EF"
+PANEL = "#FFFDF6"
+INK = "#3D2C29"
+MUTED = "#8A7566"
+CORAL = "#D64B2A"
+TEAL = "#00917C"
+GRID = "#EADFCE"
+HEALTHY_GREEN = "#4C9A70"
+
+matplotlib.rcParams.update(
+    {
+        "figure.facecolor": CREAM,
+        "axes.facecolor": PANEL,
+        "axes.edgecolor": GRID,
+        "axes.labelcolor": INK,
+        "text.color": INK,
+        "xtick.color": MUTED,
+        "ytick.color": MUTED,
+        "axes.grid": True,
+        "grid.color": GRID,
+        "grid.linewidth": 0.8,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "font.size": 10,
+    }
 )
 
-DATA_DIR = Path.home() / ".singing-coach"
-DB_PATH = DATA_DIR / "sessions.db"
-RECORDINGS_DIR = DATA_DIR / "recordings"
+CORAL_RAMP = gr.themes.Color(
+    c50="#FDF1EC", c100="#FADFD4", c200="#F5BFA9", c300="#EE9C7C",
+    c400="#E37450", c500="#D64B2A", c600="#B93E20", c700="#973219",
+    c800="#742713", c900="#521B0D", c950="#3A1309",
+)
+TEAL_RAMP = gr.themes.Color(
+    c50="#E9F7F4", c100="#CDEEE7", c200="#9CDDD0", c300="#66C9B7",
+    c400="#2FAD99", c500="#00917C", c600="#007A68", c700="#006254",
+    c800="#004B40", c900="#00352D", c950="#00251F",
+)
+WARM_NEUTRAL = gr.themes.Color(
+    c50="#FFFDF8", c100="#FFF8EF", c200="#F5EBDD", c300="#E8D9C5",
+    c400="#C9B39C", c500="#A98F77", c600="#8A7566", c700="#6B594C",
+    c800="#4E4038", c900="#3D2C29", c950="#2A1E1C",
+)
 
+THEME = gr.themes.Soft(
+    primary_hue=CORAL_RAMP,
+    secondary_hue=TEAL_RAMP,
+    neutral_hue=WARM_NEUTRAL,
+    font=[gr.themes.GoogleFont("Nunito"), "ui-sans-serif", "system-ui", "sans-serif"],
+    font_mono=[gr.themes.GoogleFont("Fira Code"), "ui-monospace", "monospace"],
+).set(
+    body_background_fill="#FFF8EF",
+    body_text_color="#3D2C29",
+    block_background_fill="#FFFDF6",
+    block_border_color="#EADFCE",
+    block_shadow="0 2px 10px rgba(61, 44, 41, 0.06)",
+    button_primary_background_fill="#D64B2A",
+    button_primary_background_fill_hover="#B93E20",
+    button_primary_text_color="#FFF8EF",
+)
 
-def _ensure_dirs() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
 
+.gradio-container h1, .gradio-container h2, .gradio-container h3 {
+    font-family: 'Fraunces', Georgia, serif !important;
+    color: #3D2C29;
+}
+.gradio-container h1 {
+    font-size: 2.4rem !important;
+    letter-spacing: -0.02em;
+}
+#app-header {
+    background: linear-gradient(120deg, #FADFD4 0%, #FFF8EF 55%, #CDEEE7 100%);
+    border-radius: 16px;
+    padding: 18px 26px 8px 26px;
+    border: 1px solid #EADFCE;
+}
+#app-header p { color: #6B594C; margin-top: 0.2rem; }
+button.selected { font-weight: 700 !important; }
+.prose table { border-collapse: collapse; }
+.prose table td, .prose table th { padding: 4px 12px; border-color: #EADFCE !important; }
+footer { display: none !important; }
+"""
 
-def _save_recording(src_path: str) -> Path:
-    day_dir = RECORDINGS_DIR / date.today().isoformat()
-    day_dir.mkdir(parents=True, exist_ok=True)
-    dest = day_dir / f"{uuid.uuid4()}.wav"
-    shutil.copy(src_path, dest)
-    return dest
+HEADER_MD = """# 🎙️ singing-coach
+Warm up, sing, get coached. Your voice never leaves this machine — only the numbers do."""
 
 
 def _detect_median_midi(audio_path: Path) -> int | None:
@@ -72,476 +132,456 @@ def _pitch_chart(
             69.0 + 12.0 * np.log2(np.where(detected_f0 > 0, detected_f0, 1.0) / 440.0),
             np.nan,
         )
-        ax.plot(detected_times, detected_midi, label="detected", linewidth=1.5)
+        ax.plot(detected_times, detected_midi, color=CORAL, linewidth=2.0)
     if target_notes_midi:
-        for i, m in enumerate(target_notes_midi):
-            ax.axhline(m, color="gray", linestyle=":", linewidth=0.8, alpha=0.6)
+        for m in target_notes_midi:
+            ax.axhline(m, color=MUTED, linestyle=":", linewidth=0.9, alpha=0.55)
             ax.annotate(
                 exercises.midi_to_name(m),
                 xy=(0, m),
                 xytext=(4, 2),
                 textcoords="offset points",
                 fontsize=8,
-                color="gray",
+                color=MUTED,
             )
     ax.set_xlabel("time (s)")
     ax.set_ylabel("pitch (MIDI)")
-    ax.set_title("Pitch contour")
-    ax.legend(loc="upper right")
+    ax.set_title("Your pitch, note by note")
     fig.tight_layout()
     return fig
+
+
+PROGRESS_PANELS = [
+    ("cents_off", "Pitch accuracy", "cents off (avg)", (0, 25)),
+    ("jitter_local", "Pitch steadiness (jitter)", "fraction", (0, 0.01)),
+    ("shimmer_local", "Volume steadiness (shimmer)", "fraction", (0, 0.05)),
+    ("hnr_mean", "Tone clarity (HNR)", "dB", (20, None)),
+    ("vibrato_rate_hz", "Vibrato rate", "Hz", (5.0, 6.5)),
+    ("vibrato_extent_cents", "Vibrato depth", "cents", (50, 100)),
+]
+
+
+def _session_metric(session: dict, key: str) -> float | None:
+    m: Measurements = session["measurements"]
+    if key == "cents_off":
+        return m.accuracy.mean_abs_cents_off if m.accuracy else None
+    return getattr(m, key, None)
 
 
 def _progress_chart(sessions: list[dict]):
     if not sessions:
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.text(0.5, 0.5, "No sessions yet", ha="center", va="center")
+        ax.text(0.5, 0.5, "No sessions yet — go sing something!", ha="center", va="center")
         ax.set_axis_off()
         return fig
 
     chronological = list(reversed(sessions))
-    x = list(range(1, len(chronological) + 1))
+    dates = [datetime.fromisoformat(s["ts"]) for s in chronological]
 
-    def _series(key):
-        return [s["measurements"].get(key) for s in chronological]
+    fig, axes = plt.subplots(2, 3, figsize=(13, 6.5))
+    for ax, (key, title, ylabel, healthy) in zip(axes.flat, PROGRESS_PANELS, strict=True):
+        ys = np.array(
+            [_session_metric(s, key) for s in chronological], dtype=float
+        )  # None -> nan so matplotlib draws a gap
+        ax.set_title(title, fontsize=10)
+        ax.set_ylabel(ylabel, fontsize=8)
 
-    fig, axes = plt.subplots(2, 2, figsize=(10, 6))
-    for ax, (key, title, ylabel) in zip(
-        axes.flat,
-        [
-            ("jitter_local", "Jitter (local)", "fraction"),
-            ("hnr_mean", "HNR mean", "dB"),
-            ("vibrato_rate_hz", "Vibrato rate", "Hz"),
-            ("vibrato_extent_cents", "Vibrato extent", "cents"),
-        ],
-    ):
-        ys = _series(key)
-        ax.plot(x, ys, marker="o")
-        ax.set_title(title)
-        ax.set_xlabel("session #")
-        ax.set_ylabel(ylabel)
-    fig.tight_layout()
+        plotted = ys[~np.isnan(ys)]
+        if plotted.size == 0:
+            ax.text(
+                0.5, 0.5, "not measured yet",
+                ha="center", va="center", transform=ax.transAxes,
+                fontsize=9, color=MUTED,
+            )
+            ax.set_xticks([])
+            ax.set_yticks([])
+            continue
+
+        lo, hi = healthy
+        if hi is None:
+            hi = max(lo * 1.5, float(plotted.max()) * 1.1)
+        ax.axhspan(lo, hi, color=HEALTHY_GREEN, alpha=0.12, linewidth=0)
+        ax.plot(dates, ys, marker="o", markersize=5, color=CORAL, linewidth=2.0)
+        if len(dates) == 1:
+            ax.set_xlim(dates[0] - timedelta(days=1), dates[0] + timedelta(days=1))
+        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
+        ax.tick_params(axis="x", labelsize=7)
+    fig.suptitle("Shaded band = healthy zone", fontsize=9, color=MUTED)
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
 
-def _metrics_markdown(measurements: dict) -> str:
-    lines = ["| metric | value |", "|---|---|"]
-    for key in (
-        "jitter_local",
-        "shimmer_local",
-        "hnr_mean",
-        "vibrato_rate_hz",
-        "vibrato_extent_cents",
-        "f1_mean",
-        "f2_mean",
-    ):
-        v = measurements.get(key)
-        if v is None:
-            continue
-        lines.append(f"| {key} | {v:.3f} |")
+def _status_dot(level: str) -> str:
+    return {"good": "🟢", "watch": "🟡", "work": "🔴", "none": "–"}[level]
+
+
+def _metrics_markdown(measurements: Measurements) -> str:
+    m = measurements
+    rows: list[tuple[str, str, str]] = []
+
+    if m.accuracy and m.accuracy.mean_abs_cents_off is not None:
+        cents = m.accuracy.mean_abs_cents_off
+        level = "good" if cents <= 25 else "watch" if cents <= 50 else "work"
+        word = "on pitch" if level == "good" else "close" if level == "watch" else "off pitch"
+        rows.append(("Pitch accuracy", f"{cents:.0f} cents off avg — {word}", level))
+
+    if m.jitter_local is not None:
+        level = "good" if m.jitter_local <= 0.01 else "watch" if m.jitter_local <= 0.02 else "work"
+        rows.append(("Pitch steadiness (jitter)", f"{m.jitter_local:.4f}", level))
+    if m.shimmer_local is not None:
+        level = "good" if m.shimmer_local <= 0.05 else "watch" if m.shimmer_local <= 0.10 else "work"
+        rows.append(("Volume steadiness (shimmer)", f"{m.shimmer_local:.4f}", level))
+    if m.hnr_mean is not None:
+        level = "good" if m.hnr_mean >= 20 else "watch" if m.hnr_mean >= 15 else "work"
+        note = "clear" if level == "good" else "slightly breathy" if level == "watch" else "breathy"
+        rows.append(("Tone clarity (HNR)", f"{m.hnr_mean:.1f} dB — {note}", level))
+
+    minimal_vibrato = (m.vibrato_extent_cents or 0) < 20
+    if m.vibrato_rate_hz is not None:
+        if minimal_vibrato:
+            rows.append(("Vibrato", "minimal / straight tone", "none"))
+        else:
+            r = m.vibrato_rate_hz
+            level = "good" if 5.0 <= r <= 6.5 else "watch" if 4.0 <= r <= 7.0 else "work"
+            rows.append(("Vibrato rate", f"{r:.1f} Hz", level))
+            e = m.vibrato_extent_cents
+            level = "good" if 50 <= e <= 100 else "watch" if 20 <= e <= 120 else "work"
+            rows.append(("Vibrato depth", f"{e:.0f} cents", level))
+
+    if m.f1_mean is not None and m.f2_mean is not None:
+        rows.append(("Vowel placement (F1/F2)", f"{m.f1_mean:.0f} / {m.f2_mean:.0f} Hz", "none"))
+
+    lines = ["| how you did | value | |", "|---|---|---|"]
+    lines += [f"| {label} | {value} | {_status_dot(level)} |" for label, value, level in rows]
+
+    if m.accuracy and any(n.cents_off is not None for n in m.accuracy.per_note):
+        lines += ["", "| target note | cents off | |", "|---|---|---|"]
+        for n in m.accuracy.per_note:
+            if n.cents_off is None:
+                lines.append(f"| {n.target_name} | (not detected) | – |")
+                continue
+            verdict = "✓" if abs(n.cents_off) <= 25 else ("♭ flat" if n.cents_off < 0 else "♯ sharp")
+            lines.append(f"| {n.target_name} | {n.cents_off:+.0f} | {verdict} |")
+
     return "\n".join(lines)
 
 
-def _analyze(audio_filepath: str, exercise_spec: dict | None):
-    """Returns (saved_audio_path, measurements, pitch_arrays, coaching_md_or_error)."""
-    saved = _save_recording(audio_filepath)
-    audio, sr = audio_io.load(saved)
-    times, f0, confidence = pitch.predict(audio, sr)
-    measurements = voice_qa.analyze(saved)
-
-    conn = db.connect(DB_PATH)
-    try:
-        history = db.recent_sessions(conn, limit=5)
-        try:
-            coaching_md = coach.coach(exercise_spec, measurements, history)
-            coaching_error = None
-        except Exception as exc:
-            coaching_md = ""
-            coaching_error = str(exc)
-
-        db.insert_session(
-            conn,
-            exercise_type=exercise_spec["type"] if exercise_spec else "free",
-            exercise_spec=exercise_spec,
-            audio_path=str(saved),
-            measurements=measurements,
-            coaching_md=coaching_md,
+def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec | None):
+    fig = _pitch_chart(
+        spec.target_notes_midi if spec else None,
+        result.times,
+        result.f0,
+        result.confidence,
+    )
+    metrics = _metrics_markdown(result.measurements)
+    plot_update = gr.update(value=fig, visible=True)
+    playback_update = gr.update(value=str(result.saved_path), visible=True)
+    if result.coaching_error:
+        return (
+            plot_update,
+            metrics,
+            "",
+            f"⚠️ Coaching failed: {result.coaching_error}",
+            gr.update(visible=True),
+            result.session_id,
+            playback_update,
         )
-    finally:
-        conn.close()
-
-    return {
-        "saved": saved,
-        "measurements": measurements,
-        "times": times,
-        "f0": f0,
-        "confidence": confidence,
-        "coaching_md": coaching_md,
-        "coaching_error": coaching_error,
-    }
+    return (
+        plot_update,
+        metrics,
+        result.coaching.to_markdown(),
+        "",
+        gr.update(visible=False),
+        result.session_id,
+        playback_update,
+    )
 
 
-def _retry_coaching(session_id: int | None) -> str:
+def _empty_outputs(message: str):
+    return (
+        gr.update(visible=False),
+        "",
+        "",
+        message,
+        gr.update(visible=False),
+        None,
+        gr.update(visible=False),
+    )
+
+
+def _on_retry(session_id):
     if not session_id:
-        return "No saved session to retry."
-    conn = db.connect(DB_PATH)
+        return "", "No saved session to retry."
+    coaching, error = session_service.retry_coaching(session_id)
+    if error:
+        return "", f"⚠️ {error}"
+    return coaching.to_markdown(), ""
+
+
+def _refresh_progress(filter_choice: str):
+    sessions = session_service.all_sessions()
+    if filter_choice == "Exercises only":
+        sessions = [s for s in sessions if s["exercise_type"] != "free"]
+    elif filter_choice == "Free-sing only":
+        sessions = [s for s in sessions if s["exercise_type"] == "free"]
+    fig = _progress_chart(sessions)
+    noun = "session" if len(sessions) == 1 else "sessions"
+    return fig, f"**{len(sessions)} {noun} logged.**"
+
+
+def _build_ui() -> gr.Blocks:
     try:
-        row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
-        if row is None:
-            return "Session not found."
-        d = dict(row)
-        spec = None if d["exercise_spec_json"] is None else json.loads(d["exercise_spec_json"])
-        measurements = json.loads(d["measurements_json"])
-        history = db.recent_sessions(conn, limit=5)
-        coaching = coach.coach(spec, measurements, history)
-        conn.execute(
-            "UPDATE sessions SET coaching_md = ? WHERE id = ?", (coaching, session_id)
-        )
-        conn.commit()
-        return coaching
-    finally:
-        conn.close()
+        config.load_api_key()
+        has_key = True
+    except config.MissingApiKeyError:
+        has_key = False
 
-
-def _last_session_id() -> int | None:
-    conn = db.connect(DB_PATH)
-    try:
-        row = conn.execute("SELECT id FROM sessions ORDER BY id DESC LIMIT 1").fetchone()
-        return row["id"] if row else None
-    finally:
-        conn.close()
-
-
-def _build_setup_ui() -> gr.Blocks:
-    with gr.Blocks(title="singing-coach — setup") as setup:
-        gr.Markdown("# singing-coach — first-run setup")
-        gr.Markdown(
-            "Paste your Anthropic API key. It will be saved to "
-            f"`{config.USER_CONFIG_FILE}` with mode 0600 and used for coaching."
-        )
-        key_input = gr.Textbox(label="ANTHROPIC_API_KEY", type="password")
-        status = gr.Markdown()
-        save_btn = gr.Button("Save and continue", variant="primary")
-
-        def _save(k):
-            k = (k or "").strip()
-            if not k:
-                return "Key cannot be empty."
-            config.save_api_key(k)
-            return "Key saved. Restart `singing-coach` to use the app."
-
-        save_btn.click(_save, inputs=key_input, outputs=status)
-    return setup
-
-
-def _build_main_ui() -> gr.Blocks:
     with gr.Blocks(title="singing-coach") as app:
-        gr.Markdown("# singing-coach")
+        gr.Markdown(HEADER_MD, elem_id="app-header")
 
-        with gr.Tabs():
-            with gr.Tab("Calibrate"):
-                gr.Markdown(
-                    "Sing each note for ~3 seconds. The app detects the median pitch."
-                )
+        with gr.Column(visible=not has_key) as setup_col:
+            gr.Markdown(
+                "## First-run setup\n"
+                "Paste your Anthropic API key. It will be saved to "
+                f"`{config.USER_CONFIG_FILE}` with mode 0600 and used for coaching.\n\n"
+                "ℹ️ The first analysis also downloads the pitch model (~2 GB, one time)."
+            )
+            key_input = gr.Textbox(label="ANTHROPIC_API_KEY", type="password")
+            setup_status = gr.Markdown()
+            save_key_btn = gr.Button("Save and continue", variant="primary")
 
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown("**Lowest comfortable**")
-                        low_comf_audio = gr.Audio(
-                            sources=["microphone"], type="filepath"
-                        )
-                        low_comf_midi = gr.State(value=None)
-                        low_comf_label = gr.Markdown("(not recorded)")
-                    with gr.Column():
-                        gr.Markdown("**Highest comfortable**")
-                        high_comf_audio = gr.Audio(
-                            sources=["microphone"], type="filepath"
-                        )
-                        high_comf_midi = gr.State(value=None)
-                        high_comf_label = gr.Markdown("(not recorded)")
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown("**Lowest edge** (vocal floor)")
-                        low_edge_audio = gr.Audio(
-                            sources=["microphone"], type="filepath"
-                        )
-                        low_edge_midi = gr.State(value=None)
-                        low_edge_label = gr.Markdown("(not recorded)")
-                    with gr.Column():
-                        gr.Markdown("**Highest edge** (vocal ceiling)")
-                        high_edge_audio = gr.Audio(
-                            sources=["microphone"], type="filepath"
-                        )
-                        high_edge_midi = gr.State(value=None)
-                        high_edge_label = gr.Markdown("(not recorded)")
-
-                save_calibration_btn = gr.Button("Save calibration", variant="primary")
-                calibration_status = gr.Markdown()
-
-                def _on_clip(path):
-                    if not path:
-                        return None, "(cleared)"
-                    midi = _detect_median_midi(Path(path))
-                    return midi, _midi_label(midi)
-
-                low_comf_audio.change(
-                    _on_clip, inputs=low_comf_audio, outputs=[low_comf_midi, low_comf_label]
-                )
-                high_comf_audio.change(
-                    _on_clip,
-                    inputs=high_comf_audio,
-                    outputs=[high_comf_midi, high_comf_label],
-                )
-                low_edge_audio.change(
-                    _on_clip, inputs=low_edge_audio, outputs=[low_edge_midi, low_edge_label]
-                )
-                high_edge_audio.change(
-                    _on_clip,
-                    inputs=high_edge_audio,
-                    outputs=[high_edge_midi, high_edge_label],
-                )
-
-                def _save_calibration(lc, hc, le, he):
-                    if None in (lc, hc, le, he):
-                        return "Need all four notes detected before saving."
-                    if not (le <= lc <= hc <= he):
-                        return (
-                            "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge."
-                        )
-                    conn = db.connect(DB_PATH)
-                    try:
-                        db.insert_calibration(
-                            conn,
-                            range_low=le,
-                            range_high=he,
-                            tessitura_low=lc,
-                            tessitura_high=hc,
-                        )
-                    finally:
-                        conn.close()
-                    return (
-                        f"Saved. Range: {exercises.midi_to_name(le)}–"
-                        f"{exercises.midi_to_name(he)}; "
-                        f"tessitura: {exercises.midi_to_name(lc)}–"
-                        f"{exercises.midi_to_name(hc)}."
+        with gr.Column(visible=has_key) as main_col:
+            with gr.Tabs():
+                with gr.Tab("Calibrate"):
+                    gr.Markdown(
+                        "Sing each note for ~3 seconds. The app detects the median pitch."
                     )
 
-                save_calibration_btn.click(
-                    _save_calibration,
-                    inputs=[
-                        low_comf_midi,
-                        high_comf_midi,
-                        low_edge_midi,
-                        high_edge_midi,
-                    ],
-                    outputs=calibration_status,
-                )
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("**Lowest comfortable**")
+                            low_comf_audio = gr.Audio(sources=["microphone"], type="filepath")
+                            low_comf_midi = gr.State(value=None)
+                            low_comf_label = gr.Markdown("(not recorded)")
+                        with gr.Column():
+                            gr.Markdown("**Highest comfortable**")
+                            high_comf_audio = gr.Audio(sources=["microphone"], type="filepath")
+                            high_comf_midi = gr.State(value=None)
+                            high_comf_label = gr.Markdown("(not recorded)")
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("**Lowest edge** (vocal floor)")
+                            low_edge_audio = gr.Audio(sources=["microphone"], type="filepath")
+                            low_edge_midi = gr.State(value=None)
+                            low_edge_label = gr.Markdown("(not recorded)")
+                        with gr.Column():
+                            gr.Markdown("**Highest edge** (vocal ceiling)")
+                            high_edge_audio = gr.Audio(sources=["microphone"], type="filepath")
+                            high_edge_midi = gr.State(value=None)
+                            high_edge_label = gr.Markdown("(not recorded)")
 
-            with gr.Tab("Exercise"):
-                exercise_state = gr.State(value=None)
+                    save_calibration_btn = gr.Button("Save calibration", variant="primary")
+                    calibration_status = gr.Markdown()
 
-                with gr.Row():
-                    load_btn = gr.Button("Load next exercise", variant="primary")
-                    play_btn = gr.Button("Play reference")
+                    def _on_clip(path):
+                        if not path:
+                            return None, "(cleared)"
+                        midi = _detect_median_midi(Path(path))
+                        return midi, _midi_label(midi)
 
-                exercise_display = gr.Markdown("(no exercise loaded)")
-                reference_audio = gr.Audio(label="Reference tones", autoplay=True)
-
-                record_audio = gr.Audio(
-                    sources=["microphone"], type="filepath", label="Record your attempt"
-                )
-                analyze_btn = gr.Button("Analyze", variant="primary")
-
-                pitch_plot = gr.Plot()
-                metrics_md = gr.Markdown()
-                coaching_md = gr.Markdown()
-                error_md = gr.Markdown()
-                retry_btn = gr.Button("Retry coaching", visible=False)
-                last_session = gr.State(value=None)
-
-                def _load_exercise():
-                    conn = db.connect(DB_PATH)
-                    try:
-                        cal = db.latest_calibration(conn)
-                        n = len(db.all_sessions(conn))
-                    finally:
-                        conn.close()
-                    if cal is None:
-                        return None, "**Calibrate first** before loading an exercise."
-                    spec = exercises.next_exercise(cal, session_index=n)
-                    notes_str = ", ".join(
-                        exercises.midi_to_name(m) for m in spec["target_notes_midi"]
-                    )
-                    md = (
-                        f"### {spec['display_name']}\n\n"
-                        f"Target notes: {notes_str}\n\n"
-                        f"Vowel: **{spec['vowel']}**"
-                    )
-                    return spec, md
-
-                load_btn.click(_load_exercise, outputs=[exercise_state, exercise_display])
-
-                def _play_reference(spec):
-                    if spec is None:
-                        return None
-                    audio, sr = tone_gen.sequence(
-                        spec["target_notes_midi"], spec["duration_per_note_s"]
-                    )
-                    return (sr, audio)
-
-                play_btn.click(_play_reference, inputs=exercise_state, outputs=reference_audio)
-
-                def _on_analyze(audio_path, spec):
-                    if not audio_path:
-                        return (
-                            None,
-                            "",
-                            "",
-                            "Record audio first.",
-                            gr.update(visible=False),
-                            None,
-                        )
-                    result = _analyze(audio_path, spec)
-                    fig = _pitch_chart(
-                        spec["target_notes_midi"] if spec else None,
-                        result["times"],
-                        result["f0"],
-                        result["confidence"],
-                    )
-                    session_id = _last_session_id()
-                    if result["coaching_error"]:
-                        err = f"⚠️ Coaching failed: {result['coaching_error']}"
-                        return (
-                            fig,
-                            _metrics_markdown(result["measurements"]),
-                            "",
-                            err,
-                            gr.update(visible=True),
-                            session_id,
-                        )
-                    return (
-                        fig,
-                        _metrics_markdown(result["measurements"]),
-                        result["coaching_md"],
-                        "",
-                        gr.update(visible=False),
-                        session_id,
-                    )
-
-                analyze_btn.click(
-                    _on_analyze,
-                    inputs=[record_audio, exercise_state],
-                    outputs=[
-                        pitch_plot,
-                        metrics_md,
-                        coaching_md,
-                        error_md,
-                        retry_btn,
-                        last_session,
-                    ],
-                )
-
-                def _on_retry(session_id):
-                    coaching = _retry_coaching(session_id)
-                    if coaching.startswith("Session not found") or coaching.startswith(
-                        "No saved"
+                    for audio_comp, midi_state, label in (
+                        (low_comf_audio, low_comf_midi, low_comf_label),
+                        (high_comf_audio, high_comf_midi, high_comf_label),
+                        (low_edge_audio, low_edge_midi, low_edge_label),
+                        (high_edge_audio, high_edge_midi, high_edge_label),
                     ):
-                        return coaching, ""
-                    return coaching, ""
+                        audio_comp.change(_on_clip, inputs=audio_comp, outputs=[midi_state, label])
 
-                retry_btn.click(_on_retry, inputs=last_session, outputs=[coaching_md, error_md])
-
-            with gr.Tab("Free-sing"):
-                free_audio = gr.Audio(
-                    sources=["microphone"], type="filepath", label="Record a passage"
-                )
-                free_analyze = gr.Button("Analyze", variant="primary")
-                free_pitch = gr.Plot()
-                free_metrics = gr.Markdown()
-                free_coaching = gr.Markdown()
-                free_error = gr.Markdown()
-                free_retry = gr.Button("Retry coaching", visible=False)
-                free_last_session = gr.State(value=None)
-
-                def _on_free(audio_path):
-                    if not audio_path:
+                    def _save_calibration(lc, hc, le, he):
+                        if None in (lc, hc, le, he):
+                            return "Need all four notes detected before saving."
+                        if not (le <= lc <= hc <= he):
+                            return (
+                                "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge."
+                            )
+                        session_service.save_calibration(lc, hc, le, he)
                         return (
-                            None,
-                            "",
-                            "",
-                            "Record audio first.",
-                            gr.update(visible=False),
-                            None,
+                            f"Saved. Range: {exercises.midi_to_name(le)}–"
+                            f"{exercises.midi_to_name(he)}; "
+                            f"tessitura: {exercises.midi_to_name(lc)}–"
+                            f"{exercises.midi_to_name(hc)}."
                         )
-                    result = _analyze(audio_path, None)
-                    fig = _pitch_chart(
-                        None, result["times"], result["f0"], result["confidence"]
-                    )
-                    session_id = _last_session_id()
-                    if result["coaching_error"]:
-                        return (
-                            fig,
-                            _metrics_markdown(result["measurements"]),
-                            "",
-                            f"⚠️ Coaching failed: {result['coaching_error']}",
-                            gr.update(visible=True),
-                            session_id,
-                        )
-                    return (
-                        fig,
-                        _metrics_markdown(result["measurements"]),
-                        result["coaching_md"],
-                        "",
-                        gr.update(visible=False),
-                        session_id,
+
+                    save_calibration_btn.click(
+                        _save_calibration,
+                        inputs=[low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi],
+                        outputs=calibration_status,
                     )
 
-                free_analyze.click(
-                    _on_free,
-                    inputs=free_audio,
-                    outputs=[
-                        free_pitch,
-                        free_metrics,
-                        free_coaching,
-                        free_error,
-                        free_retry,
-                        free_last_session,
-                    ],
-                )
+                with gr.Tab("Exercise"):
+                    exercise_state = gr.State(value=None)
 
-                free_retry.click(
-                    lambda sid: (_retry_coaching(sid), ""),
-                    inputs=free_last_session,
-                    outputs=[free_coaching, free_error],
-                )
+                    with gr.Row():
+                        load_btn = gr.Button("Load next exercise", variant="primary")
+                        play_btn = gr.Button("Play reference")
 
-            with gr.Tab("Progress"):
-                refresh_btn = gr.Button("Refresh", variant="primary")
-                progress_plot = gr.Plot()
-                session_count = gr.Markdown()
+                    exercise_display = gr.Markdown("(no exercise loaded)")
+                    reference_audio = gr.Audio(
+                        label="Reference tones", autoplay=True, visible=False
+                    )
 
-                def _on_refresh():
-                    conn = db.connect(DB_PATH)
-                    try:
-                        sessions = db.all_sessions(conn)
-                    finally:
-                        conn.close()
-                    fig = _progress_chart(sessions)
-                    return fig, f"**{len(sessions)} sessions logged.**"
+                    record_audio = gr.Audio(
+                        sources=["microphone"], type="filepath", label="Record your attempt"
+                    )
+                    analyze_btn = gr.Button("Analyze", variant="primary")
 
-                refresh_btn.click(_on_refresh, outputs=[progress_plot, session_count])
+                    attempt_playback = gr.Audio(
+                        label="Your attempt (listen back)", visible=False
+                    )
+                    pitch_plot = gr.Plot(label="Pitch contour", visible=False)
+                    metrics_md = gr.Markdown()
+                    coaching_md = gr.Markdown()
+                    error_md = gr.Markdown()
+                    retry_btn = gr.Button("Retry coaching", visible=False)
+                    last_session = gr.State(value=None)
+
+                    def _load_exercise():
+                        spec = session_service.next_exercise()
+                        if spec is None:
+                            return None, "**Calibrate first** before loading an exercise."
+                        notes_str = ", ".join(
+                            exercises.midi_to_name(m) for m in spec.target_notes_midi
+                        )
+                        md = (
+                            f"### {spec.display_name}\n\n"
+                            f"Target notes: {notes_str}\n\n"
+                            f"Vowel: **{spec.vowel}**"
+                        )
+                        return spec, md
+
+                    load_btn.click(_load_exercise, outputs=[exercise_state, exercise_display])
+
+                    def _play_reference(spec):
+                        if spec is None:
+                            return gr.update(visible=False)
+                        audio, sr = tone_gen.sequence(
+                            spec.target_notes_midi, spec.duration_per_note_s
+                        )
+                        return gr.update(value=(sr, audio), visible=True)
+
+                    play_btn.click(_play_reference, inputs=exercise_state, outputs=reference_audio)
+
+                    def _on_analyze(audio_path, spec):
+                        if not audio_path:
+                            return _empty_outputs("Record audio first.")
+                        result = session_service.analyze_session(audio_path, spec)
+                        return _analysis_outputs(result, spec)
+
+                    analyze_btn.click(
+                        _on_analyze,
+                        inputs=[record_audio, exercise_state],
+                        outputs=[
+                            pitch_plot,
+                            metrics_md,
+                            coaching_md,
+                            error_md,
+                            retry_btn,
+                            last_session,
+                            attempt_playback,
+                        ],
+                    )
+
+                    retry_btn.click(_on_retry, inputs=last_session, outputs=[coaching_md, error_md])
+
+                with gr.Tab("Free-sing"):
+                    free_audio = gr.Audio(
+                        sources=["microphone"], type="filepath", label="Record a passage"
+                    )
+                    free_analyze = gr.Button("Analyze", variant="primary")
+                    free_playback = gr.Audio(
+                        label="Your attempt (listen back)", visible=False
+                    )
+                    free_pitch = gr.Plot(label="Pitch contour", visible=False)
+                    free_metrics = gr.Markdown()
+                    free_coaching = gr.Markdown()
+                    free_error = gr.Markdown()
+                    free_retry = gr.Button("Retry coaching", visible=False)
+                    free_last_session = gr.State(value=None)
+
+                    def _on_free(audio_path):
+                        if not audio_path:
+                            return _empty_outputs("Record audio first.")
+                        result = session_service.analyze_session(audio_path, None)
+                        return _analysis_outputs(result, None)
+
+                    free_analyze.click(
+                        _on_free,
+                        inputs=free_audio,
+                        outputs=[
+                            free_pitch,
+                            free_metrics,
+                            free_coaching,
+                            free_error,
+                            free_retry,
+                            free_last_session,
+                            free_playback,
+                        ],
+                    )
+
+                    free_retry.click(
+                        _on_retry, inputs=free_last_session, outputs=[free_coaching, free_error]
+                    )
+
+                with gr.Tab("Progress") as progress_tab:
+                    with gr.Row():
+                        progress_filter = gr.Dropdown(
+                            choices=["All sessions", "Exercises only", "Free-sing only"],
+                            value="All sessions",
+                            label="Show",
+                        )
+                        refresh_btn = gr.Button("Refresh")
+                    progress_plot = gr.Plot(label="Trends over time")
+                    session_count = gr.Markdown()
+
+                    refresh_btn.click(
+                        _refresh_progress,
+                        inputs=progress_filter,
+                        outputs=[progress_plot, session_count],
+                    )
+                    progress_filter.change(
+                        _refresh_progress,
+                        inputs=progress_filter,
+                        outputs=[progress_plot, session_count],
+                    )
+                    progress_tab.select(
+                        _refresh_progress,
+                        inputs=progress_filter,
+                        outputs=[progress_plot, session_count],
+                    )
+
+        def _save_key(key):
+            key = (key or "").strip()
+            if not key:
+                return gr.update(), gr.update(), "Key cannot be empty."
+            config.save_api_key(key)
+            return (
+                gr.update(visible=False),
+                gr.update(visible=True),
+                "",
+            )
+
+        save_key_btn.click(
+            _save_key,
+            inputs=key_input,
+            outputs=[setup_col, main_col, setup_status],
+        )
 
     return app
 
 
 def main() -> None:
-    _ensure_dirs()
-    try:
-        config.load_api_key()
-    except config.MissingApiKeyError:
-        _build_setup_ui().launch(inbrowser=True)
-        return
-    _build_main_ui().launch(inbrowser=True)
+    session_service.ensure_dirs()
+    _build_ui().launch(inbrowser=True, theme=THEME, css=CSS)
 
 
 if __name__ == "__main__":
