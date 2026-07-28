@@ -95,3 +95,74 @@ def test_coach_max_tokens_env_override(monkeypatch):
 def test_coach_timeout_env_override(monkeypatch):
     monkeypatch.setenv("SINGING_COACH_TIMEOUT_S", "15.5")
     assert config.coach_timeout_s() == 15.5
+
+
+COACH_SETTINGS = [
+    (config.COACH_MODEL_VAR, "claude-from-file", "claude-from-file", config.coach_model),
+    (config.COACH_MAX_TOKENS_VAR, "4096", 4096, config.coach_max_tokens),
+    (config.COACH_TIMEOUT_VAR, "12.5", 12.5, config.coach_timeout_s),
+    (config.OLLAMA_HOST_VAR, "http://box:11434", "http://box:11434", config.ollama_host),
+    (config.OLLAMA_MODEL_VAR, "gemma4:e4b", "gemma4:e4b", config.ollama_model),
+    (config.OLLAMA_TIMEOUT_VAR, "900", 900.0, config.ollama_timeout_s),
+]
+
+
+@pytest.mark.parametrize("var,raw,expected,read", COACH_SETTINGS)
+def test_coach_settings_resolve_from_the_user_dotenv(
+    isolated_paths, monkeypatch, var, raw, expected, read
+):
+    monkeypatch.delenv(var, raising=False)
+    (isolated_paths["user_dir"] / ".env").write_text(f"{var}={raw}\n")
+
+    assert read() == expected
+
+
+@pytest.mark.parametrize("var,raw,expected,read", COACH_SETTINGS)
+def test_process_env_beats_the_dotenv_for_coach_settings(
+    isolated_paths, monkeypatch, var, raw, expected, read
+):
+    (isolated_paths["user_dir"] / ".env").write_text(f"{var}=ignored-value\n")
+    monkeypatch.setenv(var, raw)
+
+    assert read() == expected
+
+
+def test_ollama_model_falls_back_to_the_default(isolated_paths, monkeypatch):
+    monkeypatch.delenv(config.OLLAMA_MODEL_VAR, raising=False)
+    assert config.ollama_model() == config.DEFAULT_OLLAMA_MODEL
+
+
+def test_ollama_host_from_project_dotenv(isolated_paths, monkeypatch):
+    monkeypatch.delenv(config.OLLAMA_HOST_VAR, raising=False)
+    (isolated_paths["project_dir"] / ".env").write_text(
+        f"{config.OLLAMA_HOST_VAR}=http://gpu-box:11434/\n"
+    )
+    assert config.ollama_host() == "http://gpu-box:11434"
+
+
+def test_backend_defaults_to_local(isolated_paths, monkeypatch):
+    monkeypatch.delenv(config.BACKEND_VAR, raising=False)
+    assert config.coach_backend() == config.OLLAMA_BACKEND
+    assert config.uses_anthropic() is False
+
+
+def test_backend_from_user_dotenv(isolated_paths, monkeypatch):
+    monkeypatch.delenv(config.BACKEND_VAR, raising=False)
+    (isolated_paths["user_dir"] / ".env").write_text(
+        f"{config.BACKEND_VAR}=Anthropic\n"
+    )
+    assert config.coach_backend() == config.ANTHROPIC_BACKEND
+    assert config.uses_anthropic() is True
+
+
+def test_save_api_key_preserves_other_settings(isolated_paths):
+    config.save_supabase_credentials("https://x.supabase.co", "anon-key")
+    config.save_api_key("sk-new")
+
+    assert config.load_api_key() == "sk-new"
+    assert config.supabase_credentials() == ("https://x.supabase.co", "anon-key")
+
+
+def test_supabase_credentials_need_both_halves(isolated_paths):
+    config.save_settings({config.SUPABASE_URL_VAR: "https://x.supabase.co"})
+    assert config.supabase_credentials() is None
