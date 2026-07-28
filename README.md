@@ -37,16 +37,30 @@ First launch downloads the torchcrepe pitch model (~2 GB). Subsequent launches a
 
 2. **Exercise.** The Exercise tab shows a generated exercise scaled to your range — a sustained tone, a 5-note scale, an arpeggio, or a siren. Click **Play reference** to hear the target tones, then **Record** to sing the exercise, then **Analyze**. You'll see:
    - A pitch chart overlaying your contour against the target notes
-   - A metrics card (jitter, shimmer, HNR, vibrato rate/extent, formants)
+   - Playback of your own attempt, so you can A/B it against the reference
+   - A scorecard in plain language: how many cents off each note you were, plus breath steadiness, tone clarity, and vibrato, each flagged 🟢/🟡/🔴 against a healthy range
    - Coaching feedback from Claude
+
+   After the first session, the next exercise is chosen to train whatever the coach told you to work on — flat pitch gets you a scale, shaky breath gets you a sustained tone.
 
 3. **Free-sing.** Same analysis pipeline as Exercise but without target notes — sing whatever you want, get feedback on pitch drift, breath, vibrato, and tone quality.
 
-4. **Progress.** Charts trends across all your sessions: jitter, HNR, vibrato rate, vibrato extent. Click **Refresh** after recording new sessions.
+4. **Progress.** Charts trends across your sessions by date, with the healthy zone shaded on each panel: pitch accuracy, jitter, shimmer, HNR, vibrato rate and depth. Filter to exercises or free-sing.
 
 ## How it works
 
-Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour. Coaching is a single call to [Claude](https://www.anthropic.com/claude) (`claude-sonnet-4-6`) with the structured measurements, the exercise spec, and your last few sessions for context. The UI is [Gradio](https://www.gradio.app/) running on `localhost`.
+Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour.
+
+Coaching is a single call to [Claude](https://www.anthropic.com/claude) (`claude-sonnet-4-6` by default). Claude is given the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold every time. Feedback comes back as structured output via tool use (focus area, top issue, why, drill, encouragement), which is what makes the adaptive exercise selection and progress tracking possible. The UI is [Gradio](https://www.gradio.app/) running on `localhost`.
+
+### Configuration
+
+| Env var | Default | What it does |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | Required. Also settable via the first-run setup screen. |
+| `SINGING_COACH_MODEL` | `claude-sonnet-4-6` | Model used for coaching. |
+| `SINGING_COACH_MAX_TOKENS` | `1024` | Max output tokens per coaching call. |
+| `SINGING_COACH_TIMEOUT_S` | `60` | API timeout in seconds. |
 
 ## Costs
 
@@ -57,7 +71,7 @@ A back-of-the-envelope estimate; refine after a few real sessions.
 ## Privacy
 
 - Audio recordings and measurements stay on your machine under `~/.singing-coach/`.
-- Only the structured measurements (numbers — jitter, HNR, etc.) plus the exercise spec and recent measurement history are sent to the Anthropic API. **Your audio is never uploaded.**
+- Only the structured measurements (numbers — cents off target, jitter, HNR, etc.) plus the exercise spec and recent session history are sent to the Anthropic API. **Your audio is never uploaded.**
 - The API key is stored at `~/.singing-coach/.env` with mode 0600.
 
 ## Storage locations
@@ -78,7 +92,13 @@ A back-of-the-envelope estimate; refine after a few real sessions.
 
 ## Contributing
 
-PRs welcome. Run tests with `uv run pytest`. The architecture is one file per responsibility under `src/singing_coach/`; each module has a matching `tests/test_<module>.py`.
+PRs welcome. Run tests with `uv run pytest`. The architecture is one file per responsibility under `src/singing_coach/`; each module has a matching `tests/test_<module>.py`. Data crossing module boundaries is a Pydantic model from `models.py`, `session_service.py` owns the record → analyze → coach → persist pipeline, and `app.py` is Gradio wiring only.
+
+Changing the coaching prompt? Run the eval harness to check the coach still diagnoses planted problems correctly. It makes real API calls (a handful of cents):
+
+```bash
+uv run python evals/coach_eval.py
+```
 
 ## License
 
