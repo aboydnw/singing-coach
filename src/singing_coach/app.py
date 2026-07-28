@@ -8,11 +8,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
 from singing_coach import audio_io, config, exercises, pitch, session_service, tone_gen
-from singing_coach.models import ExerciseSpec, Measurements
+from singing_coach.models import Calibration, ExerciseSpec, Measurements
 
 CREAM = "#FFF8EF"
 PANEL = "#FFFDF6"
@@ -83,15 +84,25 @@ CSS = """
 }
 .gradio-container h1 {
     font-size: 2.4rem !important;
+    font-weight: 700 !important;
     letter-spacing: -0.02em;
 }
 #app-header {
-    background: linear-gradient(120deg, #FADFD4 0%, #FFF8EF 55%, #CDEEE7 100%);
+    background: linear-gradient(180deg, #FFFDF8 0%, #FFF8EF 100%);
     border-radius: 16px;
-    padding: 18px 26px 8px 26px;
+    padding: 22px 28px 16px 28px;
     border: 1px solid #EADFCE;
+    border-left: 4px solid #D64B2A;
 }
-#app-header p { color: #6B594C; margin-top: 0.2rem; }
+#app-header h1 { color: #2A1E1C; margin-bottom: 0; }
+#app-header p { color: #6B594C; margin-top: 0.35rem; }
+#exercise-card {
+    background: #FFFDF8;
+    border: 1px solid #EADFCE;
+    border-left: 4px solid #00917C;
+    border-radius: 12px;
+    padding: 14px 20px;
+}
 button.selected { font-weight: 700 !important; }
 .prose table { border-collapse: collapse; }
 .prose table td, .prose table th { padding: 4px 12px; border-color: #EADFCE !important; }
@@ -118,13 +129,69 @@ def _midi_label(midi: int | None) -> str:
     return f"{exercises.midi_to_name(midi)}  (MIDI {midi})"
 
 
+def _saved_label(midi: int | None) -> str:
+    if midi is None:
+        return "(not recorded)"
+    return f"{exercises.midi_to_name(midi)}  (MIDI {midi}) — saved"
+
+
+def _calibration_summary(calibration: Calibration | None) -> str:
+    if calibration is None:
+        return (
+            "### No calibration yet\n"
+            "Record all four notes below and save — exercises are scaled to your range."
+        )
+    name = exercises.midi_to_name
+    line = (
+        f"### Your saved calibration\n"
+        f"Range **{name(calibration.range_low_midi)}–{name(calibration.range_high_midi)}**"
+    )
+    if calibration.tessitura_low_midi is not None:
+        line += (
+            f" · comfortable **{name(calibration.tessitura_low_midi)}–"
+            f"{name(calibration.tessitura_high_midi)}**"
+        )
+    return line + "\n\nExercises already use this. Re-record a note below only to change it."
+
+
+def _load_calibration():
+    """Hydrate the Calibrate tab from the stored calibration so it survives restarts."""
+    calibration = session_service.latest_calibration()
+    if calibration is None:
+        notes = (None, None, None, None)
+    else:
+        notes = (
+            calibration.tessitura_low_midi,
+            calibration.tessitura_high_midi,
+            calibration.range_low_midi,
+            calibration.range_high_midi,
+        )
+    return (
+        _calibration_summary(calibration),
+        *notes,
+        *(_saved_label(midi) for midi in notes),
+    )
+
+
+def _figure(**kwargs) -> Figure:
+    """A standalone figure with an Agg canvas, outside pyplot's global registry.
+
+    pyplot keeps every figure it creates alive until explicitly closed, which leaks
+    one figure per analysis over a long session.
+    """
+    fig = Figure(**kwargs)
+    FigureCanvasAgg(fig)
+    return fig
+
+
 def _pitch_chart(
     target_notes_midi: list[int] | None,
     detected_times: np.ndarray,
     detected_f0: np.ndarray,
     detected_confidence: np.ndarray,
 ):
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig = _figure(figsize=(8, 4))
+    ax = fig.subplots()
     stable_mask = (detected_confidence >= 0.5) & (detected_f0 > 0)
     if stable_mask.any():
         detected_midi = np.where(
@@ -170,7 +237,8 @@ def _session_metric(session: dict, key: str) -> float | None:
 
 def _progress_chart(sessions: list[dict]):
     if not sessions:
-        fig, ax = plt.subplots(figsize=(8, 4))
+        fig = _figure(figsize=(8, 4))
+        ax = fig.subplots()
         ax.text(0.5, 0.5, "No sessions yet — go sing something!", ha="center", va="center")
         ax.set_axis_off()
         return fig
@@ -178,7 +246,8 @@ def _progress_chart(sessions: list[dict]):
     chronological = list(reversed(sessions))
     dates = [datetime.fromisoformat(s["ts"]) for s in chronological]
 
-    fig, axes = plt.subplots(2, 3, figsize=(13, 6.5))
+    fig = _figure(figsize=(13, 6.5))
+    axes = fig.subplots(2, 3)
     for ax, (key, title, ylabel, healthy) in zip(axes.flat, PROGRESS_PANELS, strict=True):
         ys = np.array(
             [_session_metric(s, key) for s in chronological], dtype=float
@@ -266,7 +335,15 @@ def _metrics_markdown(measurements: Measurements) -> str:
     return "\n".join(lines)
 
 
+ANALYZING_MESSAGE = (
+    "⏳ **Analyzing your recording…** Measuring pitch, then asking the coach for feedback. "
+    "This usually takes 10–30 seconds. The very first analysis also downloads the pitch "
+    "model (~2 GB), which can take several minutes — it only happens once."
+)
+
+
 def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec | None):
+    """UI updates for a completed analysis: status, chart, scorecard, coaching, playback."""
     fig = _pitch_chart(
         spec.target_notes_midi if spec else None,
         result.times,
@@ -278,6 +355,8 @@ def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec
     playback_update = gr.update(value=str(result.saved_path), visible=True)
     if result.coaching_error:
         return (
+            "⚠️ **Measurements saved, but the coaching call failed.** "
+            "Your scores are below — use *Retry coaching* to try again.",
             plot_update,
             metrics,
             "",
@@ -287,6 +366,7 @@ def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec
             playback_update,
         )
     return (
+        "✅ **Analysis complete.** Your results are below.",
         plot_update,
         metrics,
         result.coaching.to_markdown(),
@@ -297,15 +377,66 @@ def _analysis_outputs(result: session_service.AnalysisResult, spec: ExerciseSpec
     )
 
 
-def _empty_outputs(message: str):
+def _empty_outputs(status: str):
+    """UI updates for an analysis that never produced results, with the reason why."""
     return (
+        status,
         gr.update(visible=False),
         "",
         "",
-        message,
+        "",
         gr.update(visible=False),
         None,
         gr.update(visible=False),
+    )
+
+
+def _run_analysis(audio_path: str | None, spec: ExerciseSpec | None):
+    """Analyze one recording, reporting any failure in the UI rather than raising."""
+    if not audio_path:
+        return _empty_outputs("⚠️ **Nothing to analyze yet** — record your attempt first.")
+    try:
+        result = session_service.analyze_session(audio_path, spec)
+    except Exception as exc:
+        return _empty_outputs(f"❌ **Analysis failed:** {exc}")
+    return _analysis_outputs(result, spec)
+
+
+def _load_exercise():
+    """The next exercise and its description, ready to sing without a button press."""
+    spec = session_service.next_exercise()
+    if spec is None:
+        return None, (
+            "### No exercise yet\n"
+            "Head to the **Calibrate** tab first — exercises are built around your range."
+        )
+    notes_str = ", ".join(exercises.midi_to_name(m) for m in spec.target_notes_midi)
+    md = (
+        f"### Today's exercise: {spec.display_name}\n"
+        f"**Notes:** {notes_str} · **Vowel:** {spec.vowel} · "
+        f"**{spec.duration_per_note_s:.0f}s per note**"
+    )
+    return spec, md
+
+
+def _next_exercise():
+    """Load a fresh exercise and clear the previous attempt's recording and results."""
+    spec, md = _load_exercise()
+    cleared_audio = gr.update(value=None, visible=False)
+    return (
+        spec,
+        md,
+        "",
+        cleared_audio,
+        None,
+        cleared_audio,
+        gr.update(visible=False),
+        "",
+        "",
+        "",
+        gr.update(visible=False),
+        gr.update(visible=False),
+        None,
     )
 
 
@@ -353,8 +484,11 @@ def _build_ui() -> gr.Blocks:
         with gr.Column(visible=has_key) as main_col:
             with gr.Tabs():
                 with gr.Tab("Calibrate"):
+                    calibration_summary = gr.Markdown()
                     gr.Markdown(
-                        "Sing each note for ~3 seconds. The app detects the median pitch."
+                        "Sing each note for ~3 seconds. The app detects the median pitch. "
+                        "Your calibration is saved, so you only need to redo the notes you "
+                        "want to change."
                     )
 
                     with gr.Row():
@@ -416,24 +550,41 @@ def _build_ui() -> gr.Blocks:
                         _save_calibration,
                         inputs=[low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi],
                         outputs=calibration_status,
+                    ).then(
+                        _load_calibration,
+                        outputs=[
+                            calibration_summary,
+                            low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
+                            low_comf_label, high_comf_label, low_edge_label, high_edge_label,
+                        ],
                     )
 
                 with gr.Tab("Exercise"):
                     exercise_state = gr.State(value=None)
 
-                    with gr.Row():
-                        load_btn = gr.Button("Load next exercise", variant="primary")
-                        play_btn = gr.Button("Play reference")
+                    exercise_display = gr.Markdown(elem_id="exercise-card")
 
-                    exercise_display = gr.Markdown("(no exercise loaded)")
+                    gr.Markdown(
+                        "#### Step 1 — Hear it\n"
+                        "Target notes are just labels until you hear them. Play the reference "
+                        "tones and hum along until the shape is in your ear."
+                    )
+                    play_btn = gr.Button("▶  Play reference tones", variant="primary")
                     reference_audio = gr.Audio(
                         label="Reference tones", autoplay=True, visible=False
                     )
 
+                    gr.Markdown(
+                        "#### Step 2 — Sing it\n"
+                        "Record yourself singing those notes on the vowel above."
+                    )
                     record_audio = gr.Audio(
                         sources=["microphone"], type="filepath", label="Record your attempt"
                     )
-                    analyze_btn = gr.Button("Analyze", variant="primary")
+
+                    gr.Markdown("#### Step 3 — Get coached")
+                    analyze_btn = gr.Button("Analyze my attempt", variant="primary")
+                    analyze_status = gr.Markdown()
 
                     attempt_playback = gr.Audio(
                         label="Your attempt (listen back)", visible=False
@@ -443,23 +594,8 @@ def _build_ui() -> gr.Blocks:
                     coaching_md = gr.Markdown()
                     error_md = gr.Markdown()
                     retry_btn = gr.Button("Retry coaching", visible=False)
+                    next_btn = gr.Button("Next exercise  →", visible=False)
                     last_session = gr.State(value=None)
-
-                    def _load_exercise():
-                        spec = session_service.next_exercise()
-                        if spec is None:
-                            return None, "**Calibrate first** before loading an exercise."
-                        notes_str = ", ".join(
-                            exercises.midi_to_name(m) for m in spec.target_notes_midi
-                        )
-                        md = (
-                            f"### {spec.display_name}\n\n"
-                            f"Target notes: {notes_str}\n\n"
-                            f"Vowel: **{spec.vowel}**"
-                        )
-                        return spec, md
-
-                    load_btn.click(_load_exercise, outputs=[exercise_state, exercise_display])
 
                     def _play_reference(spec):
                         if spec is None:
@@ -471,33 +607,56 @@ def _build_ui() -> gr.Blocks:
 
                     play_btn.click(_play_reference, inputs=exercise_state, outputs=reference_audio)
 
-                    def _on_analyze(audio_path, spec):
-                        if not audio_path:
-                            return _empty_outputs("Record audio first.")
-                        result = session_service.analyze_session(audio_path, spec)
-                        return _analysis_outputs(result, spec)
+                    analyze_outputs = [
+                        analyze_status,
+                        pitch_plot,
+                        metrics_md,
+                        coaching_md,
+                        error_md,
+                        retry_btn,
+                        last_session,
+                        attempt_playback,
+                    ]
 
                     analyze_btn.click(
-                        _on_analyze,
+                        lambda: ANALYZING_MESSAGE, outputs=analyze_status
+                    ).then(
+                        _run_analysis,
                         inputs=[record_audio, exercise_state],
+                        outputs=analyze_outputs,
+                    ).then(
+                        lambda session_id: gr.update(visible=session_id is not None),
+                        inputs=last_session,
+                        outputs=next_btn,
+                    )
+
+                    retry_btn.click(_on_retry, inputs=last_session, outputs=[coaching_md, error_md])
+
+                    next_btn.click(
+                        _next_exercise,
                         outputs=[
+                            exercise_state,
+                            exercise_display,
+                            analyze_status,
+                            reference_audio,
+                            record_audio,
+                            attempt_playback,
                             pitch_plot,
                             metrics_md,
                             coaching_md,
                             error_md,
                             retry_btn,
+                            next_btn,
                             last_session,
-                            attempt_playback,
                         ],
                     )
-
-                    retry_btn.click(_on_retry, inputs=last_session, outputs=[coaching_md, error_md])
 
                 with gr.Tab("Free-sing"):
                     free_audio = gr.Audio(
                         sources=["microphone"], type="filepath", label="Record a passage"
                     )
-                    free_analyze = gr.Button("Analyze", variant="primary")
+                    free_analyze = gr.Button("Analyze my recording", variant="primary")
+                    free_status = gr.Markdown()
                     free_playback = gr.Audio(
                         label="Your attempt (listen back)", visible=False
                     )
@@ -508,16 +667,13 @@ def _build_ui() -> gr.Blocks:
                     free_retry = gr.Button("Retry coaching", visible=False)
                     free_last_session = gr.State(value=None)
 
-                    def _on_free(audio_path):
-                        if not audio_path:
-                            return _empty_outputs("Record audio first.")
-                        result = session_service.analyze_session(audio_path, None)
-                        return _analysis_outputs(result, None)
-
                     free_analyze.click(
-                        _on_free,
+                        lambda: ANALYZING_MESSAGE, outputs=free_status
+                    ).then(
+                        lambda audio_path: _run_analysis(audio_path, None),
                         inputs=free_audio,
                         outputs=[
+                            free_status,
                             free_pitch,
                             free_metrics,
                             free_coaching,
@@ -576,12 +732,27 @@ def _build_ui() -> gr.Blocks:
             outputs=[setup_col, main_col, setup_status],
         )
 
+        app.load(
+            _load_calibration,
+            outputs=[
+                calibration_summary,
+                low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
+                low_comf_label, high_comf_label, low_edge_label, high_edge_label,
+            ],
+        )
+        app.load(_load_exercise, outputs=[exercise_state, exercise_display])
+
     return app
 
 
 def main() -> None:
     session_service.ensure_dirs()
-    _build_ui().launch(inbrowser=True, theme=THEME, css=CSS)
+    _build_ui().launch(
+        inbrowser=True,
+        theme=THEME,
+        css=CSS,
+        allowed_paths=[str(session_service.RECORDINGS_DIR)],
+    )
 
 
 if __name__ == "__main__":
