@@ -17,6 +17,8 @@ dependencies = [
     "gradio>=4.44",
     "matplotlib>=3.8",
     "pydantic>=2.7",
+    "supabase>=2.31.0",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]

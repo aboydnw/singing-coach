@@ -1,6 +1,6 @@
 # singing-coach
 
-A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback from Claude, and track your progress over time. Runs locally; audio and measurements stay on your machine — only the structured measurements are sent to the Anthropic API for coaching.
+A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback, and track your progress over time. Coaching runs on a local model by default, so a practice session costs nothing. Your audio never leaves the machine that recorded it.
 
 Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Explorer), which detects vocal type but stops short of coaching.
 
@@ -8,22 +8,23 @@ Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Ex
 
 ## Setup
 
-You'll need [uv](https://docs.astral.sh/uv/) and an [Anthropic API key](https://console.anthropic.com/).
+You'll need [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com/).
 
 ```bash
 git clone https://github.com/aboydnw/singing-coach.git
 cd singing-coach
 uv sync
 
-# Option A — set the key now
-cp .env.example .env   # edit .env, paste your key
-
-# Option B — skip; the app will prompt for it on first run
+ollama pull qwen2.5:3b   # the default coaching model
 
 uv run singing-coach
 ```
 
 First launch downloads the torchcrepe pitch model (~2 GB). Subsequent launches are fast.
+
+Prefer Claude for coaching? Set `SINGING_COACH_BACKEND=anthropic` and supply an
+[Anthropic API key](https://console.anthropic.com/) — via `.env`, or the setup screen the app
+shows on first run. Coaching quality is noticeably better; see [Costs](#costs).
 
 ## How to use
 
@@ -51,28 +52,50 @@ First launch downloads the torchcrepe pitch model (~2 GB). Subsequent launches a
 
 Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour.
 
-Coaching is a single call to [Claude](https://www.anthropic.com/claude) (`claude-sonnet-4-6` by default). Claude is given the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold every time. Feedback comes back as structured output via tool use (focus area, top issue, why, drill, encouragement), which is what makes the adaptive exercise selection and progress tracking possible. The UI is [Gradio](https://www.gradio.app/) running on `localhost`.
+Coaching is a single model call. The model gets the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold every time. Feedback comes back as structured output (focus area, top issue, why, drill, encouragement), which is what makes the adaptive exercise selection and progress tracking possible. Both backends share one prompt and one schema; only the enforcement differs — Ollama constrains decoding to the JSON schema, Anthropic uses tool use. The UI is [Gradio](https://www.gradio.app/) running on `localhost`.
+
+### Backup and sync
+
+Optional, and off until you configure it. Point the app at a Supabase project and your calibration and session history are backed up as you sing, then pulled down on any other machine you sign into.
+
+1. Create a Supabase project and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) against it. It creates the two tables plus the row-level-security policies that keep accounts apart.
+2. Put the project URL and anon key in `~/.singing-coach/.env`.
+3. Sign in on the **Account** tab.
+
+Local SQLite stays the durable write path: singing works offline, and a failed sync never blocks coaching. Unsent rows queue up and go out on the next successful sync. Work done before you sign in is adopted into your account rather than stranded.
+
+**Audio is never uploaded** — not to Supabase, not anywhere. Only measurements, the exercise spec and the coaching text sync. The local file path is stripped on upload too: it would leak your directory layout and means nothing on another machine. A session recorded elsewhere appears in Progress with its charts intact and its playback marked *recorded on another device*.
 
 ### Configuration
 
 | Env var | Default | What it does |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | Required. Also settable via the first-run setup screen. |
-| `SINGING_COACH_MODEL` | `claude-sonnet-4-6` | Model used for coaching. |
+| `SINGING_COACH_BACKEND` | `ollama` | `ollama` for local and free; `anthropic` for the API. |
+| `SINGING_COACH_OLLAMA_MODEL` | `qwen2.5:3b` | Local coaching model. |
+| `SINGING_COACH_OLLAMA_HOST` | `http://localhost:11434` | Where Ollama is listening. |
+| `SINGING_COACH_OLLAMA_TIMEOUT_S` | `600` | Local generation timeout. CPU inference is slow. |
+| `ANTHROPIC_API_KEY` | — | Required when the backend is `anthropic`. Also settable via the setup screen. |
+| `SINGING_COACH_MODEL` | `claude-sonnet-4-6` | Claude model used for coaching. |
 | `SINGING_COACH_MAX_TOKENS` | `1024` | Max output tokens per coaching call. |
-| `SINGING_COACH_TIMEOUT_S` | `60` | API timeout in seconds. |
+| `SINGING_COACH_TIMEOUT_S` | `60` | Anthropic API timeout in seconds. |
+| `SUPABASE_URL` | — | Supabase project URL. Backup stays off without it. |
+| `SUPABASE_ANON_KEY` | — | Supabase anon key. |
 
 ## Costs
 
-The coaching call is the only paid component. Per session: roughly 1-2K input tokens and up to 1K output tokens, plus prompt caching on the system prompt to amortize the measurement glossary across repeat sessions. At `claude-sonnet-4-6` pricing ($3/M input, $15/M output, ~$0.30/M cached reads), expect **~$0.01–0.02 per session** once the cache is warm. Heavy use of Free-sing with long passages can push higher.
+On the default local backend, **coaching is free** — no API calls, no per-session cost. You pay in latency and quality instead. On an 8-core CPU with no GPU, a coaching call takes roughly 25–30 seconds against a 3B model, versus a couple of seconds via the API.
 
-A back-of-the-envelope estimate; refine after a few real sessions.
+Quality is the real trade. A 3B model tends to anchor on whatever it told you last session instead of re-reading the numbers, and it will occasionally describe a pitch problem as a breath problem. It is good enough to practise against and not good enough to trust blindly. Run `uv run python evals/coach_eval.py` against a backend to see how well it diagnoses planted problems before relying on it.
+
+Switching to `anthropic` costs roughly **$0.01–0.02 per session** at `claude-sonnet-4-6` pricing ($3/M input, $15/M output, ~$0.30/M cached reads), with prompt caching amortizing the measurement glossary. Heavy Free-sing with long passages pushes higher.
 
 ## Privacy
 
-- Audio recordings and measurements stay on your machine under `~/.singing-coach/`.
-- Only the structured measurements (numbers — cents off target, jitter, HNR, etc.) plus the exercise spec and recent session history are sent to the Anthropic API. **Your audio is never uploaded.**
-- The API key is stored at `~/.singing-coach/.env` with mode 0600.
+- Audio recordings stay on the machine that recorded them, under `~/.singing-coach/`. **Your audio is never uploaded** — not for coaching, not for sync.
+- On the default local backend, nothing leaves your machine at all.
+- On the `anthropic` backend, only the structured measurements (cents off target, jitter, HNR, etc.), the exercise spec and recent session history are sent to the API.
+- With sync on, those same measurements plus the coaching text go to your own Supabase project, guarded by row-level security. The local audio path is stripped before upload.
+- Credentials live at `~/.singing-coach/.env` with mode 0600. The Supabase refresh token is cached at `~/.singing-coach/session.json`, also 0600.
 
 ## Storage locations
 
@@ -80,8 +103,14 @@ A back-of-the-envelope estimate; refine after a few real sessions.
 |---|---|
 | Session database | `~/.singing-coach/sessions.db` |
 | Recordings | `~/.singing-coach/recordings/YYYY-MM-DD/<uuid>.wav` |
-| API key | `~/.singing-coach/.env` |
+| Credentials | `~/.singing-coach/.env` |
+| Cached sign-in | `~/.singing-coach/session.json` |
 | Reference-tone cache | `~/.singing-coach/cache/` |
+
+Databases created before sync existed used autoincrementing integer ids, which collide once two
+devices sync. On first launch those tables are renamed to `sessions_legacy_v1` and
+`calibration_legacy_v1` and a fresh schema is created alongside them. Nothing is deleted; the old
+rows are still queryable with any SQLite client.
 
 ## Supported platforms
 
