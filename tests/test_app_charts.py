@@ -1,4 +1,5 @@
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 
@@ -19,16 +20,18 @@ def _accuracy(cents: float) -> PitchAccuracy:
 
 def test_progress_chart_renders_with_no_sessions():
     fig = app._progress_chart([])
+    fig.canvas.draw()
     assert fig is not None
 
 
 def test_progress_chart_renders_with_a_single_session():
     sessions = [_session("2026-07-01T10:00:00+00:00", Measurements(jitter_local=0.01))]
     fig = app._progress_chart(sessions)
+    fig.canvas.draw()
     assert fig is not None
 
 
-def test_progress_chart_renders_when_some_sessions_lack_a_metric():
+def test_progress_chart_keeps_gaps_for_sessions_missing_a_metric():
     sessions = [
         _session("2026-07-03T10:00:00+00:00", Measurements(jitter_local=0.01)),
         _session(
@@ -39,7 +42,12 @@ def test_progress_chart_renders_when_some_sessions_lack_a_metric():
     ]
     fig = app._progress_chart(sessions)
     fig.canvas.draw()
-    assert fig is not None
+
+    accuracy_axis = fig.axes[0]
+    ydata = accuracy_axis.lines[0].get_ydata()
+    assert np.isnan(ydata[0])
+    assert ydata[1] == 30.0
+    assert np.isnan(ydata[2])
 
 
 def test_metrics_markdown_handles_empty_measurements():

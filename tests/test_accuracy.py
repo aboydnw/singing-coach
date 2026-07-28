@@ -82,12 +82,14 @@ def test_leading_and_trailing_silence_is_trimmed():
 def test_unvoiced_segment_yields_none_for_that_note():
     notes = [60, 62]
     times, f0, conf = _contour([60.0, 62.0], frames_per_note=50)
-    conf[50:] = 0.0  # second note never voiced — but keep enough total frames
-    # Re-voice a tail frame so the voiced span still covers both segments.
+    conf[50:] = 0.0
+    # Re-voice one tail frame so the voiced span still spans both segments, but the
+    # second segment stays below the frames-per-note floor.
     conf[-1] = 1.0
-    f0[-1] = pitch.midi_to_hz(62.0)
 
     result = accuracy.score(_spec(notes), times, f0, conf)
 
     assert result is not None
     assert result.per_note[0].cents_off is not None
+    assert result.per_note[1].cents_off is None
+    assert result.mean_abs_cents_off == pytest.approx(0.0, abs=5.0)
