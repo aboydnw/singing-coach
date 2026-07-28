@@ -5,6 +5,8 @@ matplotlib.use("Agg")
 
 from pathlib import Path
 
+import gradio as gr
+
 from singing_coach import app, session_service
 from singing_coach.models import (
     Calibration,
@@ -135,6 +137,63 @@ def test_load_calibration_leaves_notes_empty_when_never_calibrated(monkeypatch):
     _summary, *notes_and_labels = app._load_calibration()
 
     assert notes_and_labels[:4] == [None, None, None, None]
+
+
+def test_save_calibration_keeps_recorded_notes_when_validation_fails(monkeypatch):
+    def fail(*args):
+        raise AssertionError("must not persist an invalid calibration")
+
+    monkeypatch.setattr(app.session_service, "save_calibration", fail)
+    status, *rest = app._save_calibration(51, 58, 64, 48)
+
+    assert "Expected" in status
+    assert rest == [gr.skip()] * 11
+
+
+def test_save_calibration_keeps_recorded_notes_when_a_note_is_missing(monkeypatch):
+    def fail(*args):
+        raise AssertionError("must not persist an incomplete calibration")
+
+    monkeypatch.setattr(app.session_service, "save_calibration", fail)
+    status, *rest = app._save_calibration(51, None, 48, 64)
+
+    assert "four notes" in status
+    assert rest == [gr.skip()] * 11
+
+
+def test_save_calibration_makes_the_exercise_available_immediately(monkeypatch):
+    saved = []
+    monkeypatch.setattr(
+        app.session_service, "save_calibration", lambda *args: saved.append(args)
+    )
+    monkeypatch.setattr(
+        app.session_service,
+        "latest_calibration",
+        lambda: Calibration(
+            range_low_midi=48,
+            range_high_midi=64,
+            tessitura_low_midi=51,
+            tessitura_high_midi=58,
+        ),
+    )
+    monkeypatch.setattr(
+        app.session_service,
+        "next_exercise",
+        lambda: ExerciseSpec(
+            type="sustained",
+            target_notes_midi=[52],
+            duration_per_note_s=3.0,
+            vowel="ah",
+            display_name="sustained on 'ah'",
+        ),
+    )
+    status, *rest = app._save_calibration(51, 58, 48, 64)
+    exercise_spec, exercise_md = rest[-2], rest[-1]
+
+    assert saved == [(51, 58, 48, 64)]
+    assert "Saved" in status
+    assert exercise_spec is not None
+    assert "Calibrate" not in exercise_md
 
 
 def test_load_exercise_points_at_calibration_when_there_is_none(monkeypatch):

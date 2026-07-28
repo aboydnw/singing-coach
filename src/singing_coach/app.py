@@ -402,6 +402,30 @@ def _run_analysis(audio_path: str | None, spec: ExerciseSpec | None):
     return _analysis_outputs(result, spec)
 
 
+def _save_calibration(low_comf, high_comf, low_edge, high_edge):
+    """Validate and persist a calibration, then refresh everything derived from it.
+
+    A rejected save leaves every other output untouched, so failing validation does
+    not cost the user the takes they just recorded.
+    """
+    unchanged = (gr.skip(),) * 11
+    if None in (low_comf, high_comf, low_edge, high_edge):
+        return ("Need all four notes detected before saving.", *unchanged)
+    if not (low_edge <= low_comf <= high_comf <= high_edge):
+        return (
+            "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge.",
+            *unchanged,
+        )
+
+    session_service.save_calibration(low_comf, high_comf, low_edge, high_edge)
+    name = exercises.midi_to_name
+    status = (
+        f"Saved. Range: {name(low_edge)}–{name(high_edge)}; "
+        f"tessitura: {name(low_comf)}–{name(high_comf)}."
+    )
+    return (status, *_load_calibration(), *_load_exercise())
+
+
 def _load_exercise():
     """The next exercise and its description, ready to sing without a button press."""
     spec = session_service.next_exercise()
@@ -530,34 +554,6 @@ def _build_ui() -> gr.Blocks:
                         (high_edge_audio, high_edge_midi, high_edge_label),
                     ):
                         audio_comp.change(_on_clip, inputs=audio_comp, outputs=[midi_state, label])
-
-                    def _save_calibration(lc, hc, le, he):
-                        if None in (lc, hc, le, he):
-                            return "Need all four notes detected before saving."
-                        if not (le <= lc <= hc <= he):
-                            return (
-                                "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge."
-                            )
-                        session_service.save_calibration(lc, hc, le, he)
-                        return (
-                            f"Saved. Range: {exercises.midi_to_name(le)}–"
-                            f"{exercises.midi_to_name(he)}; "
-                            f"tessitura: {exercises.midi_to_name(lc)}–"
-                            f"{exercises.midi_to_name(hc)}."
-                        )
-
-                    save_calibration_btn.click(
-                        _save_calibration,
-                        inputs=[low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi],
-                        outputs=calibration_status,
-                    ).then(
-                        _load_calibration,
-                        outputs=[
-                            calibration_summary,
-                            low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
-                            low_comf_label, high_comf_label, low_edge_label, high_edge_label,
-                        ],
-                    )
 
                 with gr.Tab("Exercise"):
                     exercise_state = gr.State(value=None)
@@ -732,15 +728,23 @@ def _build_ui() -> gr.Blocks:
             outputs=[setup_col, main_col, setup_status],
         )
 
-        app.load(
-            _load_calibration,
-            outputs=[
-                calibration_summary,
-                low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
-                low_comf_label, high_comf_label, low_edge_label, high_edge_label,
-            ],
+        calibration_outputs = [
+            calibration_summary,
+            low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
+            low_comf_label, high_comf_label, low_edge_label, high_edge_label,
+        ]
+        exercise_outputs = [exercise_state, exercise_display]
+
+        # Wired here rather than in the Calibrate tab because saving a calibration
+        # also refreshes the Exercise tab, which is defined further down.
+        save_calibration_btn.click(
+            _save_calibration,
+            inputs=[low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi],
+            outputs=[calibration_status, *calibration_outputs, *exercise_outputs],
         )
-        app.load(_load_exercise, outputs=[exercise_state, exercise_display])
+
+        app.load(_load_calibration, outputs=calibration_outputs)
+        app.load(_load_exercise, outputs=exercise_outputs)
 
     return app
 
