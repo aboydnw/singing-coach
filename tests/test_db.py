@@ -50,8 +50,7 @@ def test_connect_is_idempotent(tmp_path):
     c2.close()
 
 
-def test_connect_migrates_pre_coaching_json_schema(tmp_path):
-    db_path = tmp_path / "old.db"
+def _write_legacy_db(db_path):
     import sqlite3
 
     old = sqlite3.connect(db_path)
@@ -76,15 +75,42 @@ def test_connect_migrates_pre_coaching_json_schema(tmp_path):
     old.commit()
     old.close()
 
+
+def test_connect_archives_the_pre_uuid_schema(tmp_path):
+    db_path = tmp_path / "old.db"
+    _write_legacy_db(db_path)
+
     conn = db.connect(db_path)
-    sessions = db.all_sessions(conn)
-    assert len(sessions) == 1
-    assert sessions[0]["coaching"] is None
-    assert sessions[0]["measurements"].jitter_local == 0.01
+
+    assert db.all_sessions(conn) == []
+    archived = conn.execute(
+        f"SELECT COUNT(*) FROM sessions{db.LEGACY_SUFFIX}"
+    ).fetchone()[0]
+    assert archived == 1
     conn.close()
 
 
-def test_insert_calibration_returns_row_id(conn):
+def test_connect_leaves_the_new_schema_alone_on_reopen(tmp_path):
+    db_path = tmp_path / "old.db"
+    _write_legacy_db(db_path)
+
+    first = db.connect(db_path)
+    session_id = db.insert_session(
+        first,
+        exercise_type="free",
+        exercise_spec=None,
+        audio_path="/tmp/new.wav",
+        measurements=_measurements(),
+        coaching=None,
+    )
+    first.close()
+
+    second = db.connect(db_path)
+    assert [s["id"] for s in db.all_sessions(second)] == [session_id]
+    second.close()
+
+
+def test_insert_calibration_returns_a_uuid(conn):
     row_id = db.insert_calibration(
         conn,
         range_low=48,
@@ -92,8 +118,8 @@ def test_insert_calibration_returns_row_id(conn):
         tessitura_low=55,
         tessitura_high=67,
     )
-    assert isinstance(row_id, int)
-    assert row_id > 0
+    assert isinstance(row_id, str)
+    assert len(row_id) == 36
 
 
 def test_latest_calibration_returns_none_when_empty(conn):
@@ -112,7 +138,7 @@ def test_latest_calibration_returns_most_recent_row(conn):
     assert latest.tessitura_high_midi == 67
 
 
-def test_insert_session_returns_row_id(conn):
+def test_insert_session_returns_a_uuid(conn):
     row_id = db.insert_session(
         conn,
         exercise_type="scale",
@@ -121,8 +147,23 @@ def test_insert_session_returns_row_id(conn):
         measurements=_measurements(),
         coaching=COACHING,
     )
-    assert isinstance(row_id, int)
-    assert row_id > 0
+    assert isinstance(row_id, str)
+    assert len(row_id) == 36
+
+
+def test_insert_session_ids_are_unique(conn):
+    ids = {
+        db.insert_session(
+            conn,
+            exercise_type="free",
+            exercise_spec=None,
+            audio_path="/tmp/a.wav",
+            measurements=_measurements(),
+            coaching=None,
+        )
+        for _ in range(25)
+    }
+    assert len(ids) == 25
 
 
 def test_insert_session_allows_null_spec_and_coaching(conn):
@@ -134,7 +175,6 @@ def test_insert_session_allows_null_spec_and_coaching(conn):
         measurements=_measurements(),
         coaching=None,
     )
-    assert row_id > 0
     session = db.get_session(conn, row_id)
     assert session["exercise_spec"] is None
     assert session["coaching"] is None
@@ -222,3 +262,151 @@ def test_session_count(conn):
             coaching=None,
         )
     assert db.session_count(conn) == 3
+
+
+def _insert(conn, user_id=None, audio_path="/tmp/x.wav"):
+    return db.insert_session(
+        conn,
+        exercise_type="free",
+        exercise_spec=None,
+        audio_path=audio_path,
+        measurements=_measurements(),
+        coaching=None,
+        user_id=user_id,
+    )
+
+
+def test_sessions_are_scoped_to_the_signed_in_account(conn):
+    _insert(conn, user_id="user-a")
+    _insert(conn, user_id="user-b")
+    _insert(conn, user_id=None)
+
+    assert db.session_count(conn, user_id="user-a") == 1
+    assert db.session_count(conn, user_id="user-b") == 1
+    assert db.session_count(conn, user_id=None) == 1
+
+
+def test_calibration_is_scoped_to_the_signed_in_account(conn):
+    db.insert_calibration(
+        conn, range_low=40, range_high=60, tessitura_low=45, tessitura_high=55,
+        user_id="user-a",
+    )
+    db.insert_calibration(
+        conn, range_low=48, range_high=72, tessitura_low=55, tessitura_high=67,
+        user_id="user-b",
+    )
+
+    assert db.latest_calibration(conn, user_id="user-a").range_high_midi == 60
+    assert db.latest_calibration(conn, user_id="user-b").range_high_midi == 72
+    assert db.latest_calibration(conn, user_id=None) is None
+
+
+def test_new_rows_start_in_the_outbox(conn):
+    session_id = _insert(conn, user_id="user-a")
+    assert [row["id"] for row in db.unsynced(conn, "sessions", "user-a")] == [session_id]
+
+
+def test_mark_synced_empties_the_outbox(conn):
+    session_id = _insert(conn, user_id="user-a")
+    db.mark_synced(conn, "sessions", [session_id])
+    assert db.unsynced(conn, "sessions", "user-a") == []
+
+
+def test_retried_coaching_returns_to_the_outbox(conn):
+    session_id = _insert(conn, user_id="user-a")
+    db.mark_synced(conn, "sessions", [session_id])
+    db.update_coaching(conn, session_id, COACHING, user_id="user-a")
+
+    assert [row["id"] for row in db.unsynced(conn, "sessions", "user-a")] == [session_id]
+
+
+def test_mark_synced_rejects_an_unknown_table(conn):
+    with pytest.raises(ValueError):
+        db.mark_synced(conn, "sessions; DROP TABLE sessions", ["x"])
+
+
+def test_claim_orphaned_rows_adopts_signed_out_work(conn):
+    orphan = _insert(conn, user_id=None)
+    db.insert_calibration(
+        conn, range_low=40, range_high=60, tessitura_low=45, tessitura_high=55
+    )
+    owned = _insert(conn, user_id="user-a")
+    db.mark_synced(conn, "sessions", [owned])
+
+    claimed = db.claim_orphaned_rows(conn, "user-a")
+
+    assert claimed == 2
+    assert db.session_count(conn, user_id="user-a") == 2
+    assert orphan in {row["id"] for row in db.unsynced(conn, "sessions", "user-a")}
+
+
+def test_insert_remote_session_is_idempotent(conn):
+    row = {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "user_id": "user-a",
+        "ts": "2026-07-01T10:00:00+00:00",
+        "exercise_type": "free",
+        "measurements_json": '{"jitter_local": 0.01}',
+        "coaching_md": "",
+    }
+    db.insert_remote_session(conn, row)
+    db.insert_remote_session(conn, row)
+
+    assert db.session_count(conn, user_id="user-a") == 1
+
+
+def test_pulled_sessions_are_not_queued_for_re_upload(conn):
+    db.insert_remote_session(
+        conn,
+        {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "user_id": "user-a",
+            "ts": "2026-07-01T10:00:00+00:00",
+            "exercise_type": "free",
+            "measurements_json": '{"jitter_local": 0.01}',
+            "coaching_md": "",
+        },
+    )
+    assert db.unsynced(conn, "sessions", "user-a") == []
+
+
+def test_get_session_will_not_read_another_accounts_row(conn):
+    session_id = _insert(conn, user_id="user-a")
+
+    assert db.get_session(conn, session_id, user_id="user-a") is not None
+    assert db.get_session(conn, session_id, user_id="user-b") is None
+    assert db.get_session(conn, session_id) is None
+
+
+def test_update_coaching_will_not_overwrite_another_accounts_row(conn):
+    session_id = _insert(conn, user_id="user-a")
+    db.mark_synced(conn, "sessions", [session_id])
+
+    db.update_coaching(conn, session_id, COACHING, user_id="user-b")
+
+    session = db.get_session(conn, session_id, user_id="user-a")
+    assert session["coaching"] is None
+    assert db.unsynced(conn, "sessions", "user-a") == []
+
+
+def test_update_coaching_applies_to_the_owning_account(conn):
+    session_id = _insert(conn, user_id="user-a")
+
+    db.update_coaching(conn, session_id, COACHING, user_id="user-a")
+
+    assert db.get_session(conn, session_id, user_id="user-a")["coaching"] == COACHING
+
+
+def test_pulled_sessions_carry_no_local_audio_path(conn):
+    db.insert_remote_session(
+        conn,
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "user_id": "user-a",
+            "ts": "2026-07-01T10:00:00+00:00",
+            "exercise_type": "free",
+            "measurements_json": '{"jitter_local": 0.01}',
+            "coaching_md": "",
+        },
+    )
+    assert db.all_sessions(conn, user_id="user-a")[0]["audio_path"] == ""
