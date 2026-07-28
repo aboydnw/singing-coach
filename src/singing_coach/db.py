@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 
 def connect(db_path: Path | str) -> sqlite3.Connection:
+    """Open the session database, creating or migrating the schema as needed."""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.executescript(DDL)
@@ -56,6 +57,7 @@ def insert_calibration(
     tessitura_low: int | None,
     tessitura_high: int | None,
 ) -> int:
+    """Record a calibration and return its row id. The newest row is the active one."""
     if range_low > range_high:
         raise ValueError("range_low must be <= range_high")
     if (tessitura_low is None) != (tessitura_high is None):
@@ -79,6 +81,7 @@ def insert_calibration(
 
 
 def latest_calibration(conn: sqlite3.Connection) -> Calibration | None:
+    """The most recent calibration, or None if the user has never calibrated."""
     row = conn.execute(
         "SELECT * FROM calibration ORDER BY id DESC LIMIT 1"
     ).fetchone()
@@ -95,6 +98,11 @@ def insert_session(
     measurements: Measurements,
     coaching: CoachingResult | None,
 ) -> int:
+    """Persist one analyzed session and return its row id.
+
+    Coaching may be None when the API call failed; the measurements are still saved
+    so the user can retry coaching later.
+    """
     cursor = conn.execute(
         """
         INSERT INTO sessions
@@ -119,6 +127,7 @@ def insert_session(
 def update_coaching(
     conn: sqlite3.Connection, session_id: int, coaching: CoachingResult
 ) -> None:
+    """Replace the stored coaching for a session, after a successful retry."""
     conn.execute(
         "UPDATE sessions SET coaching_md = ?, coaching_json = ? WHERE id = ?",
         (coaching.to_markdown(), coaching.model_dump_json(), session_id),
@@ -127,6 +136,7 @@ def update_coaching(
 
 
 def get_session(conn: sqlite3.Connection, session_id: int) -> dict | None:
+    """One session with its JSON columns hydrated into models, or None if absent."""
     row = conn.execute(
         "SELECT * FROM sessions WHERE id = ?", (session_id,)
     ).fetchone()
@@ -134,6 +144,7 @@ def get_session(conn: sqlite3.Connection, session_id: int) -> dict | None:
 
 
 def session_count(conn: sqlite3.Connection) -> int:
+    """Total number of logged sessions."""
     return conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
 
 
@@ -154,6 +165,7 @@ def _hydrate(row) -> dict:
 
 
 def recent_sessions(conn: sqlite3.Connection, limit: int = 5) -> list[dict]:
+    """The most recent sessions, newest first — the coach's memory of prior work."""
     rows = conn.execute(
         "SELECT * FROM sessions ORDER BY id DESC LIMIT ?",
         (limit,),
@@ -162,5 +174,6 @@ def recent_sessions(conn: sqlite3.Connection, limit: int = 5) -> list[dict]:
 
 
 def all_sessions(conn: sqlite3.Connection) -> list[dict]:
+    """Every session, newest first, for the progress charts."""
     rows = conn.execute("SELECT * FROM sessions ORDER BY id DESC").fetchall()
     return [_hydrate(row) for row in rows]

@@ -179,13 +179,15 @@ def _progress_chart(sessions: list[dict]):
     dates = [datetime.fromisoformat(s["ts"]) for s in chronological]
 
     fig, axes = plt.subplots(2, 3, figsize=(13, 6.5))
-    for ax, (key, title, ylabel, healthy) in zip(axes.flat, PROGRESS_PANELS):
-        ys = [_session_metric(s, key) for s in chronological]
+    for ax, (key, title, ylabel, healthy) in zip(axes.flat, PROGRESS_PANELS, strict=True):
+        ys = np.array(
+            [_session_metric(s, key) for s in chronological], dtype=float
+        )  # None -> nan so matplotlib draws a gap
         ax.set_title(title, fontsize=10)
         ax.set_ylabel(ylabel, fontsize=8)
 
-        plotted = [y for y in ys if y is not None]
-        if not plotted:
+        plotted = ys[~np.isnan(ys)]
+        if plotted.size == 0:
             ax.text(
                 0.5, 0.5, "not measured yet",
                 ha="center", va="center", transform=ax.transAxes,
@@ -197,7 +199,7 @@ def _progress_chart(sessions: list[dict]):
 
         lo, hi = healthy
         if hi is None:
-            hi = max([lo * 1.5] + [y * 1.1 for y in plotted])
+            hi = max(lo * 1.5, float(plotted.max()) * 1.1)
         ax.axhspan(lo, hi, color=HEALTHY_GREEN, alpha=0.12, linewidth=0)
         ax.plot(dates, ys, marker="o", markersize=5, color=CORAL, linewidth=2.0)
         if len(dates) == 1:
@@ -246,7 +248,7 @@ def _metrics_markdown(measurements: Measurements) -> str:
             level = "good" if 50 <= e <= 100 else "watch" if 20 <= e <= 120 else "work"
             rows.append(("Vibrato depth", f"{e:.0f} cents", level))
 
-    if m.f1_mean is not None:
+    if m.f1_mean is not None and m.f2_mean is not None:
         rows.append(("Vowel placement (F1/F2)", f"{m.f1_mean:.0f} / {m.f2_mean:.0f} Hz", "none"))
 
     lines = ["| how you did | value | |", "|---|---|---|"]
