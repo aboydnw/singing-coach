@@ -36,6 +36,7 @@ class AnalysisResult:
 
 
 def ensure_dirs() -> None:
+    """Create the user data directories if this is a first run."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -49,6 +50,11 @@ def _save_recording(src_path: str) -> Path:
 
 
 def analyze_session(audio_filepath: str, spec: ExerciseSpec | None) -> AnalysisResult:
+    """Run the full pipeline for one recording: save, measure, coach, persist.
+
+    A coaching failure is captured rather than raised — the measurements are worth
+    keeping either way, and the UI offers a retry.
+    """
     saved = _save_recording(audio_filepath)
     audio, sr = audio_io.load(saved)
     times, f0, confidence = pitch.predict(audio, sr)
@@ -137,6 +143,7 @@ def next_exercise() -> ExerciseSpec | None:
 def save_calibration(
     low_comfortable: int, high_comfortable: int, low_edge: int, high_edge: int
 ) -> None:
+    """Store a new calibration; the edges become the range, comfortables the tessitura."""
     conn = db.connect(DB_PATH)
     try:
         db.insert_calibration(
@@ -151,6 +158,7 @@ def save_calibration(
 
 
 def latest_calibration() -> Calibration | None:
+    """The active calibration, or None if the user has not calibrated yet."""
     conn = db.connect(DB_PATH)
     try:
         return db.latest_calibration(conn)
@@ -159,6 +167,7 @@ def latest_calibration() -> Calibration | None:
 
 
 def all_sessions() -> list[dict]:
+    """Every logged session, newest first."""
     conn = db.connect(DB_PATH)
     try:
         return db.all_sessions(conn)

@@ -1,4 +1,7 @@
-"""Per-note pitch accuracy: how many cents off each target note the singer was."""
+"""Per-note pitch accuracy: how many cents off each target note the singer was.
+
+Signed cents: negative is flat, positive is sharp.
+"""
 
 import numpy as np
 

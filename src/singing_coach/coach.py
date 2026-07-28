@@ -124,6 +124,11 @@ def coach(
     measurements: Measurements,
     history: list[dict],
 ) -> CoachingResult:
+    """Ask Claude for structured feedback on one attempt.
+
+    History carries the advice given after prior sessions so the coach can follow
+    up on itself. Pass exercise_spec=None for free-sing, where there are no targets.
+    """
     client = _build_client()
     response = client.messages.create(
         model=config.coach_model(),
