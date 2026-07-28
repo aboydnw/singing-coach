@@ -315,7 +315,7 @@ def test_mark_synced_empties_the_outbox(conn):
 def test_retried_coaching_returns_to_the_outbox(conn):
     session_id = _insert(conn, user_id="user-a")
     db.mark_synced(conn, "sessions", [session_id])
-    db.update_coaching(conn, session_id, COACHING)
+    db.update_coaching(conn, session_id, COACHING, user_id="user-a")
 
     assert [row["id"] for row in db.unsynced(conn, "sessions", "user-a")] == [session_id]
 
@@ -368,6 +368,33 @@ def test_pulled_sessions_are_not_queued_for_re_upload(conn):
         },
     )
     assert db.unsynced(conn, "sessions", "user-a") == []
+
+
+def test_get_session_will_not_read_another_accounts_row(conn):
+    session_id = _insert(conn, user_id="user-a")
+
+    assert db.get_session(conn, session_id, user_id="user-a") is not None
+    assert db.get_session(conn, session_id, user_id="user-b") is None
+    assert db.get_session(conn, session_id) is None
+
+
+def test_update_coaching_will_not_overwrite_another_accounts_row(conn):
+    session_id = _insert(conn, user_id="user-a")
+    db.mark_synced(conn, "sessions", [session_id])
+
+    db.update_coaching(conn, session_id, COACHING, user_id="user-b")
+
+    session = db.get_session(conn, session_id, user_id="user-a")
+    assert session["coaching"] is None
+    assert db.unsynced(conn, "sessions", "user-a") == []
+
+
+def test_update_coaching_applies_to_the_owning_account(conn):
+    session_id = _insert(conn, user_id="user-a")
+
+    db.update_coaching(conn, session_id, COACHING, user_id="user-a")
+
+    assert db.get_session(conn, session_id, user_id="user-a")["coaching"] == COACHING
 
 
 def test_pulled_sessions_carry_no_local_audio_path(conn):

@@ -11,6 +11,13 @@ SUPABASE_URL_VAR = "SUPABASE_URL"
 SUPABASE_ANON_KEY_VAR = "SUPABASE_ANON_KEY"
 BACKEND_VAR = "SINGING_COACH_BACKEND"
 
+COACH_MODEL_VAR = "SINGING_COACH_MODEL"
+COACH_MAX_TOKENS_VAR = "SINGING_COACH_MAX_TOKENS"
+COACH_TIMEOUT_VAR = "SINGING_COACH_TIMEOUT_S"
+OLLAMA_HOST_VAR = "SINGING_COACH_OLLAMA_HOST"
+OLLAMA_MODEL_VAR = "SINGING_COACH_OLLAMA_MODEL"
+OLLAMA_TIMEOUT_VAR = "SINGING_COACH_OLLAMA_TIMEOUT_S"
+
 USER_CONFIG_DIR = Path.home() / ".singing-coach"
 USER_CONFIG_FILE = USER_CONFIG_DIR / ".env"
 PROJECT_DOTENV = Path(".env")
@@ -54,32 +61,32 @@ def uses_anthropic() -> bool:
 
 def coach_model() -> str:
     """The Claude model used for coaching, overridable via SINGING_COACH_MODEL."""
-    return os.environ.get("SINGING_COACH_MODEL", DEFAULT_COACH_MODEL)
+    return setting(COACH_MODEL_VAR) or DEFAULT_COACH_MODEL
 
 
 def coach_max_tokens() -> int:
     """Max output tokens per coaching call, overridable via SINGING_COACH_MAX_TOKENS."""
-    return int(os.environ.get("SINGING_COACH_MAX_TOKENS", DEFAULT_COACH_MAX_TOKENS))
+    return int(setting(COACH_MAX_TOKENS_VAR) or DEFAULT_COACH_MAX_TOKENS)
 
 
 def coach_timeout_s() -> float:
     """API timeout in seconds, overridable via SINGING_COACH_TIMEOUT_S."""
-    return float(os.environ.get("SINGING_COACH_TIMEOUT_S", DEFAULT_COACH_TIMEOUT_S))
+    return float(setting(COACH_TIMEOUT_VAR) or DEFAULT_COACH_TIMEOUT_S)
 
 
 def ollama_host() -> str:
     """Base URL of the Ollama server, overridable via SINGING_COACH_OLLAMA_HOST."""
-    return os.environ.get("SINGING_COACH_OLLAMA_HOST", DEFAULT_OLLAMA_HOST).rstrip("/")
+    return (setting(OLLAMA_HOST_VAR) or DEFAULT_OLLAMA_HOST).rstrip("/")
 
 
 def ollama_model() -> str:
     """The local model used for coaching, overridable via SINGING_COACH_OLLAMA_MODEL."""
-    return os.environ.get("SINGING_COACH_OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
+    return setting(OLLAMA_MODEL_VAR) or DEFAULT_OLLAMA_MODEL
 
 
 def ollama_timeout_s() -> float:
     """Local generation timeout. Generous by default: CPU-only inference is slow."""
-    return float(os.environ.get("SINGING_COACH_OLLAMA_TIMEOUT_S", DEFAULT_OLLAMA_TIMEOUT_S))
+    return float(setting(OLLAMA_TIMEOUT_VAR) or DEFAULT_OLLAMA_TIMEOUT_S)
 
 
 def supabase_credentials() -> tuple[str, str] | None:

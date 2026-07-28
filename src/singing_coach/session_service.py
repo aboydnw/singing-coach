@@ -113,7 +113,7 @@ def retry_coaching(session_id: str) -> tuple[CoachingResult | None, str | None]:
     user_id = auth.user_id()
     conn = db.connect(DB_PATH)
     try:
-        session = db.get_session(conn, session_id)
+        session = db.get_session(conn, session_id, user_id=user_id)
         if session is None:
             return None, "Session not found."
         history = [
@@ -126,7 +126,7 @@ def retry_coaching(session_id: str) -> tuple[CoachingResult | None, str | None]:
             )
         except Exception as exc:
             return None, str(exc)
-        db.update_coaching(conn, session_id, coaching)
+        db.update_coaching(conn, session_id, coaching, user_id=user_id)
         sync.sync_now(conn)
         return coaching, None
     finally:

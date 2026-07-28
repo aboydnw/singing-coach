@@ -834,31 +834,38 @@ def _build_ui() -> gr.Blocks:
 
                     def _on_sign_in(email, password):
                         _user, message = session_service.sign_in(email or "", password or "")
-                        return message, _account_status()
+                        return message, _account_status(), ""
 
                     def _on_sign_up(email, password):
                         _user, message = session_service.sign_up(email or "", password or "")
-                        return message, _account_status()
+                        return message, _account_status(), ""
 
                     def _on_sign_out():
                         auth.sign_out()
-                        return "Signed out. Your local history is untouched.", _account_status()
+                        return (
+                            "Signed out. Your local history is untouched.",
+                            _account_status(),
+                            "",
+                        )
 
                     def _on_sync():
                         return session_service.sync_now().summary(), _account_status()
 
+                    # The password box is cleared on every outcome, including failures:
+                    # a wrong password should not sit in the DOM waiting to be resubmitted.
                     sign_in_btn.click(
                         _on_sign_in,
                         inputs=[email_input, password_input],
-                        outputs=[account_message, account_status],
+                        outputs=[account_message, account_status, password_input],
                     )
                     sign_up_btn.click(
                         _on_sign_up,
                         inputs=[email_input, password_input],
-                        outputs=[account_message, account_status],
+                        outputs=[account_message, account_status, password_input],
                     )
                     sign_out_btn.click(
-                        _on_sign_out, outputs=[account_message, account_status]
+                        _on_sign_out,
+                        outputs=[account_message, account_status, password_input],
                     )
                     sync_btn.click(_on_sync, outputs=[account_message, account_status])
                     account_tab.select(
