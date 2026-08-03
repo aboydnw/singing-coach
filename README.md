@@ -1,6 +1,6 @@
 # singing-coach
 
-A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback, and track your progress over time. Coaching runs on a local model by default, so a practice session costs nothing. Your audio never leaves the machine that recorded it.
+A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback, and track your progress over time. Coaching runs on a local model by default, so a practice session costs nothing, and your audio never goes to a third party.
 
 Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Explorer), which detects vocal type but stops short of coaching.
 
@@ -64,12 +64,32 @@ Optional, and off until you configure it. Point the app at a Supabase project an
 
 Local SQLite stays the durable write path: singing works offline, and a failed sync never blocks coaching. Unsent rows queue up and go out on the next successful sync. Work done before you sign in is adopted into your account rather than stranded.
 
-**Audio is never uploaded** — not to Supabase, not anywhere. Only measurements, the exercise spec and the coaching text sync. The local file path is stripped on upload too: it would leak your directory layout and means nothing on another machine. A session recorded elsewhere appears in Progress with its charts intact and its playback marked *recorded on another device*.
+**Sync never carries audio.** Only measurements, the exercise spec and the coaching text go to Supabase. The file path is stripped on upload too: it would leak the host's directory layout and means nothing on another machine. Recordings stay on whichever host analysed them — see [Privacy](#privacy) — so a session synced from elsewhere appears in Progress with its charts intact and its playback marked *recorded on another device*.
+
+### Running it somewhere other than your laptop
+
+The app binds loopback by default. To reach it from another machine, put a reverse proxy in front and let it bind locally:
+
+```bash
+sudo cp deploy/singing-coach.service /etc/systemd/system/   # edit User and paths first
+sudo systemctl daemon-reload && sudo systemctl enable --now singing-coach
+```
+
+Then point [`deploy/Caddyfile`](deploy/Caddyfile) at your hostname for automatic HTTPS.
+
+**Do not put a buffering proxy in front of this app.** Gradio delivers every event result over a long-lived SSE stream, so a proxy that buffers responses leaves the browser spinning on work the server already finished. The supplied Caddyfile sets `flush_interval -1` to disable buffering; nginx needs `proxy_buffering off;`. The same caveat applies to editor port-forwarding and tunnels — if the UI hangs on actions that the server logs as instant, suspect the transport before the app.
+
+No proxy yet? `SINGING_COACH_SHARE=1` opens a temporary public Gradio tunnel, which is useful for testing but unauthenticated while it runs.
+
+**Serverless platforms will not work.** This is a long-lived stateful server that needs ~2 GB of PyTorch, native audio libraries, a writable disk for recordings, and minutes-long requests. `vercel.json` disables Vercel deployments so a connected repo doesn't fail a build on every PR; deleting the Vercel project entirely is tidier.
 
 ### Configuration
 
 | Env var | Default | What it does |
 |---|---|---|
+| `SINGING_COACH_HOST` | `127.0.0.1` | Interface to bind. `0.0.0.0` to serve directly. |
+| `SINGING_COACH_PORT` | first free | Port to bind. |
+| `SINGING_COACH_SHARE` | `0` | `1` opens a public Gradio tunnel. |
 | `SINGING_COACH_BACKEND` | `ollama` | `ollama` for local and free; `anthropic` for the API. |
 | `SINGING_COACH_OLLAMA_MODEL` | `qwen2.5:3b` | Local coaching model. |
 | `SINGING_COACH_OLLAMA_HOST` | `http://localhost:11434` | Where Ollama is listening. |
@@ -91,11 +111,20 @@ Switching to `anthropic` costs roughly **$0.01–0.02 per session** at `claude-s
 
 ## Privacy
 
-- Audio recordings stay on the machine that recorded them, under `~/.singing-coach/`. **Your audio is never uploaded** — not for coaching, not for sync.
-- On the default local backend, nothing leaves your machine at all.
-- On the `anthropic` backend, only the structured measurements (cents off target, jitter, HNR, etc.), the exercise spec and recent session history are sent to the API.
-- With sync on, those same measurements plus the coaching text go to your own Supabase project, guarded by row-level security. The local audio path is stripped before upload.
-- Credentials live at `~/.singing-coach/.env` with mode 0600. The Supabase refresh token is cached at `~/.singing-coach/session.json`, also 0600.
+**Audio goes to whichever machine runs the app, and stays there.** The browser records it and uploads it to the server, which writes it to `~/.singing-coach/recordings/YYYY-MM-DD/` and keeps it until someone deletes it. Where that lands depends on how you run it:
+
+- **On your own machine** (the default) the server is your machine, so recordings never leave it.
+- **Hosted** — behind Caddy, on a shared box, via `SINGING_COACH_SHARE=1` — recordings are uploaded to that host and retained there. Whoever administers the host can read them. If you host this for other people, that includes you reading theirs.
+
+Nothing beyond the app's own host ever receives audio:
+
+- **Coaching, `ollama` backend (default):** the model runs on the same host. Nothing goes anywhere else.
+- **Coaching, `anthropic` backend:** structured measurements (cents off target, jitter, HNR, etc.), the exercise spec, and recent session history go to the API. No audio.
+- **Sync:** those same measurements plus the coaching text go to your own Supabase project, guarded by row-level security. No audio, and the local file path is stripped so the server never learns your directory layout.
+
+Credentials live at `~/.singing-coach/.env` with mode 0600. The Supabase refresh token is cached at `~/.singing-coach/session.json`, also 0600.
+
+Note that the app itself has no access control: anyone who can reach the URL can record, spend the host's CPU, and browse whatever sessions the signed-in account can see. Signing in controls sync, not entry. Put authentication in front of it before exposing it to anyone you don't trust.
 
 ## Storage locations
 

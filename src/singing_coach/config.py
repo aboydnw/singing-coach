@@ -18,6 +18,10 @@ OLLAMA_HOST_VAR = "SINGING_COACH_OLLAMA_HOST"
 OLLAMA_MODEL_VAR = "SINGING_COACH_OLLAMA_MODEL"
 OLLAMA_TIMEOUT_VAR = "SINGING_COACH_OLLAMA_TIMEOUT_S"
 
+SERVER_HOST_VAR = "SINGING_COACH_HOST"
+SERVER_PORT_VAR = "SINGING_COACH_PORT"
+SHARE_VAR = "SINGING_COACH_SHARE"
+
 USER_CONFIG_DIR = Path.home() / ".singing-coach"
 USER_CONFIG_FILE = USER_CONFIG_DIR / ".env"
 PROJECT_DOTENV = Path(".env")
@@ -29,6 +33,8 @@ DEFAULT_BACKEND = OLLAMA_BACKEND
 DEFAULT_COACH_MODEL = "claude-sonnet-4-6"
 DEFAULT_COACH_MAX_TOKENS = 1024
 DEFAULT_COACH_TIMEOUT_S = 60.0
+
+DEFAULT_SERVER_HOST = "127.0.0.1"
 
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "qwen2.5:3b"
@@ -87,6 +93,22 @@ def ollama_model() -> str:
 def ollama_timeout_s() -> float:
     """Local generation timeout. Generous by default: CPU-only inference is slow."""
     return float(setting(OLLAMA_TIMEOUT_VAR) or DEFAULT_OLLAMA_TIMEOUT_S)
+
+
+def server_host() -> str:
+    """Interface to bind. Defaults to loopback; set to 0.0.0.0 to serve behind a proxy."""
+    return setting(SERVER_HOST_VAR) or DEFAULT_SERVER_HOST
+
+
+def server_port() -> int | None:
+    """Port to bind, or None to let Gradio pick the first free one."""
+    raw = setting(SERVER_PORT_VAR)
+    return int(raw) if raw else None
+
+
+def share() -> bool:
+    """Whether to open a public Gradio tunnel. Useful when no proxy is set up yet."""
+    return (setting(SHARE_VAR) or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def supabase_credentials() -> tuple[str, str] | None:

@@ -344,6 +344,15 @@ def _metrics_markdown(measurements: Measurements) -> str:
     return "\n".join(lines)
 
 
+# Gradio serialises every event through one worker by default
+# (`default_concurrency_limit` is 1). A 25-30s coaching call therefore froze the
+# whole UI — every tab, every button — and an event whose response never reached
+# the browser wedged the app permanently. Light events now run freely; the genuinely
+# expensive ones share an explicit slot so they queue with each other instead.
+UI_CONCURRENCY = 16
+HEAVY = {"concurrency_limit": 1, "concurrency_id": "analysis"}
+PITCH = {"concurrency_limit": 2, "concurrency_id": "pitch"}
+
 ANALYZING_MESSAGE = (
     "⏳ **Analyzing your recording…** Measuring pitch, then asking the coach for feedback. "
     "This usually takes 10–30 seconds. The very first analysis also downloads the pitch "
@@ -414,15 +423,52 @@ def _run_analysis(audio_path: str | None, spec: ExerciseSpec | None):
     return _analysis_outputs(result, spec)
 
 
-def _save_calibration(low_comf, high_comf, low_edge, high_edge):
+NOTE_NAMES = ("lowest comfortable", "highest comfortable", "lowest edge", "highest edge")
+
+
+def _recover_note(midi: int | None, audio_path: str | None) -> int | None:
+    """Fall back to re-detecting a note whose in-session value was lost.
+
+    The detected pitch lives in a gr.State, which is per-session server memory,
+    while the label the user reads is a separate component. If the session state
+    goes away the page still shows four detected notes, so refusing to save would
+    be both wrong and baffling. The recording is the durable copy — use it.
+    """
+    if midi is not None:
+        return midi
+    if not audio_path or not Path(audio_path).exists():
+        return None
+    try:
+        return _detect_median_midi(Path(audio_path))
+    except Exception:
+        # An unreadable take degrades to "missing", which the caller names. Raising
+        # here would fail the whole save — the outcome this recovery path exists to
+        # avoid.
+        return None
+
+
+def _save_calibration(
+    low_comf, high_comf, low_edge, high_edge,
+    low_comf_audio, high_comf_audio, low_edge_audio, high_edge_audio,
+):
     """Validate and persist a calibration, then refresh everything derived from it.
 
     A rejected save leaves every other output untouched, so failing validation does
     not cost the user the takes they just recorded.
     """
     unchanged = (gr.skip(),) * 11
-    if None in (low_comf, high_comf, low_edge, high_edge):
-        return ("Need all four notes detected before saving.", *unchanged)
+    notes = [
+        _recover_note(low_comf, low_comf_audio),
+        _recover_note(high_comf, high_comf_audio),
+        _recover_note(low_edge, low_edge_audio),
+        _recover_note(high_edge, high_edge_audio),
+    ]
+
+    missing = [name for name, midi in zip(NOTE_NAMES, notes, strict=True) if midi is None]
+    if missing:
+        return (f"Still need a clear recording for: {', '.join(missing)}.", *unchanged)
+
+    low_comf, high_comf, low_edge, high_edge = notes
     if not (low_edge <= low_comf <= high_comf <= high_edge):
         return (
             "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge.",
@@ -639,7 +685,12 @@ def _build_ui() -> gr.Blocks:
                         (low_edge_audio, low_edge_midi, low_edge_label),
                         (high_edge_audio, high_edge_midi, high_edge_label),
                     ):
-                        audio_comp.change(_on_clip, inputs=audio_comp, outputs=[midi_state, label])
+                        audio_comp.change(
+                            _on_clip,
+                            inputs=audio_comp,
+                            outputs=[midi_state, label],
+                            **PITCH,
+                        )
 
                 with gr.Tab("Exercise"):
                     exercise_state = gr.State(value=None)
@@ -706,13 +757,19 @@ def _build_ui() -> gr.Blocks:
                         _run_analysis,
                         inputs=[record_audio, exercise_state],
                         outputs=analyze_outputs,
+                        **HEAVY,
                     ).then(
                         lambda session_id: gr.update(visible=session_id is not None),
                         inputs=last_session,
                         outputs=next_btn,
                     )
 
-                    retry_btn.click(_on_retry, inputs=last_session, outputs=[coaching_md, error_md])
+                    retry_btn.click(
+                        _on_retry,
+                        inputs=last_session,
+                        outputs=[coaching_md, error_md],
+                        **HEAVY,
+                    )
 
                     next_btn.click(
                         _next_exercise,
@@ -764,10 +821,14 @@ def _build_ui() -> gr.Blocks:
                             free_last_session,
                             free_playback,
                         ],
+                        **HEAVY,
                     )
 
                     free_retry.click(
-                        _on_retry, inputs=free_last_session, outputs=[free_coaching, free_error]
+                        _on_retry,
+                        inputs=free_last_session,
+                        outputs=[free_coaching, free_error],
+                        **HEAVY,
                     )
 
                 with gr.Tab("Progress") as progress_tab:
@@ -900,22 +961,35 @@ def _build_ui() -> gr.Blocks:
         # also refreshes the Exercise tab, which is defined further down.
         save_calibration_btn.click(
             _save_calibration,
-            inputs=[low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi],
+            inputs=[
+                low_comf_midi, high_comf_midi, low_edge_midi, high_edge_midi,
+                low_comf_audio, high_comf_audio, low_edge_audio, high_edge_audio,
+            ],
             outputs=[calibration_status, *calibration_outputs, *exercise_outputs],
+            **PITCH,
         )
 
         app.load(_load_calibration, outputs=calibration_outputs)
         app.load(_load_exercise, outputs=exercise_outputs)
         app.load(_refresh_account, outputs=[account_status, backend_status])
 
+    app.queue(default_concurrency_limit=UI_CONCURRENCY)
     return app
 
 
 def main() -> None:
     session_service.ensure_dirs()
     session_service.restore_session()
+    host = config.server_host()
     _build_ui().launch(
-        inbrowser=True,
+        server_name=host,
+        server_port=config.server_port(),
+        share=config.share(),
+        # Opening a browser only makes sense when the server is on this machine.
+        inbrowser=host in ("127.0.0.1", "localhost"),
+        # SSR spawns a Node subprocess for no benefit here, and is one more thing
+        # between an event and its response.
+        ssr_mode=False,
         theme=THEME,
         css=CSS,
         allowed_paths=[str(session_service.RECORDINGS_DIR)],

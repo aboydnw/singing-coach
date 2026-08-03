@@ -1,0 +1,25 @@
+# Caddy in front of singing-coach. Replace the hostname with your own.
+#
+# The flush_interval is the important line. Gradio delivers every event result
+# over a long-lived SSE stream (/gradio_api/queue/data). A proxy that buffers
+# responses holds those events until the buffer fills, so the browser sits on a
+# spinner while the server has already answered. -1 disables buffering.
+
+sing.example.com {
+	encode zstd gzip
+
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy 127.0.0.1:7860 {
+		flush_interval -1
+
+		# Analysis can take a while on CPU-only hardware: pitch detection plus a
+		# local coaching call. Don't cut the response off mid-think.
+		transport http {
+			read_timeout 15m
+			write_timeout 15m
+		}
+	}
+}
