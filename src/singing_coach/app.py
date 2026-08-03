@@ -438,7 +438,13 @@ def _recover_note(midi: int | None, audio_path: str | None) -> int | None:
         return midi
     if not audio_path or not Path(audio_path).exists():
         return None
-    return _detect_median_midi(Path(audio_path))
+    try:
+        return _detect_median_midi(Path(audio_path))
+    except Exception:
+        # An unreadable take degrades to "missing", which the caller names. Raising
+        # here would fail the whole save — the outcome this recovery path exists to
+        # avoid.
+        return None
 
 
 def _save_calibration(

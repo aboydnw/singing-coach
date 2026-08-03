@@ -6,6 +6,7 @@ matplotlib.use("Agg")
 from pathlib import Path
 
 import gradio as gr
+import pytest
 
 from singing_coach import app, session_service
 from singing_coach.models import (
@@ -234,6 +235,28 @@ def test_save_does_not_invent_a_note_when_the_recording_is_gone(monkeypatch, tmp
 
     status, *rest = app._save_calibration(
         51, None, 48, 64, None, str(tmp_path / "vanished.wav"), None, None
+    )
+
+    assert "highest comfortable" in status
+    assert rest == [gr.skip()] * 11
+
+
+def test_save_survives_an_unreadable_recording(monkeypatch, tmp_path):
+    clip = tmp_path / "corrupt.wav"
+    clip.write_bytes(b"not really audio")
+
+    def boom(path):
+        raise RuntimeError("could not decode audio")
+
+    monkeypatch.setattr(app, "_detect_median_midi", boom)
+    monkeypatch.setattr(
+        app.session_service,
+        "save_calibration",
+        lambda *args: pytest.fail("must not save from an unreadable take"),
+    )
+
+    status, *rest = app._save_calibration(
+        51, None, 48, 64, None, str(clip), None, None
     )
 
     assert "highest comfortable" in status
