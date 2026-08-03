@@ -6,6 +6,7 @@ matplotlib.use("Agg")
 from pathlib import Path
 
 import gradio as gr
+import pytest
 
 from singing_coach import app, session_service
 from singing_coach.models import (
@@ -83,7 +84,7 @@ def test_metrics_markdown_reports_straight_tone_as_minimal_vibrato():
     assert "minimal" in md
 
 
-def test_launch_allows_serving_recordings_from_the_data_dir(monkeypatch):
+def _launch_kwargs(monkeypatch):
     captured = {}
 
     class FakeApp:
@@ -92,9 +93,45 @@ def test_launch_allows_serving_recordings_from_the_data_dir(monkeypatch):
 
     monkeypatch.setattr(app, "_build_ui", lambda: FakeApp())
     monkeypatch.setattr(app.session_service, "ensure_dirs", lambda: None)
+    monkeypatch.setattr(app.session_service, "restore_session", lambda: None)
     app.main()
+    return captured
 
+
+def test_launch_allows_serving_recordings_from_the_data_dir(monkeypatch):
+    captured = _launch_kwargs(monkeypatch)
     assert str(session_service.RECORDINGS_DIR) in captured["allowed_paths"]
+
+
+def test_launch_binds_loopback_by_default(monkeypatch):
+    monkeypatch.setattr(app.config, "setting", lambda name: None)
+    captured = _launch_kwargs(monkeypatch)
+
+    assert captured["server_name"] == "127.0.0.1"
+    assert captured["inbrowser"] is True
+    assert captured["share"] is False
+
+
+def test_launch_binds_all_interfaces_when_configured(monkeypatch):
+    monkeypatch.setenv(app.config.SERVER_HOST_VAR, "0.0.0.0")
+    monkeypatch.setenv(app.config.SERVER_PORT_VAR, "7860")
+    captured = _launch_kwargs(monkeypatch)
+
+    assert captured["server_name"] == "0.0.0.0"
+    assert captured["server_port"] == 7860
+    # Nothing to open a browser on when serving to other machines.
+    assert captured["inbrowser"] is False
+
+
+def test_launch_disables_server_side_rendering(monkeypatch):
+    captured = _launch_kwargs(monkeypatch)
+    assert captured["ssr_mode"] is False
+
+
+def test_launch_can_open_a_public_tunnel(monkeypatch):
+    monkeypatch.setenv(app.config.SHARE_VAR, "true")
+    captured = _launch_kwargs(monkeypatch)
+    assert captured["share"] is True
 
 
 def test_calibration_summary_prompts_when_never_calibrated():
@@ -139,26 +176,121 @@ def test_load_calibration_leaves_notes_empty_when_never_calibrated(monkeypatch):
     assert notes_and_labels[:4] == [None, None, None, None]
 
 
+NO_AUDIO = (None, None, None, None)
+
+
 def test_save_calibration_keeps_recorded_notes_when_validation_fails(monkeypatch):
     def fail(*args):
         raise AssertionError("must not persist an invalid calibration")
 
     monkeypatch.setattr(app.session_service, "save_calibration", fail)
-    status, *rest = app._save_calibration(51, 58, 64, 48)
+    status, *rest = app._save_calibration(51, 58, 64, 48, *NO_AUDIO)
 
     assert "Expected" in status
     assert rest == [gr.skip()] * 11
 
 
-def test_save_calibration_keeps_recorded_notes_when_a_note_is_missing(monkeypatch):
+def test_save_calibration_names_the_notes_still_missing(monkeypatch):
     def fail(*args):
         raise AssertionError("must not persist an incomplete calibration")
 
     monkeypatch.setattr(app.session_service, "save_calibration", fail)
-    status, *rest = app._save_calibration(51, None, 48, 64)
+    status, *rest = app._save_calibration(51, None, 48, None, *NO_AUDIO)
 
-    assert "four notes" in status
+    assert "highest comfortable" in status
+    assert "highest edge" in status
+    assert "lowest comfortable" not in status
     assert rest == [gr.skip()] * 11
+
+
+def test_save_recovers_a_lost_note_from_its_recording(monkeypatch, tmp_path):
+    clip = tmp_path / "high-comf.wav"
+    clip.write_bytes(b"not really audio")
+    monkeypatch.setattr(app, "_detect_median_midi", lambda path: 58)
+
+    saved = []
+    monkeypatch.setattr(
+        app.session_service, "save_calibration", lambda *args: saved.append(args)
+    )
+    monkeypatch.setattr(app.session_service, "latest_calibration", lambda: None)
+    monkeypatch.setattr(app.session_service, "next_exercise", lambda: None)
+
+    # high_comf state is gone, but its recording is still on disk
+    status, *_rest = app._save_calibration(
+        51, None, 48, 64, None, str(clip), None, None
+    )
+
+    assert saved == [(51, 58, 48, 64)]
+    assert "Saved" in status
+
+
+def test_save_does_not_invent_a_note_when_the_recording_is_gone(monkeypatch, tmp_path):
+    def fail(*args):
+        raise AssertionError("must not persist without a real recording")
+
+    monkeypatch.setattr(app.session_service, "save_calibration", fail)
+    monkeypatch.setattr(
+        app, "_detect_median_midi", lambda path: pytest.fail("should not be called")
+    )
+
+    status, *rest = app._save_calibration(
+        51, None, 48, 64, None, str(tmp_path / "vanished.wav"), None, None
+    )
+
+    assert "highest comfortable" in status
+    assert rest == [gr.skip()] * 11
+
+
+def test_save_survives_an_unreadable_recording(monkeypatch, tmp_path):
+    clip = tmp_path / "corrupt.wav"
+    clip.write_bytes(b"not really audio")
+
+    def boom(path):
+        raise RuntimeError("could not decode audio")
+
+    monkeypatch.setattr(app, "_detect_median_midi", boom)
+    monkeypatch.setattr(
+        app.session_service,
+        "save_calibration",
+        lambda *args: pytest.fail("must not save from an unreadable take"),
+    )
+
+    status, *rest = app._save_calibration(
+        51, None, 48, 64, None, str(clip), None, None
+    )
+
+    assert "highest comfortable" in status
+    assert rest == [gr.skip()] * 11
+
+
+def test_save_prefers_the_detected_state_over_re_detecting(monkeypatch, tmp_path):
+    clip = tmp_path / "clip.wav"
+    clip.write_bytes(b"not really audio")
+    monkeypatch.setattr(
+        app, "_detect_median_midi", lambda path: pytest.fail("should not re-detect")
+    )
+
+    saved = []
+    monkeypatch.setattr(
+        app.session_service, "save_calibration", lambda *args: saved.append(args)
+    )
+    monkeypatch.setattr(app.session_service, "latest_calibration", lambda: None)
+    monkeypatch.setattr(app.session_service, "next_exercise", lambda: None)
+
+    app._save_calibration(51, 58, 48, 64, *([str(clip)] * 4))
+
+    assert saved == [(51, 58, 48, 64)]
+
+
+def test_heavy_events_cannot_starve_the_rest_of_the_ui():
+    assert app.UI_CONCURRENCY > 1
+    assert app.HEAVY["concurrency_limit"] == 1
+    assert app.HEAVY["concurrency_id"] != app.PITCH["concurrency_id"]
+
+
+def test_analysis_and_pitch_work_are_limited_below_the_ui_default():
+    assert app.HEAVY["concurrency_limit"] < app.UI_CONCURRENCY
+    assert app.PITCH["concurrency_limit"] < app.UI_CONCURRENCY
 
 
 def test_save_calibration_makes_the_exercise_available_immediately(monkeypatch):
@@ -187,7 +319,7 @@ def test_save_calibration_makes_the_exercise_available_immediately(monkeypatch):
             display_name="sustained on 'ah'",
         ),
     )
-    status, *rest = app._save_calibration(51, 58, 48, 64)
+    status, *rest = app._save_calibration(51, 58, 48, 64, *NO_AUDIO)
     exercise_spec, exercise_md = rest[-2], rest[-1]
 
     assert saved == [(51, 58, 48, 64)]
