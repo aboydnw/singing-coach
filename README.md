@@ -66,10 +66,28 @@ Local SQLite stays the durable write path: singing works offline, and a failed s
 
 **Audio is never uploaded** — not to Supabase, not anywhere. Only measurements, the exercise spec and the coaching text sync. The local file path is stripped on upload too: it would leak your directory layout and means nothing on another machine. A session recorded elsewhere appears in Progress with its charts intact and its playback marked *recorded on another device*.
 
+### Running it somewhere other than your laptop
+
+The app binds loopback by default. To reach it from another machine, put a reverse proxy in front and let it bind locally:
+
+```bash
+sudo cp deploy/singing-coach.service /etc/systemd/system/   # edit User and paths first
+sudo systemctl daemon-reload && sudo systemctl enable --now singing-coach
+```
+
+Then point [`deploy/Caddyfile`](deploy/Caddyfile) at your hostname for automatic HTTPS.
+
+**Do not put a buffering proxy in front of this app.** Gradio delivers every event result over a long-lived SSE stream, so a proxy that buffers responses leaves the browser spinning on work the server already finished. The supplied Caddyfile sets `flush_interval -1` to disable buffering; nginx needs `proxy_buffering off;`. The same caveat applies to editor port-forwarding and tunnels — if the UI hangs on actions that the server logs as instant, suspect the transport before the app.
+
+No proxy yet? `SINGING_COACH_SHARE=1` opens a temporary public Gradio tunnel, which is useful for testing but unauthenticated while it runs.
+
 ### Configuration
 
 | Env var | Default | What it does |
 |---|---|---|
+| `SINGING_COACH_HOST` | `127.0.0.1` | Interface to bind. `0.0.0.0` to serve directly. |
+| `SINGING_COACH_PORT` | first free | Port to bind. |
+| `SINGING_COACH_SHARE` | `0` | `1` opens a public Gradio tunnel. |
 | `SINGING_COACH_BACKEND` | `ollama` | `ollama` for local and free; `anthropic` for the API. |
 | `SINGING_COACH_OLLAMA_MODEL` | `qwen2.5:3b` | Local coaching model. |
 | `SINGING_COACH_OLLAMA_HOST` | `http://localhost:11434` | Where Ollama is listening. |
