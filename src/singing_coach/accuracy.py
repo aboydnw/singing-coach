@@ -5,7 +5,7 @@ Signed cents: negative is flat, positive is sharp.
 
 import numpy as np
 
-from singing_coach import exercises, pitch
+from singing_coach import pitch
 from singing_coach.models import ExerciseSpec, NoteAccuracy, PitchAccuracy
 
 MIN_CONFIDENCE = 0.5
@@ -54,7 +54,7 @@ def score(
         per_note.append(
             NoteAccuracy(
                 target_midi=target_midi,
-                target_name=exercises.midi_to_name(target_midi),
+                target_name=pitch.midi_to_name(target_midi),
                 cents_off=cents_off,
             )
         )
