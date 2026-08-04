@@ -1,0 +1,8 @@
+.venv
+.worktrees
+__pycache__
+*.pyc
+deploy
+tests
+evals
+.pytest_cache
