@@ -1,5 +1,9 @@
 # Caddy in front of singing-coach. Replace the hostname with your own.
 #
+# Requires Caddy 2.8.0 or newer: the directive was renamed from `basicauth` to
+# `basic_auth` in 2.8, so this config fails to load on anything older. Check with
+# `caddy version`.
+#
 # Two lines here are load-bearing:
 #
 # basic_auth gates the whole site. The app has no access control of its own —
@@ -28,6 +32,11 @@ sing.example.com {
 
 	reverse_proxy 127.0.0.1:7860 {
 		flush_interval -1
+
+		# basic_auth validates the header but does not consume it. The app has no
+		# use for it, so drop it rather than forward the credentials over the
+		# plaintext hop to the backend.
+		header_up -Authorization
 
 		# Analysis can take a while on CPU-only hardware: pitch detection plus a
 		# local coaching call. Don't cut the response off mid-think.

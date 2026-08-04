@@ -80,10 +80,15 @@ Then point [`deploy/Caddyfile`](deploy/Caddyfile) at your hostname for automatic
 **Put a password in front of it.** The app has no access control of its own — signing in controls Supabase sync, not entry — so anyone who can reach the URL can record, spend your CPU on a coaching call, and read whatever the signed-in account can see. The supplied Caddyfile gates the whole site with `basic_auth`:
 
 ```bash
+caddy version                                            # needs 2.8.0+ for basic_auth
 caddy hash-password --plaintext 'your-password'          # bcrypt hash
 sudo cp deploy/caddy.env.example /etc/caddy/caddy.env    # paste user + hash
+sudo chmod 600 /etc/caddy/caddy.env
 sudo systemctl edit caddy                                # EnvironmentFile=/etc/caddy/caddy.env
+sudo systemctl restart caddy                             # edit alone does not reload it
 ```
+
+The restart is not optional. `EnvironmentFile` is read when the process starts, so an already-running Caddy keeps serving **without the password** until it is restarted — which looks exactly like a working setup. Confirm with `curl -o /dev/null -w '%{http_code}\n' https://your-host/`, expecting `401`.
 
 That is one shared credential, so it answers "may you come in" and not "who are you". Identity still comes from the Supabase sign-in, which is what scopes history to an account. Fine for you and a few singers you trust; not a foundation for real multi-user.
 
