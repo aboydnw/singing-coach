@@ -1,0 +1,31 @@
+{
+  "spec": {
+    "type": "sustained",
+    "target_notes_midi": [
+      57
+    ],
+    "duration_per_note_s": 10.0,
+    "vowel": "ah",
+    "display_name": "sustained A3 fixture"
+  },
+  "measurements": {
+    "jitter_local": 0.0028802687564173264,
+    "shimmer_local": 0.004512249263965981,
+    "hnr_mean": 33.330206963282265,
+    "vibrato_rate_hz": 5.494505494505612,
+    "vibrato_extent_cents": 45.73643288405629,
+    "f1_mean": 634.0973252570411,
+    "f2_mean": 1147.4295821360652,
+    "accuracy": {
+      "per_note": [
+        {
+          "target_midi": 57,
+          "target_name": "A3",
+          "cents_off": 3.7
+        }
+      ],
+      "mean_abs_cents_off": 3.7
+    }
+  },
+  "pitch_median_midi": 57.03705596923828
+}
