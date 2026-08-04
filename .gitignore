@@ -8,3 +8,9 @@ dist/
 build/
 *.egg-info/
 .DS_Store
+node_modules/
+.next/
+.yarn/
+next-env.d.ts
+.vercel/
+*.tsbuildinfo
