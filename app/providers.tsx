@@ -21,8 +21,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     supabase()
       .auth.getSession()
       .then(({ data }) => setAuth({ session: data.session, loading: false }));
-    const { data: subscription } = supabase().auth.onAuthStateChange(
-      (_event, session) => setAuth({ session, loading: false }),
+    const { data: subscription } = supabase().auth.onAuthStateChange((_event, session) =>
+      setAuth({ session, loading: false }),
     );
     return () => subscription.subscription.unsubscribe();
   }, []);

@@ -65,17 +65,19 @@ export async function insertSession(args: {
   const uid = await userId();
   if (!uid) throw new Error("not signed in");
   const id = crypto.randomUUID();
-  const { error } = await supabase().from("sessions").insert({
-    id,
-    user_id: uid,
-    ts: new Date().toISOString(),
-    exercise_type: args.spec?.type ?? "free_sing",
-    exercise_spec_json: args.spec ? JSON.stringify(args.spec) : null,
-    measurements_json: JSON.stringify(args.measurements),
-    coaching_md: args.coaching ? coachingToMarkdown(args.coaching) : "",
-    coaching_json: args.coaching ? JSON.stringify(args.coaching) : null,
-    audio_key: args.audioKey,
-  });
+  const { error } = await supabase()
+    .from("sessions")
+    .insert({
+      id,
+      user_id: uid,
+      ts: new Date().toISOString(),
+      exercise_type: args.spec?.type ?? "free_sing",
+      exercise_spec_json: args.spec ? JSON.stringify(args.spec) : null,
+      measurements_json: JSON.stringify(args.measurements),
+      coaching_md: args.coaching ? coachingToMarkdown(args.coaching) : "",
+      coaching_json: args.coaching ? JSON.stringify(args.coaching) : null,
+      audio_key: args.audioKey,
+    });
   if (error) throw new Error(error.message);
   return id;
 }

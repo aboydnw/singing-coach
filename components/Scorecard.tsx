@@ -49,8 +49,7 @@ export function buildRows(m: Measurements): Row[] {
     });
   }
   if (m.hnr_mean !== null) {
-    const level: Level =
-      m.hnr_mean >= 20 ? "good" : m.hnr_mean >= 15 ? "watch" : "work";
+    const level: Level = m.hnr_mean >= 20 ? "good" : m.hnr_mean >= 15 ? "watch" : "work";
     const note =
       level === "good" ? "clear" : level === "watch" ? "slightly breathy" : "breathy";
     rows.push({
@@ -135,7 +134,9 @@ export function Scorecard({ measurements }: { measurements: Measurements }) {
                 <Table.Row key={`${note.target_name}-${i}`} bg="transparent">
                   <Table.Cell>{note.target_name}</Table.Cell>
                   <Table.Cell>
-                    {note.cents_off === null ? "(not detected)" : note.cents_off.toFixed(1)}
+                    {note.cents_off === null
+                      ? "(not detected)"
+                      : note.cents_off.toFixed(1)}
                   </Table.Cell>
                   <Table.Cell>
                     {note.cents_off === null

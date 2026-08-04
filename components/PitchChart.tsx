@@ -30,9 +30,7 @@ export function PitchChart({
   const targets = spec ? [...new Set(spec.target_notes_midi)] : [];
   const sung = data.map((d) => d.midi).filter((v): v is number => v !== null);
   if (sung.length === 0) {
-    return (
-      <Text color="cream.600">No confident pitch detected in this recording.</Text>
-    );
+    return <Text color="cream.600">No confident pitch detected in this recording.</Text>;
   }
   const lo = Math.floor(Math.min(...sung, ...targets)) - 2;
   const hi = Math.ceil(Math.max(...sung, ...targets)) + 2;
