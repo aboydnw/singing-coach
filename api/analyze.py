@@ -16,7 +16,12 @@ import tempfile
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import _librosa_stubs
+
+_librosa_stubs.install()
 
 import httpx
 import jwt
