@@ -99,8 +99,7 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       try {
         coaching = await coach(analysis.measurements, spec, toHistory(sessions));
       } catch (error) {
-        coachingError =
-          error instanceof Error ? error.message : "coaching call failed";
+        coachingError = error instanceof Error ? error.message : "coaching call failed";
       }
       const sessionId = await insertSession({
         spec,
@@ -131,8 +130,7 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
     } catch (error) {
       setState({
         ...state,
-        coachingError:
-          error instanceof Error ? error.message : "coaching call failed",
+        coachingError: error instanceof Error ? error.message : "coaching call failed",
       });
     }
   };
@@ -160,8 +158,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
           </Heading>
           <Text color="cream.600" mt={1} fontSize="sm">
             {spec.target_notes_midi.length} note
-            {spec.target_notes_midi.length > 1 ? "s" : ""},{" "}
-            {spec.duration_per_note_s}s each, on “{spec.vowel}”
+            {spec.target_notes_midi.length > 1 ? "s" : ""}, {spec.duration_per_note_s}s
+            each, on “{spec.vowel}”
           </Text>
           <Flex mt={4} gap={3} align="center" wrap="wrap">
             <Button
@@ -190,8 +188,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
             Free sing
           </Heading>
           <Text color="cream.600" mt={1} fontSize="sm">
-            Sing whatever you like; you get the same measurements, minus the
-            note-accuracy score.
+            Sing whatever you like; you get the same measurements, minus the note-accuracy
+            score.
           </Text>
           <Box mt={4}>
             <Recorder
@@ -246,8 +244,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
           ) : (
             <Stack gap={3}>
               <Text color="coral.600">
-                ⚠️ <b>Measurements saved, but the coaching call failed.</b> Your
-                scores are above — retry when ready.
+                ⚠️ <b>Measurements saved, but the coaching call failed.</b> Your scores
+                are above — retry when ready.
               </Text>
               {state.coachingError && (
                 <Text color="cream.600" fontSize="sm">

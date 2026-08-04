@@ -82,8 +82,7 @@ export function nextExercise(
   const maxStarting = Math.min(tessituraHigh, rangeHigh - span);
   const minStarting = Math.min(tessituraLow, maxStarting);
   const startingOptions = Math.max(1, maxStarting - minStarting + 1);
-  const walkPosition =
-    Math.floor(sessionIndex / TYPE_ROTATION.length) % startingOptions;
+  const walkPosition = Math.floor(sessionIndex / TYPE_ROTATION.length) % startingOptions;
   const startingNote = minStarting + walkPosition;
 
   const targetNotes = shape.map((offset) => startingNote + offset);

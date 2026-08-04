@@ -20,12 +20,32 @@ const PANELS: {
   ylabel: string;
   healthy: [number, number | null];
 }[] = [
-  { key: "cents_off", title: "Pitch accuracy", ylabel: "cents off (avg)", healthy: [0, 25] },
-  { key: "jitter_local", title: "Pitch steadiness (jitter)", ylabel: "fraction", healthy: [0, 0.01] },
-  { key: "shimmer_local", title: "Volume steadiness (shimmer)", ylabel: "fraction", healthy: [0, 0.05] },
+  {
+    key: "cents_off",
+    title: "Pitch accuracy",
+    ylabel: "cents off (avg)",
+    healthy: [0, 25],
+  },
+  {
+    key: "jitter_local",
+    title: "Pitch steadiness (jitter)",
+    ylabel: "fraction",
+    healthy: [0, 0.01],
+  },
+  {
+    key: "shimmer_local",
+    title: "Volume steadiness (shimmer)",
+    ylabel: "fraction",
+    healthy: [0, 0.05],
+  },
   { key: "hnr_mean", title: "Tone clarity (HNR)", ylabel: "dB", healthy: [20, null] },
   { key: "vibrato_rate_hz", title: "Vibrato rate", ylabel: "Hz", healthy: [5.0, 6.5] },
-  { key: "vibrato_extent_cents", title: "Vibrato depth", ylabel: "cents", healthy: [50, 100] },
+  {
+    key: "vibrato_extent_cents",
+    title: "Vibrato depth",
+    ylabel: "cents",
+    healthy: [50, 100],
+  },
 ];
 
 function metricOf(row: SessionRow, key: string): number | null {
@@ -58,9 +78,7 @@ export function ProgressCharts({ sessions }: { sessions: SessionRow[] }) {
           i,
           value: metricOf(row, panel.key),
         }));
-        const values = data
-          .map((d) => d.value)
-          .filter((v): v is number => v !== null);
+        const values = data.map((d) => d.value).filter((v): v is number => v !== null);
         const hasData = values.length > 0;
         const yMax = hasData
           ? Math.max(...values, panel.healthy[1] ?? panel.healthy[0])

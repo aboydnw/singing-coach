@@ -78,10 +78,11 @@ export default function CalibratePage() {
       );
       return;
     }
-    if (
-      !(lowEdge!.midi <= lowComf!.midi && lowComf!.midi <= highComf!.midi &&
-        highComf!.midi <= highEdge!.midi)
-    ) {
+    if (!(
+      lowEdge!.midi <= lowComf!.midi &&
+      lowComf!.midi <= highComf!.midi &&
+      highComf!.midi <= highEdge!.midi
+    )) {
       setStatus("Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge.");
       return;
     }
@@ -112,9 +113,9 @@ export default function CalibratePage() {
             Calibrate your range
           </Heading>
           <Text color="cream.600" mt={1}>
-            Sing and hold a single note for each prompt. Detection takes a few
-            seconds per take — the first one after a while is slower while the
-            analysis engine wakes up.
+            Sing and hold a single note for each prompt. Detection takes a few seconds per
+            take — the first one after a while is slower while the analysis engine wakes
+            up.
           </Text>
           {current && (
             <Text color="teal.600" mt={2}>
