@@ -77,6 +77,16 @@ sudo systemctl daemon-reload && sudo systemctl enable --now singing-coach
 
 Then point [`deploy/Caddyfile`](deploy/Caddyfile) at your hostname for automatic HTTPS.
 
+**Put a password in front of it.** The app has no access control of its own — signing in controls Supabase sync, not entry — so anyone who can reach the URL can record, spend your CPU on a coaching call, and read whatever the signed-in account can see. The supplied Caddyfile gates the whole site with `basic_auth`:
+
+```bash
+caddy hash-password --plaintext 'your-password'          # bcrypt hash
+sudo cp deploy/caddy.env.example /etc/caddy/caddy.env    # paste user + hash
+sudo systemctl edit caddy                                # EnvironmentFile=/etc/caddy/caddy.env
+```
+
+That is one shared credential, so it answers "may you come in" and not "who are you". Identity still comes from the Supabase sign-in, which is what scopes history to an account. Fine for you and a few singers you trust; not a foundation for real multi-user.
+
 **Do not put a buffering proxy in front of this app.** Gradio delivers every event result over a long-lived SSE stream, so a proxy that buffers responses leaves the browser spinning on work the server already finished. The supplied Caddyfile sets `flush_interval -1` to disable buffering; nginx needs `proxy_buffering off;`. The same caveat applies to editor port-forwarding and tunnels — if the UI hangs on actions that the server logs as instant, suspect the transport before the app.
 
 No proxy yet? `SINGING_COACH_SHARE=1` opens a temporary public Gradio tunnel, which is useful for testing but unauthenticated while it runs.
