@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "git": {
-    "deploymentEnabled": false
+  "functions": {
+    "api/analyze.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{.venv/**,tests/**,evals/**,deploy/**,supabase/**}"
+    }
   }
 }
