@@ -2,13 +2,15 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from singing_coach import pitch, tone_gen, voice_qa
+from singing_coach import pitch, voice_qa
+
+from tests import tones
 from singing_coach.models import Measurements
 
 
 def _write_vibrato_sine(path, midi_note: int, duration_s: float, vibrato_rate_hz: float, vibrato_cents: float):
     sr = 16000
-    base_hz = tone_gen.midi_to_hz(midi_note)
+    base_hz = tones.midi_to_hz(midi_note)
     n = int(duration_s * sr)
     t = np.arange(n, dtype=np.float32) / sr
     cents_offset = vibrato_cents * np.sin(2 * np.pi * vibrato_rate_hz * t)
@@ -20,7 +22,7 @@ def _write_vibrato_sine(path, midi_note: int, duration_s: float, vibrato_rate_hz
 
 def test_analyze_returns_measurements_model(tmp_audio_dir):
     path = tmp_audio_dir / "sustained.wav"
-    tone_gen.save_sine(midi_note=60, duration_s=2.0, path=path)
+    tones.save_sine(midi_note=60, duration_s=2.0, path=path)
 
     result = voice_qa.analyze(path)
 
@@ -32,14 +34,14 @@ def test_analyze_returns_measurements_model(tmp_audio_dir):
 
 def test_analyze_clean_sine_has_low_jitter(tmp_audio_dir):
     path = tmp_audio_dir / "clean.wav"
-    tone_gen.save_sine(midi_note=60, duration_s=2.0, path=path)
+    tones.save_sine(midi_note=60, duration_s=2.0, path=path)
     result = voice_qa.analyze(path)
     assert result.jitter_local < 0.02  # < 2%
 
 
 def test_analyze_clean_sine_has_high_hnr(tmp_audio_dir):
     path = tmp_audio_dir / "clean.wav"
-    tone_gen.save_sine(midi_note=60, duration_s=2.0, path=path)
+    tones.save_sine(midi_note=60, duration_s=2.0, path=path)
     result = voice_qa.analyze(path)
     assert result.hnr_mean > 20.0  # dB
 
@@ -54,7 +56,7 @@ def test_analyze_detects_vibrato_rate(tmp_audio_dir):
 
 def test_analyze_reuses_provided_contour(tmp_audio_dir, monkeypatch):
     path = tmp_audio_dir / "sustained.wav"
-    tone_gen.save_sine(midi_note=60, duration_s=2.0, path=path)
+    tones.save_sine(midi_note=60, duration_s=2.0, path=path)
     audio = sf.read(path)[0].astype(np.float32)
     contour = pitch.predict(audio, 16000)
 

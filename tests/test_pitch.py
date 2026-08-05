@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
-from singing_coach import pitch, tone_gen
+from singing_coach import pitch
+
+from tests import tones
 
 
 def test_hz_to_midi_a4_is_69():
@@ -22,7 +24,7 @@ def test_cents_off_target_positive_when_sharp():
 
 
 def test_predict_detects_a4_sine():
-    audio, sr = tone_gen.sine(midi_note=69, duration_s=1.0)  # A4
+    audio, sr = tones.sine(midi_note=69, duration_s=1.0)  # A4
     times, f0, confidence = pitch.predict(audio, sr)
 
     assert times.shape == f0.shape == confidence.shape
@@ -34,7 +36,7 @@ def test_predict_detects_a4_sine():
 
 
 def test_predict_stable_pitch_filter_drops_low_confidence():
-    audio, sr = tone_gen.sine(midi_note=60, duration_s=0.5)
+    audio, sr = tones.sine(midi_note=60, duration_s=0.5)
     times, f0, confidence = pitch.predict(audio, sr)
     stable = pitch.stable_pitches(f0, confidence, min_confidence=0.5)
     assert stable.size > 0
