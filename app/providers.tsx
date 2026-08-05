@@ -18,12 +18,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({ session: null, loading: true });
 
   useEffect(() => {
+    let sawAuthEvent = false;
+    const { data: subscription } = supabase().auth.onAuthStateChange(
+      (_event, session) => {
+        sawAuthEvent = true;
+        setAuth({ session, loading: false });
+      },
+    );
     supabase()
       .auth.getSession()
-      .then(({ data }) => setAuth({ session: data.session, loading: false }));
-    const { data: subscription } = supabase().auth.onAuthStateChange((_event, session) =>
-      setAuth({ session, loading: false }),
-    );
+      .then(({ data }) => {
+        if (!sawAuthEvent) setAuth({ session: data.session, loading: false });
+      })
+      .catch(() => {
+        if (!sawAuthEvent) setAuth({ session: null, loading: false });
+      });
     return () => subscription.subscription.unsubscribe();
   }, []);
 

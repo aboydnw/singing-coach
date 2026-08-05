@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import coaching from "@/prompts/coaching.json";
 import {
   coachingResultSchema,
@@ -8,6 +9,8 @@ import {
 import { z } from "zod";
 
 export const maxDuration = 60;
+
+const OPENROUTER_TIMEOUT_MS = 25_000;
 
 const requestSchema = z.object({
   exercise_spec: exerciseSpecSchema.nullable(),
@@ -29,6 +32,18 @@ const requestSchema = z.object({
 });
 
 type CoachRequest = z.infer<typeof requestSchema>;
+
+/** The route spends OPENROUTER_API_KEY, so only signed-in users may call it. */
+async function authenticate(request: Request): Promise<boolean> {
+  const header = request.headers.get("authorization") ?? "";
+  if (!header.startsWith("Bearer ")) return false;
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+  const { data, error } = await supabase.auth.getUser(header.slice("Bearer ".length));
+  return !error && data.user !== null;
+}
 
 function stripNulls(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -71,6 +86,7 @@ async function callOpenRouter(userMessage: string): Promise<unknown> {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
     body: JSON.stringify({
       model: process.env.COACH_MODEL,
       messages: [
@@ -100,6 +116,16 @@ async function callOpenRouter(userMessage: string): Promise<unknown> {
 }
 
 export async function POST(request: Request) {
+  if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
+    return NextResponse.json(
+      { error: "coaching is not configured on the server" },
+      { status: 500 },
+    );
+  }
+  if (!(await authenticate(request))) {
+    return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
+  }
+
   let body: CoachRequest;
   try {
     body = requestSchema.parse(await request.json());

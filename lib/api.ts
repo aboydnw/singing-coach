@@ -19,6 +19,7 @@ export async function uploadRecording(
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", data.signedUrl);
     xhr.setRequestHeader("Content-Type", "audio/wav");
+    xhr.timeout = 120_000;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
         onProgress(event.loaded / event.total);
@@ -29,6 +30,7 @@ export async function uploadRecording(
         ? resolve()
         : reject(new Error(`upload failed with status ${xhr.status}`));
     xhr.onerror = () => reject(new Error("upload failed"));
+    xhr.ontimeout = () => reject(new Error("upload timed out"));
     xhr.send(wav);
   });
 
@@ -74,9 +76,15 @@ export async function coach(
   exerciseSpec: ExerciseSpec | null,
   history: HistoryEntry[],
 ): Promise<CoachingResult> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+
   const response = await fetch("/api/coach", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({
       measurements,
       exercise_spec: exerciseSpec,

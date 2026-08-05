@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Button, Flex, Progress, Text } from "@chakra-ui/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadRecording } from "@/lib/api";
 import { blobToWav } from "@/lib/wav";
 
@@ -26,16 +26,26 @@ export function Recorder({
 }) {
   const [state, setState] = useState<RecorderState>({ phase: "idle" });
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
   const start = async () => {
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => chunksRef.current.push(event.data);
       recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        stream?.getTracks().forEach((track) => track.stop());
         try {
           setState({ phase: "encoding" });
           const blob = new Blob(chunksRef.current, {
@@ -59,6 +69,8 @@ export function Recorder({
       recorder.start();
       setState({ phase: "recording" });
     } catch {
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       setState({ phase: "error", message: "microphone access was denied" });
     }
   };
