@@ -1,12 +1,30 @@
 # Caddy in front of singing-coach. Replace the hostname with your own.
 #
-# The flush_interval is the important line. Gradio delivers every event result
-# over a long-lived SSE stream (/gradio_api/queue/data). A proxy that buffers
-# responses holds those events until the buffer fills, so the browser sits on a
-# spinner while the server has already answered. -1 disables buffering.
+# Requires Caddy 2.8.0 or newer: the directive was renamed from `basicauth` to
+# `basic_auth` in 2.8, so this config fails to load on anything older. Check with
+# `caddy version`.
+#
+# Two lines here are load-bearing:
+#
+# basic_auth gates the whole site. The app has no access control of its own —
+# signing in controls Supabase sync, not entry — so without this, anyone with
+# the URL can record, spend the host's CPU on a coaching call, and read whatever
+# the signed-in account can see.
+#
+# flush_interval -1 disables response buffering. Gradio delivers every event
+# result over a long-lived SSE stream (/gradio_api/queue/data). A proxy that
+# buffers holds those events until the buffer fills, so the browser sits on a
+# spinner while the server has already answered. This is the same failure mode
+# as tunnelling the app through editor port-forwarding.
 
 sing.example.com {
 	encode zstd gzip
+
+	# Credentials come from the environment so no hash lands in git. Generate with:
+	#   caddy hash-password --plaintext 'your-password'
+	basic_auth {
+		{$AUTH_USER} {$AUTH_PASSWORD_HASH}
+	}
 
 	request_body {
 		max_size 100MB
@@ -14,6 +32,11 @@ sing.example.com {
 
 	reverse_proxy 127.0.0.1:7860 {
 		flush_interval -1
+
+		# basic_auth validates the header but does not consume it. The app has no
+		# use for it, so drop it rather than forward the credentials over the
+		# plaintext hop to the backend.
+		header_up -Authorization
 
 		# Analysis can take a while on CPU-only hardware: pitch detection plus a
 		# local coaching call. Don't cut the response off mid-think.

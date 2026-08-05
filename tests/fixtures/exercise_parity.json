@@ -1,0 +1,3524 @@
+[
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        55,
+        57,
+        59,
+        60,
+        62
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        55,
+        59,
+        62,
+        67
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        55,
+        60,
+        67,
+        60,
+        55
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        56,
+        58,
+        60,
+        61,
+        63
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G#3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        56,
+        60,
+        63,
+        68
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G#3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        56,
+        61,
+        68,
+        61,
+        56
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G#3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        55,
+        57,
+        59,
+        60,
+        62
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        55,
+        57,
+        59,
+        60,
+        62
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        55,
+        57,
+        59,
+        60,
+        62
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        55,
+        57,
+        59,
+        60,
+        62
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        56,
+        58,
+        60,
+        61,
+        63
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G#3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        56,
+        58,
+        60,
+        61,
+        63
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G#3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        56,
+        58,
+        60,
+        61,
+        63
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G#3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        56,
+        58,
+        60,
+        61,
+        63
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting G#3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        55
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        56
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting G#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        55,
+        60,
+        67,
+        60,
+        55
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        55,
+        60,
+        67,
+        60,
+        55
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        55,
+        60,
+        67,
+        60,
+        55
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        55,
+        60,
+        67,
+        60,
+        55
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        56,
+        61,
+        68,
+        61,
+        56
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G#3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        56,
+        61,
+        68,
+        61,
+        56
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G#3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        56,
+        61,
+        68,
+        61,
+        56
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G#3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        56,
+        61,
+        68,
+        61,
+        56
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting G#3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 0,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        55,
+        59,
+        62,
+        67
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 1,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        55,
+        59,
+        62,
+        67
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 2,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        55,
+        59,
+        62,
+        67
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 3,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        55,
+        59,
+        62,
+        67
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 4,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        56,
+        60,
+        63,
+        68
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G#3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 5,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        56,
+        60,
+        63,
+        68
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G#3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 6,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        56,
+        60,
+        63,
+        68
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G#3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 48,
+      "range_high_midi": 72,
+      "tessitura_low_midi": 55,
+      "tessitura_high_midi": 65
+    },
+    "session_index": 7,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        56,
+        60,
+        63,
+        68
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting G#3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        45,
+        47,
+        49,
+        50,
+        52
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        45,
+        49,
+        52,
+        57
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        45,
+        50,
+        57,
+        50,
+        45
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        46,
+        48,
+        50,
+        51,
+        53
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A#2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        46,
+        50,
+        53,
+        58
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A#2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        46,
+        51,
+        58,
+        51,
+        46
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A#2"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        45,
+        47,
+        49,
+        50,
+        52
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        45,
+        47,
+        49,
+        50,
+        52
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        45,
+        47,
+        49,
+        50,
+        52
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        45,
+        47,
+        49,
+        50,
+        52
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        46,
+        48,
+        50,
+        51,
+        53
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A#2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        46,
+        48,
+        50,
+        51,
+        53
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A#2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        46,
+        48,
+        50,
+        51,
+        53
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A#2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        46,
+        48,
+        50,
+        51,
+        53
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting A#2 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        45
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        46
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#2 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        45,
+        50,
+        57,
+        50,
+        45
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        45,
+        50,
+        57,
+        50,
+        45
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        45,
+        50,
+        57,
+        50,
+        45
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        45,
+        50,
+        57,
+        50,
+        45
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        46,
+        51,
+        58,
+        51,
+        46
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A#2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        46,
+        51,
+        58,
+        51,
+        46
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A#2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        46,
+        51,
+        58,
+        51,
+        46
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A#2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        46,
+        51,
+        58,
+        51,
+        46
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting A#2 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 0,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        45,
+        49,
+        52,
+        57
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 1,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        45,
+        49,
+        52,
+        57
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 2,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        45,
+        49,
+        52,
+        57
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 3,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        45,
+        49,
+        52,
+        57
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 4,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        46,
+        50,
+        53,
+        58
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A#2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 5,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        46,
+        50,
+        53,
+        58
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A#2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 6,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        46,
+        50,
+        53,
+        58
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A#2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 40,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 45,
+      "tessitura_high_midi": 55
+    },
+    "session_index": 7,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        46,
+        50,
+        53,
+        58
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting A#2 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": null,
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": null,
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": null,
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": null,
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "breath_support",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: breath support)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "pitch_accuracy",
+    "expected": {
+      "type": "scale",
+      "target_notes_midi": [
+        53,
+        55,
+        57,
+        58,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "vibrato",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: vibrato)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        57
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "tone_quality",
+    "expected": {
+      "type": "sustained",
+      "target_notes_midi": [
+        58
+      ],
+      "duration_per_note_s": 3.0,
+      "vowel": "ah",
+      "display_name": "sustained on 'ah', starting A#3 (focus: tone quality)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "range",
+    "expected": {
+      "type": "siren",
+      "target_notes_midi": [
+        48,
+        53,
+        60,
+        53,
+        48
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "siren on 'ah', starting C3 (focus: range)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 0,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 1,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 2,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 3,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 4,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 5,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 6,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  },
+  {
+    "calibration": {
+      "range_low_midi": 57,
+      "range_high_midi": 60,
+      "tessitura_low_midi": 57,
+      "tessitura_high_midi": 59
+    },
+    "session_index": 7,
+    "focus_area": "agility",
+    "expected": {
+      "type": "arpeggio",
+      "target_notes_midi": [
+        48,
+        52,
+        55,
+        60
+      ],
+      "duration_per_note_s": 0.5,
+      "vowel": "ah",
+      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+    }
+  }
+]

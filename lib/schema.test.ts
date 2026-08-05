@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest";
+import coaching from "../prompts/coaching.json";
+import { coachingResultSchema, FOCUS_AREAS, measurementsSchema } from "./schema";
+
+describe("focus area enum", () => {
+  it("comes from prompts/coaching.json, the single source of truth", () => {
+    expect(FOCUS_AREAS).toEqual(coaching.schema.properties.focus_area.enum);
+    expect(FOCUS_AREAS.length).toBeGreaterThan(0);
+  });
+
+  it("rejects a coaching result with an unknown focus area", () => {
+    const result = coachingResultSchema.safeParse({
+      focus_area: "posture",
+      top_issue: "x",
+      why: "y",
+      drill: "z",
+      encouragement: "w",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a coaching result with every known focus area", () => {
+    for (const area of FOCUS_AREAS) {
+      const result = coachingResultSchema.safeParse({
+        focus_area: area,
+        top_issue: "x",
+        why: "y",
+        drill: "z",
+        encouragement: "w",
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+});
+
+describe("measurements schema", () => {
+  it("mirrors models.py field-for-field", () => {
+    const parsed = measurementsSchema.parse({
+      jitter_local: 0.005,
+      shimmer_local: null,
+      hnr_mean: 22.1,
+      vibrato_rate_hz: 5.5,
+      vibrato_extent_cents: 60,
+      f1_mean: null,
+      f2_mean: null,
+      accuracy: {
+        per_note: [{ target_midi: 60, target_name: "C4", cents_off: -12.5 }],
+        mean_abs_cents_off: 12.5,
+      },
+    });
+    expect(parsed.accuracy?.per_note[0].target_name).toBe("C4");
+  });
+});

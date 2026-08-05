@@ -1,8 +1,7 @@
 """Deterministic exercise generation. Pure functions; state passed in by caller."""
 
 from singing_coach.models import Calibration, ExerciseSpec
-
-NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+from singing_coach.pitch import NOTE_NAMES, midi_to_name  # noqa: F401  (re-exported for app.py)
 
 TYPE_ROTATION = ["sustained", "scale", "arpeggio", "siren"]
 
@@ -39,10 +38,6 @@ FOCUS_LABELS = {
     "agility": "agility",
     "range": "range",
 }
-
-
-def midi_to_name(midi: int) -> str:
-    return f"{NOTE_NAMES[midi % 12]}{midi // 12 - 1}"
 
 
 def next_exercise(
