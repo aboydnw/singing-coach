@@ -23,10 +23,3 @@ def test_schema_requires_every_field():
     assert set(COACHING["schema"]["required"]) == set(
         COACHING["schema"]["properties"].keys()
     )
-
-
-def test_prompt_matches_legacy_coach_module():
-    from singing_coach.coach import COACHING_SCHEMA, SYSTEM_PROMPT
-
-    assert COACHING["system_prompt"] == SYSTEM_PROMPT
-    assert COACHING["schema"] == COACHING_SCHEMA

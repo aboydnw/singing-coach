@@ -1,15 +1,22 @@
 """Prompt eval harness for the coaching call.
 
 Each case plants a specific vocal problem in the measurements and checks that
-the coach's structured focus_area lands on it. Calls the production TS route
-over HTTP so the eval exercises the code path users hit — start `yarn dev`
-(with OPENROUTER_API_KEY and COACH_MODEL set) first, then:
+the coach's structured focus_area lands on it. Calls the real TS route over
+HTTP so the eval exercises the code path users hit. The route requires a
+signed-in user, so provide account credentials plus the Supabase project:
 
+    EVAL_EMAIL=... EVAL_PASSWORD=... \
+    NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... \
     uv run python evals/coach_eval.py [base_url]
+
+base_url defaults to a local `yarn dev`; pass the production URL to eval the
+deployed route.
 """
 
 import json
+import os
 import sys
+import urllib.parse
 
 import httpx
 
@@ -93,25 +100,69 @@ CASES = [
 ]
 
 
-def _call_route(base_url: str, spec: ExerciseSpec, measurements: Measurements) -> dict:
+def _env(*names: str) -> str:
+    """First set variable among names, with all whitespace stripped - long keys
+    pasted into a terminal often pick up a line break mid-value."""
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return "".join(value.split())
+    raise KeyError(names[0])
+
+
+def _require_https_for_remote(url: str) -> str:
+    """Credentials and tokens travel over these URLs, so plain http is only
+    acceptable when it never leaves the machine."""
+    parsed = urllib.parse.urlparse(url)
+    loopback = parsed.hostname in ("localhost", "127.0.0.1", "::1")
+    if parsed.scheme != "https" and not loopback:
+        raise SystemExit(f"refusing to send credentials over {url!r}; use https")
+    return url
+
+
+def _access_token() -> str:
+    supabase_url = _require_https_for_remote(
+        _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL").rstrip("/")
+    )
+    anon_key = _env("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY")
+    response = httpx.post(
+        f"{supabase_url}/auth/v1/token?grant_type=password",
+        headers={"apikey": anon_key},
+        json={
+            "email": _env("EVAL_EMAIL"),
+            "password": os.environ["EVAL_PASSWORD"].strip(" \t\r\n"),
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _call_route(
+    base_url: str, token: str, spec: ExerciseSpec, measurements: Measurements
+) -> dict:
     response = httpx.post(
         f"{base_url}/api/coach",
+        headers={"Authorization": f"Bearer {token}"},
         json={
             "exercise_spec": json.loads(spec.model_dump_json()),
             "measurements": json.loads(measurements.model_dump_json()),
             "history": [],
         },
-        timeout=120,
+        timeout=180,
     )
     response.raise_for_status()
     return response.json()
 
 
 def main() -> int:
-    base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    base_url = _require_https_for_remote(
+        sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    )
+    token = _access_token()
     failures = 0
     for case in CASES:
-        result = _call_route(base_url, case["spec"], case["measurements"])
+        result = _call_route(base_url, token, case["spec"], case["measurements"])
         ok = result["focus_area"] in case["expected"]
         status = "PASS" if ok else "FAIL"
         if not ok:
