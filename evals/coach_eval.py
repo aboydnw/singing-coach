@@ -1,20 +1,26 @@
 """Prompt eval harness for the coaching call.
 
-Each case plants a specific vocal problem in the measurements and checks that the
-coach's structured focus_area lands on it. Run manually (costs a few API calls):
+Each case plants a specific vocal problem in the measurements and checks that
+the coach's structured focus_area lands on it. Calls the production TS route
+over HTTP so the eval exercises the code path users hit — start `yarn dev`
+(with OPENROUTER_API_KEY and COACH_MODEL set) first, then:
 
-    uv run python evals/coach_eval.py
+    uv run python evals/coach_eval.py [base_url]
 """
 
+import json
 import sys
 
-from singing_coach import coach
+import httpx
+
 from singing_coach.models import (
     ExerciseSpec,
     Measurements,
     NoteAccuracy,
     PitchAccuracy,
 )
+
+DEFAULT_BASE_URL = "http://localhost:3000"
 
 SCALE_SPEC = ExerciseSpec(
     type="scale",
@@ -87,17 +93,32 @@ CASES = [
 ]
 
 
+def _call_route(base_url: str, spec: ExerciseSpec, measurements: Measurements) -> dict:
+    response = httpx.post(
+        f"{base_url}/api/coach",
+        json={
+            "exercise_spec": json.loads(spec.model_dump_json()),
+            "measurements": json.loads(measurements.model_dump_json()),
+            "history": [],
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def main() -> int:
+    base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
     failures = 0
     for case in CASES:
-        result = coach.coach(case["spec"], case["measurements"], history=[])
-        ok = result.focus_area.value in case["expected"]
+        result = _call_route(base_url, case["spec"], case["measurements"])
+        ok = result["focus_area"] in case["expected"]
         status = "PASS" if ok else "FAIL"
         if not ok:
             failures += 1
         print(f"[{status}] {case['name']}")
-        print(f"        expected one of {sorted(case['expected'])}, got {result.focus_area.value}")
-        print(f"        top_issue: {result.top_issue}")
+        print(f"        expected one of {sorted(case['expected'])}, got {result['focus_area']}")
+        print(f"        top_issue: {result['top_issue']}")
     print(f"\n{len(CASES) - failures}/{len(CASES)} cases passed")
     return 1 if failures else 0
 

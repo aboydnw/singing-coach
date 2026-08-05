@@ -8,6 +8,12 @@ FRAME_HOP_SAMPLES = 160
 MIN_F0_HZ = 50.0
 MAX_F0_HZ = 1100.0
 
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def midi_to_name(midi: int) -> str:
+    return f"{NOTE_NAMES[midi % 12]}{midi // 12 - 1}"
+
 
 def hz_to_midi(hz: float) -> float:
     return 69.0 + 12.0 * np.log2(hz / 440.0)
@@ -24,6 +30,11 @@ def cents_off_target(detected_hz: float, target_hz: float) -> float:
 def predict(
     audio: np.ndarray, sample_rate: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    # torchcrepe's viterbi decoder dithers each frame with unseeded random noise
+    # (torchcrepe.convert.dither, +/-20 cents, via numpy's global RNG). Seeding
+    # here makes the draw fixed so identical audio yields identical contours;
+    # without it the same recording analyzes differently every run.
+    np.random.seed(0)
     tensor = torch.from_numpy(audio).unsqueeze(0)
     f0, periodicity = torchcrepe.predict(
         tensor,

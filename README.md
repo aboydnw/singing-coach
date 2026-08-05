@@ -1,165 +1,99 @@
 # singing-coach
 
-A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback, and track your progress over time. Coaching runs on a local model by default, so a practice session costs nothing, and your audio never goes to a third party.
+A personal AI voice coach. Record a vocal exercise or passage, get measurement-backed feedback, and track your progress over time. Runs on Vercel with Supabase for auth, history and recordings — no server to manage.
 
 Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Explorer), which detects vocal type but stops short of coaching.
 
 ![screenshot placeholder](docs/screenshot.png)
 
-## Setup
-
-You'll need [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com/).
-
-```bash
-git clone https://github.com/aboydnw/singing-coach.git
-cd singing-coach
-uv sync
-
-ollama pull qwen2.5:3b   # the default coaching model
-
-uv run singing-coach
-```
-
-First launch downloads the torchcrepe pitch model (~2 GB). Subsequent launches are fast.
-
-Prefer Claude for coaching? Set `SINGING_COACH_BACKEND=anthropic` and supply an
-[Anthropic API key](https://console.anthropic.com/) — via `.env`, or the setup screen the app
-shows on first run. Coaching quality is noticeably better; see [Costs](#costs).
-
 ## How to use
 
-1. **Calibrate** (~5 min, once). The Calibrate tab asks for four reference notes:
+1. **Sign in.** Email and password, or a magic link. History and recordings are private to your account.
+
+2. **Calibrate** (~5 min, once). The Calibrate tab asks for four reference notes:
    - Lowest comfortable note
    - Highest comfortable note
    - Lowest "edge" (chest break / vocal floor)
    - Highest "edge" (head break / vocal ceiling)
 
-   Hold each note for ~3 seconds and the app detects its pitch. Click **Save calibration** when all four are detected.
+   Hold each note for ~3 seconds and the app detects its pitch. Save when all four are detected.
 
-2. **Exercise.** The Exercise tab shows a generated exercise scaled to your range — a sustained tone, a 5-note scale, an arpeggio, or a siren. Click **Play reference** to hear the target tones, then **Record** to sing the exercise, then **Analyze**. You'll see:
+3. **Exercise.** The Exercise tab shows a generated exercise scaled to your range — a sustained tone, a 5-note scale, an arpeggio, or a siren. Hear the reference tones, sing the exercise, and get:
    - A pitch chart overlaying your contour against the target notes
-   - Playback of your own attempt, so you can A/B it against the reference
-   - A scorecard in plain language: how many cents off each note you were, plus breath steadiness, tone clarity, and vibrato, each flagged 🟢/🟡/🔴 against a healthy range
-   - Coaching feedback from Claude
+   - A scorecard in plain language: cents off each note, breath steadiness, tone clarity, and vibrato, each flagged 🟢/🟡/🔴 against a healthy range
+   - Coaching feedback from the model
 
    After the first session, the next exercise is chosen to train whatever the coach told you to work on — flat pitch gets you a scale, shaky breath gets you a sustained tone.
 
-3. **Free-sing.** Same analysis pipeline as Exercise but without target notes — sing whatever you want, get feedback on pitch drift, breath, vibrato, and tone quality.
+4. **Free-sing.** Same analysis without target notes — sing whatever you want, get feedback on breath, vibrato, and tone quality.
 
-4. **Progress.** Charts trends across your sessions by date, with the healthy zone shaded on each panel: pitch accuracy, jitter, shimmer, HNR, vibrato rate and depth. Filter to exercises or free-sing.
+5. **Progress.** Trends across sessions with the healthy zone shaded on each panel: pitch accuracy, jitter, shimmer, HNR, vibrato rate and depth. Play back any stored recording.
 
 ## How it works
 
-Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour.
-
-Coaching is a single model call. The model gets the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold every time. Feedback comes back as structured output (focus area, top issue, why, drill, encouragement), which is what makes the adaptive exercise selection and progress tracking possible. Both backends share one prompt and one schema; only the enforcement differs — Ollama constrains decoding to the JSON schema, Anthropic uses tool use. The UI is [Gradio](https://www.gradio.app/) running on `localhost`.
-
-### Backup and sync
-
-Optional, and off until you configure it. Point the app at a Supabase project and your calibration and session history are backed up as you sing, then pulled down on any other machine you sign into.
-
-1. Create a Supabase project and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) against it. It creates the two tables plus the row-level-security policies that keep accounts apart.
-2. Put the project URL and anon key in `~/.singing-coach/.env`.
-3. Sign in on the **Account** tab.
-
-Local SQLite stays the durable write path: singing works offline, and a failed sync never blocks coaching. Unsent rows queue up and go out on the next successful sync. Work done before you sign in is adopted into your account rather than stranded.
-
-**Sync never carries audio.** Only measurements, the exercise spec and the coaching text go to Supabase. The file path is stripped on upload too: it would leak the host's directory layout and means nothing on another machine. Recordings stay on whichever host analysed them — see [Privacy](#privacy) — so a session synced from elsewhere appears in Progress with its charts intact and its playback marked *recorded on another device*.
-
-### Running it somewhere other than your laptop
-
-The app binds loopback by default. To reach it from another machine, put a reverse proxy in front and let it bind locally:
-
-```bash
-sudo cp deploy/singing-coach.service /etc/systemd/system/   # edit User and paths first
-sudo systemctl daemon-reload && sudo systemctl enable --now singing-coach
+```
+browser: record -> encode WAV -> upload to Supabase Storage
+   -> POST /api/analyze   (Python: torchcrepe + Praat, unchanged DSP)
+   -> POST /api/coach     (TypeScript: OpenRouter, structured output)
+   -> insert session      (Supabase, row-level security)
 ```
 
-Then point [`deploy/Caddyfile`](deploy/Caddyfile) at your hostname for automatic HTTPS.
+Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour. That pipeline runs in `src/singing_coach/`, imported unchanged by the `/api/analyze` Vercel Python function — the numbers are the product, so the DSP chain is pinned by a committed regression fixture (`tests/test_regression_fixture.py`) and torchcrepe's pitch dither is seeded so identical audio always measures identically.
 
-**Do not put a buffering proxy in front of this app.** Gradio delivers every event result over a long-lived SSE stream, so a proxy that buffers responses leaves the browser spinning on work the server already finished. The supplied Caddyfile sets `flush_interval -1` to disable buffering; nginx needs `proxy_buffering off;`. The same caveat applies to editor port-forwarding and tunnels — if the UI hangs on actions that the server logs as instant, suspect the transport before the app.
+Coaching is a single model call. The model gets the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold. The prompt and output schema live in [`prompts/coaching.json`](prompts/coaching.json), shared by the TypeScript route, the Python tests, and the eval harness. Feedback comes back as strict structured output (focus area, top issue, why, drill, encouragement), which is what makes adaptive exercise selection possible.
 
-No proxy yet? `SINGING_COACH_SHARE=1` opens a temporary public Gradio tunnel, which is useful for testing but unauthenticated while it runs.
+The UI is Next.js with Chakra UI. Exercise generation and reference tones run in the browser (`lib/exercises.ts`, `lib/toneGen.ts`); a 168-case parity fixture pins the exercise port to the Python original. Recordings are encoded to WAV in the browser at the microphone's native sample rate — the server's librosa remains the only resampler in the chain, exactly as before the rewrite.
 
-**Serverless platforms will not work.** This is a long-lived stateful server that needs ~2 GB of PyTorch, native audio libraries, a writable disk for recordings, and minutes-long requests. `vercel.json` disables Vercel deployments so a connected repo doesn't fail a build on every PR; deleting the Vercel project entirely is tidier.
+## Development
 
-### Configuration
-
-| Env var | Default | What it does |
-|---|---|---|
-| `SINGING_COACH_HOST` | `127.0.0.1` | Interface to bind. `0.0.0.0` to serve directly. |
-| `SINGING_COACH_PORT` | first free | Port to bind. |
-| `SINGING_COACH_SHARE` | `0` | `1` opens a public Gradio tunnel. |
-| `SINGING_COACH_BACKEND` | `ollama` | `ollama` for local and free; `anthropic` for the API. |
-| `SINGING_COACH_OLLAMA_MODEL` | `qwen2.5:3b` | Local coaching model. |
-| `SINGING_COACH_OLLAMA_HOST` | `http://localhost:11434` | Where Ollama is listening. |
-| `SINGING_COACH_OLLAMA_TIMEOUT_S` | `600` | Local generation timeout. CPU inference is slow. |
-| `ANTHROPIC_API_KEY` | — | Required when the backend is `anthropic`. Also settable via the setup screen. |
-| `SINGING_COACH_MODEL` | `claude-sonnet-4-6` | Claude model used for coaching. |
-| `SINGING_COACH_MAX_TOKENS` | `1024` | Max output tokens per coaching call. |
-| `SINGING_COACH_TIMEOUT_S` | `60` | Anthropic API timeout in seconds. |
-| `SUPABASE_URL` | — | Supabase project URL. Backup stays off without it. |
-| `SUPABASE_ANON_KEY` | — | Supabase anon key. |
-
-## Costs
-
-On the default local backend, **coaching is free** — no API calls, no per-session cost. You pay in latency and quality instead. On an 8-core CPU with no GPU, a coaching call takes roughly 25–30 seconds against a 3B model, versus a couple of seconds via the API.
-
-Quality is the real trade. A 3B model tends to anchor on whatever it told you last session instead of re-reading the numbers, and it will occasionally describe a pitch problem as a breath problem. It is good enough to practise against and not good enough to trust blindly. Run `uv run python evals/coach_eval.py` against a backend to see how well it diagnoses planted problems before relying on it.
-
-Switching to `anthropic` costs roughly **$0.01–0.02 per session** at `claude-sonnet-4-6` pricing ($3/M input, $15/M output, ~$0.30/M cached reads), with prompt caching amortizing the measurement glossary. Heavy Free-sing with long passages pushes higher.
-
-## Privacy
-
-**Audio goes to whichever machine runs the app, and stays there.** The browser records it and uploads it to the server, which writes it to `~/.singing-coach/recordings/YYYY-MM-DD/` and keeps it until someone deletes it. Where that lands depends on how you run it:
-
-- **On your own machine** (the default) the server is your machine, so recordings never leave it.
-- **Hosted** — behind Caddy, on a shared box, via `SINGING_COACH_SHARE=1` — recordings are uploaded to that host and retained there. Whoever administers the host can read them. If you host this for other people, that includes you reading theirs.
-
-Nothing beyond the app's own host ever receives audio:
-
-- **Coaching, `ollama` backend (default):** the model runs on the same host. Nothing goes anywhere else.
-- **Coaching, `anthropic` backend:** structured measurements (cents off target, jitter, HNR, etc.), the exercise spec, and recent session history go to the API. No audio.
-- **Sync:** those same measurements plus the coaching text go to your own Supabase project, guarded by row-level security. No audio, and the local file path is stripped so the server never learns your directory layout.
-
-Credentials live at `~/.singing-coach/.env` with mode 0600. The Supabase refresh token is cached at `~/.singing-coach/session.json`, also 0600.
-
-Note that the app itself has no access control: anyone who can reach the URL can record, spend the host's CPU, and browse whatever sessions the signed-in account can see. Signing in controls sync, not entry. Put authentication in front of it before exposing it to anyone you don't trust.
-
-## Storage locations
-
-| What | Where |
-|---|---|
-| Session database | `~/.singing-coach/sessions.db` |
-| Recordings | `~/.singing-coach/recordings/YYYY-MM-DD/<uuid>.wav` |
-| Credentials | `~/.singing-coach/.env` |
-| Cached sign-in | `~/.singing-coach/session.json` |
-| Reference-tone cache | `~/.singing-coach/cache/` |
-
-Databases created before sync existed used autoincrementing integer ids, which collide once two
-devices sync. On first launch those tables are renamed to `sessions_legacy_v1` and
-`calibration_legacy_v1` and a fresh schema is created alongside them. Nothing is deleted; the old
-rows are still queryable with any SQLite client.
-
-## Supported platforms
-
-- macOS, Linux: tested.
-- Windows: best-effort, untested.
-- Mic: provided by the browser; no driver setup required.
-- Disk: ~2 GB for torch + the torchcrepe model.
-
-## Contributing
-
-PRs welcome. Run tests with `uv run pytest`. The architecture is one file per responsibility under `src/singing_coach/`; each module has a matching `tests/test_<module>.py`. Data crossing module boundaries is a Pydantic model from `models.py`, `session_service.py` owns the record → analyze → coach → persist pipeline, and `app.py` is Gradio wiring only.
-
-Changing the coaching prompt? Run the eval harness to check the coach still diagnoses planted problems correctly. It makes real API calls (a handful of cents):
+You'll need [uv](https://docs.astral.sh/uv/), Node 22+, and yarn.
 
 ```bash
+git clone https://github.com/aboydnw/singing-coach.git
+cd singing-coach
+uv sync                  # Python: analysis pipeline + tests
+yarn install             # TypeScript: app + tests
+
+uv run pytest            # analysis regression + parity + prompt-sync tests
+yarn test                # exercises/wav/schema tests
+yarn dev                 # Next.js dev server (needs .env.local, see .env.example)
+```
+
+`yarn dev` serves the UI and the coach route. The Python `/api/analyze` function only runs on Vercel; point local testing at a preview deployment or use `vercel dev`.
+
+To run the coaching eval (plants known vocal problems, checks the model diagnoses them):
+
+```bash
+yarn dev &
 uv run python evals/coach_eval.py
 ```
 
+## Deployment
+
+The app deploys to Vercel from this repo. Requirements beyond the defaults:
+
+- **Large functions.** The analyze function bundles CPU-only PyTorch (~1.2 GB uncompressed), far over the standard 500 MB Python cap. Set `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` as a project env var; Fluid compute with Active CPU must be enabled.
+- **Environment variables:** see [`.env.example`](.env.example) — Supabase URL/keys for the browser and the analyze function, `OPENROUTER_API_KEY` and `COACH_MODEL` for coaching.
+- **Supabase:** run both files in [`supabase/migrations/`](supabase/migrations/) against your project. They create the tables, the private `recordings` bucket, and the row-level-security policies that keep accounts apart.
+
+`uv.lock` is the single dependency manifest, locally and on Vercel. It pins torch/torchaudio to the CPU index (`[tool.uv.sources]` in `pyproject.toml`): the default PyPI wheels bundle ~4 GB of CUDA libraries that nothing here uses — and that blew even the 5 GB function limit before the pin.
+
+## Costs
+
+Coaching goes through [OpenRouter](https://openrouter.ai/) against an open-weight model chosen by env var. At `openai/gpt-oss-120b` pricing, a session costs a fraction of a cent — daily practice for a year rounds to under a dollar. Vercel Hobby and Supabase Free cover the rest at personal scale.
+
+Run the eval before trusting a new model: `uv run python evals/coach_eval.py` checks that it diagnoses planted problems (breathy tone, flat pitch, shaky breath, missing vibrato) instead of guessing.
+
+## Privacy
+
+Recordings upload to a **private Supabase Storage bucket** scoped to your account and are kept for playback — this is what makes "listen back on any device" work. Storage policies allow each account to touch only its own files; the analyze function verifies your signed-in identity before reading a recording. Structured measurements, the exercise spec, and recent history — never audio — go to the coaching model via OpenRouter.
+
+This replaces the old local-only design, where audio never left the machine that recorded it. If audio-stays-local matters to you, the last Gradio version lives in git history.
+
+## Supported platforms
+
+Modern Chrome, Safari, Firefox — anything with MediaRecorder and Web Audio. The analyze function runs on Vercel's Python runtime (Linux x86-64), which matches the platforms torchcrepe and Praat are compiled for.
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-`praat-parselmouth` is licensed under GPL-3.0. The consensus for Python wrappers is that dynamic linking does not propagate the GPL to calling code, but be aware if you fork or redistribute.
+MIT
