@@ -59,6 +59,41 @@ export function midiToName(midi: number): string {
   return `${NOTE_NAMES[((midi % 12) + 12) % 12]}${octave}`;
 }
 
+/** Two specs are the same drill when they share a type and target notes. The
+ * display name is deliberately excluded: the coach's focus suffix changes it
+ * without changing a single note the singer has to produce. */
+export function isSameExercise(a: ExerciseSpec, b: ExerciseSpec): boolean {
+  return (
+    a.type === b.type &&
+    a.target_notes_midi.length === b.target_notes_midi.length &&
+    a.target_notes_midi.every((midi, i) => midi === b.target_notes_midi[i])
+  );
+}
+
+/** The next exercise that is genuinely different from `current`, walking the
+ * deterministic rotation forward from `fromIndex`.
+ *
+ * The coach's focus area is dropped on purpose. It pins the exercise type, so
+ * honouring it here would keep handing back the drill the singer just asked to
+ * skip. Stepping through TYPE_ROTATION covers every type, and only one of them
+ * can match `current`, so a different exercise is always found. */
+export function skipExercise(
+  calibration: Calibration,
+  fromIndex: number,
+  current: ExerciseSpec,
+): { spec: ExerciseSpec; index: number } {
+  let candidate = {
+    spec: nextExercise(calibration, fromIndex + 1, null),
+    index: fromIndex + 1,
+  };
+  for (let step = 1; step <= TYPE_ROTATION.length; step++) {
+    const index = fromIndex + step;
+    candidate = { spec: nextExercise(calibration, index, null), index };
+    if (!isSameExercise(candidate.spec, current)) break;
+  }
+  return candidate;
+}
+
 export function nextExercise(
   calibration: Calibration,
   sessionIndex: number,
