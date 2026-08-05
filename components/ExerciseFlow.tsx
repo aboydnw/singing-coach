@@ -45,6 +45,7 @@ type FlowState =
 export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
   const [state, setState] = useState<FlowState>({ phase: "loading" });
   const [playing, setPlaying] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [coldStartHint, setColdStartHint] = useState(false);
 
   const loadExercise = useCallback(async () => {
@@ -125,8 +126,9 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
 
   const retryCoaching = async () => {
     if (state.phase !== "done" || !state.analysis.measurements) return;
-    const sessions = await listSessions();
+    setRetrying(true);
     try {
+      const sessions = await listSessions();
       const coaching = await coach(
         state.analysis.measurements,
         state.spec,
@@ -139,6 +141,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         ...state,
         coachingError: error instanceof Error ? error.message : "coaching call failed",
       });
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -264,6 +268,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
                 variant="outline"
                 colorPalette="coral"
                 onClick={retryCoaching}
+                loading={retrying}
+                loadingText="Retrying…"
               >
                 Retry coaching
               </Button>

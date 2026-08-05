@@ -8,9 +8,11 @@ import {
 } from "@/lib/schema";
 import { z } from "zod";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
-const OPENROUTER_TIMEOUT_MS = 25_000;
+// Open-weight reasoning models routed through require_parameters providers
+// can take well over 25s; a timeout here surfaces as a dead coaching step.
+const OPENROUTER_TIMEOUT_MS = 50_000;
 
 const requestSchema = z.object({
   exercise_spec: exerciseSpecSchema.nullable(),
