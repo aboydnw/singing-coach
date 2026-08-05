@@ -99,14 +99,19 @@ CASES = [
 ]
 
 
+def _env(*names: str) -> str:
+    """First set variable among names, with all whitespace stripped - long keys
+    pasted into a terminal often pick up a line break mid-value."""
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return "".join(value.split())
+    raise KeyError(names[0])
+
+
 def _access_token() -> str:
-    supabase_url = (
-        os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ["SUPABASE_URL"]
-    ).rstrip("/")
-    anon_key = (
-        os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
-        or os.environ["SUPABASE_ANON_KEY"]
-    )
+    supabase_url = _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL").rstrip("/")
+    anon_key = _env("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY")
     response = httpx.post(
         f"{supabase_url}/auth/v1/token?grant_type=password",
         headers={"apikey": anon_key},
