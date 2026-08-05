@@ -95,9 +95,17 @@ class OpenRouterError extends Error {
 
 const RETRYABLE_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
 
+const MAX_ERROR_TEXT = 200;
+
+/** Capping every message on the way into an OpenRouterError, rather than at
+ * each source, is what keeps a stray HTML error page or a verbose provider
+ * message out of the UI: the status prefix leads, so it always survives. */
+function truncate(text: string): string {
+  return text.length > MAX_ERROR_TEXT ? `${text.slice(0, MAX_ERROR_TEXT)}…` : text;
+}
+
 /** OpenRouter reports failures as {"error": {"code", "message"}}, but a bare
- * string or an HTML error page both happen too. Falls back to the raw body,
- * capped so a stray error page cannot become the UI's error message. */
+ * string or an HTML error page both happen too, hence the raw-body fallback. */
 function describeError(body: string): string {
   try {
     const parsed = JSON.parse(body);
@@ -106,8 +114,13 @@ function describeError(body: string): string {
   } catch {
     // not JSON; fall through to the raw body
   }
-  return body.slice(0, 200);
+  return body;
 }
+
+type OpenRouterPayload = {
+  error?: unknown;
+  choices?: Array<{ message?: { content?: unknown } }>;
+};
 
 async function callOpenRouter(userMessage: string): Promise<unknown> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -138,19 +151,33 @@ async function callOpenRouter(userMessage: string): Promise<unknown> {
   if (!response.ok) {
     const detail = describeError(await response.text().catch(() => ""));
     throw new OpenRouterError(
-      `OpenRouter returned ${response.status}${detail ? `: ${detail}` : ""}`,
+      truncate(`OpenRouter returned ${response.status}${detail ? `: ${detail}` : ""}`),
       RETRYABLE_STATUSES.has(response.status),
     );
   }
-  const payload = await response.json();
-  // An upstream provider failure arrives as HTTP 200 with an error body.
-  if (payload?.error) {
+
+  // A gateway between here and the model can answer 200 with an HTML error
+  // page. Parsing that raises a SyntaxError whose message says nothing useful
+  // about what actually failed, so it becomes an OpenRouterError instead.
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new OpenRouterError("OpenRouter returned a body that was not JSON", true);
+  }
+  if (payload === null || typeof payload !== "object") {
+    throw new OpenRouterError("OpenRouter returned an unexpected body", true);
+  }
+
+  const body = payload as OpenRouterPayload;
+  // An upstream provider failure arrives as HTTP 200 with an error field.
+  if (body.error) {
     throw new OpenRouterError(
-      `OpenRouter reported: ${describeError(JSON.stringify(payload))}`,
+      truncate(`OpenRouter reported: ${describeError(JSON.stringify(body))}`),
       true,
     );
   }
-  const content = payload.choices?.[0]?.message?.content;
+  const content = body.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
     throw new OpenRouterError("OpenRouter response had no message content", true);
   }

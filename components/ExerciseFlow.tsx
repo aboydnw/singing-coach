@@ -96,7 +96,9 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
     setState({ phase: "ready", spec });
   };
 
-  const restoreCoachPick = () => {
+  /** Back to what the app offered on arrival — the coach's focus drove it only
+   * once there is coaching history, but it is restorable either way. */
+  const restoreSuggested = () => {
     if (!pick) return;
     setPick({ ...pick, skippedTo: null });
     setState({
@@ -236,14 +238,16 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
               >
                 Not this one — give me a different exercise
               </Button>
-              {pick && pick.skippedTo !== null && pick.coachFocus && (
+              {pick && pick.skippedTo !== null && (
                 <Button
                   size="sm"
                   variant="ghost"
                   colorPalette="coral"
-                  onClick={restoreCoachPick}
+                  onClick={restoreSuggested}
                 >
-                  Back to the coach&rsquo;s pick
+                  {pick.coachFocus
+                    ? "Back to the coach’s pick"
+                    : "Back to the suggested exercise"}
                 </Button>
               )}
             </Flex>
