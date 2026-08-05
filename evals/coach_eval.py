@@ -1,14 +1,20 @@
 """Prompt eval harness for the coaching call.
 
 Each case plants a specific vocal problem in the measurements and checks that
-the coach's structured focus_area lands on it. Calls the production TS route
-over HTTP so the eval exercises the code path users hit — start `yarn dev`
-(with OPENROUTER_API_KEY and COACH_MODEL set) first, then:
+the coach's structured focus_area lands on it. Calls the real TS route over
+HTTP so the eval exercises the code path users hit. The route requires a
+signed-in user, so provide account credentials plus the Supabase project:
 
+    EVAL_EMAIL=... EVAL_PASSWORD=... \
+    NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... \
     uv run python evals/coach_eval.py [base_url]
+
+base_url defaults to a local `yarn dev`; pass the production URL to eval the
+deployed route.
 """
 
 import json
+import os
 import sys
 
 import httpx
@@ -93,15 +99,39 @@ CASES = [
 ]
 
 
-def _call_route(base_url: str, spec: ExerciseSpec, measurements: Measurements) -> dict:
+def _access_token() -> str:
+    supabase_url = (
+        os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ["SUPABASE_URL"]
+    ).rstrip("/")
+    anon_key = (
+        os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        or os.environ["SUPABASE_ANON_KEY"]
+    )
+    response = httpx.post(
+        f"{supabase_url}/auth/v1/token?grant_type=password",
+        headers={"apikey": anon_key},
+        json={
+            "email": os.environ["EVAL_EMAIL"],
+            "password": os.environ["EVAL_PASSWORD"],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _call_route(
+    base_url: str, token: str, spec: ExerciseSpec, measurements: Measurements
+) -> dict:
     response = httpx.post(
         f"{base_url}/api/coach",
+        headers={"Authorization": f"Bearer {token}"},
         json={
             "exercise_spec": json.loads(spec.model_dump_json()),
             "measurements": json.loads(measurements.model_dump_json()),
             "history": [],
         },
-        timeout=120,
+        timeout=180,
     )
     response.raise_for_status()
     return response.json()
@@ -109,9 +139,10 @@ def _call_route(base_url: str, spec: ExerciseSpec, measurements: Measurements) -
 
 def main() -> int:
     base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    token = _access_token()
     failures = 0
     for case in CASES:
-        result = _call_route(base_url, case["spec"], case["measurements"])
+        result = _call_route(base_url, token, case["spec"], case["measurements"])
         ok = result["focus_area"] in case["expected"]
         status = "PASS" if ok else "FAIL"
         if not ok:
