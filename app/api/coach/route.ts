@@ -81,12 +81,41 @@ function formatUserMessage(body: CoachRequest): string {
   return blocks.join("\n\n");
 }
 
+/** An OpenRouter failure that knows whether trying again could help. Credit,
+ * key and model-capability problems are settled facts, so retrying them only
+ * doubles the wait before the singer sees why coaching failed. */
+class OpenRouterError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+  }
+}
+
+const RETRYABLE_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
+
+/** OpenRouter reports failures as {"error": {"code", "message"}}, but a bare
+ * string or an HTML error page both happen too. Falls back to the raw body,
+ * capped so a stray error page cannot become the UI's error message. */
+function describeError(body: string): string {
+  try {
+    const parsed = JSON.parse(body);
+    const message = parsed?.error?.message ?? parsed?.message;
+    if (typeof message === "string" && message.length > 0) return message;
+  } catch {
+    // not JSON; fall through to the raw body
+  }
+  return body.slice(0, 200);
+}
+
 async function callOpenRouter(userMessage: string): Promise<unknown> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
+      "X-Title": "Singing Coach",
     },
     signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
     body: JSON.stringify({
@@ -107,12 +136,23 @@ async function callOpenRouter(userMessage: string): Promise<unknown> {
     }),
   });
   if (!response.ok) {
-    throw new Error(`OpenRouter returned ${response.status}`);
+    const detail = describeError(await response.text().catch(() => ""));
+    throw new OpenRouterError(
+      `OpenRouter returned ${response.status}${detail ? `: ${detail}` : ""}`,
+      RETRYABLE_STATUSES.has(response.status),
+    );
   }
   const payload = await response.json();
+  // An upstream provider failure arrives as HTTP 200 with an error body.
+  if (payload?.error) {
+    throw new OpenRouterError(
+      `OpenRouter reported: ${describeError(JSON.stringify(payload))}`,
+      true,
+    );
+  }
   const content = payload.choices?.[0]?.message?.content;
   if (typeof content !== "string") {
-    throw new Error("OpenRouter response had no message content");
+    throw new OpenRouterError("OpenRouter response had no message content", true);
   }
   return JSON.parse(content);
 }
@@ -147,6 +187,7 @@ export async function POST(request: Request) {
       lastError = "model returned a malformed coaching result";
     } catch (error) {
       lastError = error instanceof Error ? error.message : "unknown error";
+      if (error instanceof OpenRouterError && !error.retryable) break;
     }
   }
   return NextResponse.json({ error: lastError }, { status: 502 });

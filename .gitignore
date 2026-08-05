@@ -13,4 +13,5 @@ node_modules/
 .yarn/
 next-env.d.ts
 .vercel/
+.feedback/
 *.tsbuildinfo
