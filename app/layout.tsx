@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "@/app/providers";
+import { DevFeedback } from "@/components/DevFeedback";
 
 export const metadata: Metadata = {
   title: "Singing Coach",
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
+        <DevFeedback />
       </body>
     </html>
   );

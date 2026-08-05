@@ -6,7 +6,7 @@ import { PitchChart } from "@/components/PitchChart";
 import { Recorder } from "@/components/Recorder";
 import { Scorecard } from "@/components/Scorecard";
 import { analyze, coach } from "@/lib/api";
-import { nextExercise } from "@/lib/exercises";
+import { nextExercise, skipExercise } from "@/lib/exercises";
 import { playSequence } from "@/lib/toneGen";
 import {
   insertSession,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/sessions";
 import type {
   AnalyzeResponse,
+  Calibration,
   CoachingResult,
   ExerciseSpec,
   FocusArea,
@@ -39,11 +40,21 @@ type FlowState =
       sessionId: string;
     };
 
+/** What the coach picked for this visit, kept so a skip can walk the rotation
+ * forward without refetching, and so the coach's pick can be restored. */
+type Pick = {
+  calibration: Calibration;
+  baseIndex: number;
+  coachFocus: FocusArea | null;
+  skippedTo: number | null;
+};
+
 /** The three-step flow from PR #4: Hear it / Sing it / Get coached, with an
  * exercise already loaded on arrival and an explicit next-exercise action.
  * freeSing drops the exercise spec and the accuracy scoring. */
 export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
   const [state, setState] = useState<FlowState>({ phase: "loading" });
+  const [pick, setPick] = useState<Pick | null>(null);
   const [playing, setPlaying] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [coldStartHint, setColdStartHint] = useState(false);
@@ -61,6 +72,12 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       }
       const [count, sessions] = await Promise.all([sessionCount(), listSessions()]);
       const focus = latestFocusArea(sessions) as FocusArea | null;
+      setPick({
+        calibration,
+        baseIndex: count,
+        coachFocus: focus,
+        skippedTo: null,
+      });
       setState({
         phase: "ready",
         spec: nextExercise(calibration, count, focus),
@@ -69,6 +86,26 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       setState({ phase: "no-calibration" });
     }
   }, [freeSing]);
+
+  /** Swap in a different drill without recording this one first. */
+  const skipToDifferent = () => {
+    if (!pick || state.phase !== "ready" || !state.spec) return;
+    const from = pick.skippedTo ?? pick.baseIndex;
+    const { spec, index } = skipExercise(pick.calibration, from, state.spec);
+    setPick({ ...pick, skippedTo: index });
+    setState({ phase: "ready", spec });
+  };
+
+  /** Back to what the app offered on arrival — the coach's focus drove it only
+   * once there is coaching history, but it is restorable either way. */
+  const restoreSuggested = () => {
+    if (!pick) return;
+    setPick({ ...pick, skippedTo: null });
+    setState({
+      phase: "ready",
+      spec: nextExercise(pick.calibration, pick.baseIndex, pick.coachFocus),
+    });
+  };
 
   useEffect(() => {
     void loadExercise();
@@ -191,6 +228,30 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
               />
             </Box>
           </Flex>
+          {state.phase === "ready" && (
+            <Flex mt={4} gap={4} align="center" wrap="wrap">
+              <Button
+                size="sm"
+                variant="ghost"
+                colorPalette="teal"
+                onClick={skipToDifferent}
+              >
+                Not this one — give me a different exercise
+              </Button>
+              {pick && pick.skippedTo !== null && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  colorPalette="coral"
+                  onClick={restoreSuggested}
+                >
+                  {pick.coachFocus
+                    ? "Back to the coach’s pick"
+                    : "Back to the suggested exercise"}
+                </Button>
+              )}
+            </Flex>
+          )}
         </Box>
       )}
       {!spec && (

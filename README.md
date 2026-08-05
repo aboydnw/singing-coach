@@ -68,6 +68,37 @@ yarn dev &
 uv run python evals/coach_eval.py
 ```
 
+## Session recording for product testing
+
+Dev servers and Vercel **preview** deployments carry a floating record button
+([riffrec](https://github.com/kieranklaassen/riffrec)). It captures the screen, optional voice
+narration, clicks, navigation, network outcomes and console errors, then downloads a
+`riffrec-*.zip`. Drop those in a gitignored `.feedback/` directory for an agent to read.
+
+Production never gets it. `next.config.ts` resolves `riffrec` to an empty module on production
+builds, so it is absent from the client bundle rather than merely inert — the runtime guard in
+[`components/DevFeedback.tsx`](components/DevFeedback.tsx) alone would not achieve that, because
+webpack registers a dynamic import as a dependency while parsing and emits its chunk regardless.
+To check after a change:
+
+```bash
+NEXT_PUBLIC_VERCEL_ENV=production yarn build && grep -rl riffrec .next/static/   # expect no match
+NEXT_PUBLIC_VERCEL_ENV=preview    yarn build && grep -rl riffrec .next/static/   # expect a match
+```
+
+Two things that will silently cost you the button:
+
+- **Preview detection needs `NEXT_PUBLIC_VERCEL_ENV`,** which arrives only while the Vercel project
+  has *Automatically expose System Environment Variables* enabled (the default). Without it, a
+  preview build is indistinguishable from production and the recorder is stripped.
+- **Screen capture needs a secure context.** Preview URLs are HTTPS, so they just work. Locally on
+  a headless VM, `http://<vm-ip>:3000` is *not* a secure context and the browser blocks capture with
+  no error. Tunnel instead of using `--host`, which makes it `localhost` on your laptop:
+
+  ```bash
+  ssh -N -L 3000:localhost:3000 user@dev-server
+  ```
+
 ## Deployment
 
 The app deploys to Vercel from this repo. Requirements beyond the defaults:
