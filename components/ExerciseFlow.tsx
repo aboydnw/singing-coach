@@ -93,20 +93,27 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       }
       setState({ phase: "coaching", spec, analysis });
 
-      const sessions = await listSessions();
-      let coaching: CoachingResult | null = null;
-      let coachingError: string | null = null;
-      try {
-        coaching = await coach(analysis.measurements, spec, toHistory(sessions));
-      } catch (error) {
-        coachingError = error instanceof Error ? error.message : "coaching call failed";
-      }
       const sessionId = await insertSession({
         spec,
         measurements: analysis.measurements,
-        coaching,
+        coaching: null,
         audioKey: storageKey,
       });
+
+      let coaching: CoachingResult | null = null;
+      let coachingError: string | null = null;
+      try {
+        const sessions = await listSessions();
+        coaching = await coach(
+          analysis.measurements,
+          spec,
+          toHistory(sessions.filter((s) => s.id !== sessionId)),
+        );
+        await updateSessionCoaching(sessionId, coaching);
+      } catch (error) {
+        coaching = null;
+        coachingError = error instanceof Error ? error.message : "coaching call failed";
+      }
       setState({ phase: "done", spec, analysis, coaching, coachingError, sessionId });
     } catch (error) {
       clearTimeout(hintTimer);

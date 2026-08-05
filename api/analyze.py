@@ -11,6 +11,7 @@ pitch chart draws; Measurements alone carries only scalars.
 
 import json
 import os
+import re
 import sys
 import tempfile
 from http.server import BaseHTTPRequestHandler
@@ -36,6 +37,17 @@ from singing_coach.models import ExerciseSpec
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 BUCKET = "recordings"
+MAX_AUDIO_BYTES = 25 * 1024 * 1024
+
+# The function reads Storage with the service role, so this check replaces RLS.
+# One filename segment under the caller's own uid - no dots, no slashes, no
+# traversal - matching exactly what the Recorder uploads.
+OBJECT_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+\.wav$")
+
+
+def _storage_key_owned_by(storage_key: str, uid: str) -> bool:
+    prefix, _, name = storage_key.partition("/")
+    return prefix == uid and bool(OBJECT_NAME_RE.fullmatch(name))
 
 _jwks_client = None
 
@@ -60,27 +72,30 @@ def _verify_jwt(auth_header: str | None) -> str:
 def _download(storage_key: str, dest: Path) -> None:
     url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{storage_key}"
     with httpx.Client(timeout=60) as client:
-        response = client.get(
-            url, headers={"Authorization": f"Bearer {SERVICE_ROLE_KEY}"}
-        )
-    if response.status_code == 404:
-        raise FileNotFoundError(storage_key)
-    response.raise_for_status()
-    dest.write_bytes(response.content)
+        with client.stream(
+            "GET", url, headers={"Authorization": f"Bearer {SERVICE_ROLE_KEY}"}
+        ) as response:
+            if response.status_code == 404:
+                raise FileNotFoundError(storage_key)
+            response.raise_for_status()
+            written = 0
+            with dest.open("wb") as f:
+                for chunk in response.iter_bytes():
+                    written += len(chunk)
+                    if written > MAX_AUDIO_BYTES:
+                        raise ValueError("recording exceeds the size limit")
+                    f.write(chunk)
 
 
 def _round(values: np.ndarray, digits: int) -> list:
     return [round(float(v), digits) for v in values]
 
 
-def run_analysis(body: dict) -> dict:
+def run_analysis(body: dict, spec: ExerciseSpec | None) -> dict:
     storage_key = body["storage_key"]
     mode = body.get("mode", "full")
-    spec_json = body.get("exercise_spec")
-    spec = ExerciseSpec(**spec_json) if spec_json else None
 
-    suffix = Path(storage_key).suffix or ".wav"
-    fd, tmp_name = tempfile.mkstemp(suffix=suffix, dir="/tmp")
+    fd, tmp_name = tempfile.mkstemp(suffix=".wav", dir="/tmp")
     os.close(fd)
     tmp_path = Path(tmp_name)
     try:
@@ -102,8 +117,8 @@ def run_analysis(body: dict) -> dict:
                 result.accuracy = accuracy.score(spec, times, f0, confidence)
             measurements = json.loads(result.model_dump_json())
 
-        voiced = (confidence >= 0.5) & (f0 > 0)
-        f0_midi = np.where(voiced, 69.0 + 12.0 * np.log2(np.maximum(f0, 1e-6) / 440.0), np.nan)
+        voiced = (confidence >= accuracy.MIN_CONFIDENCE) & (f0 > 0)
+        f0_midi = np.where(voiced, pitch.hz_to_midi(np.maximum(f0, 1e-6)), np.nan)
         return {
             "measurements": measurements,
             "pitch_median_midi": pitch_median_midi,
@@ -140,13 +155,24 @@ class handler(BaseHTTPRequestHandler):
             return
 
         storage_key = body.get("storage_key", "")
-        if not storage_key or not storage_key.startswith(f"{uid}/"):
+        if not isinstance(storage_key, str) or not _storage_key_owned_by(
+            storage_key, uid
+        ):
             self._reply(403, {"error": "storage key not owned by caller"})
             return
 
+        spec_json = body.get("exercise_spec")
         try:
-            self._reply(200, run_analysis(body))
+            spec = ExerciseSpec(**spec_json) if spec_json else None
+        except (TypeError, ValueError):
+            self._reply(400, {"error": "invalid exercise_spec"})
+            return
+
+        try:
+            self._reply(200, run_analysis(body, spec))
         except FileNotFoundError:
             self._reply(404, {"error": "recording not found"})
+        except ValueError:
+            self._reply(413, {"error": "recording exceeds the size limit"})
         except Exception as exc:
             self._reply(500, {"error": f"{type(exc).__name__} during analysis"})

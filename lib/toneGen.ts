@@ -10,6 +10,7 @@ export function playSequence(
   durationPerNoteS: number,
 ): { done: Promise<void>; stop: () => void } {
   const ctx = new AudioContext();
+  void ctx.resume();
   const gain = ctx.createGain();
   gain.gain.value = 0.5;
   gain.connect(ctx.destination);

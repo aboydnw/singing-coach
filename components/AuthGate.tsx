@@ -41,31 +41,40 @@ function SignIn() {
   const signIn = async () => {
     setBusy(true);
     setStatus(null);
-    const { error } = await supabase().auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) setStatus(error.message);
-    setBusy(false);
+    try {
+      const { error } = await supabase().auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const signUp = async () => {
     setBusy(true);
     setStatus(null);
-    const { error } = await supabase().auth.signUp({ email, password });
-    setStatus(error ? error.message : "Check your email to confirm the account.");
-    setBusy(false);
+    try {
+      const { error } = await supabase().auth.signUp({ email, password });
+      setStatus(error ? error.message : "Check your email to confirm the account.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const magicLink = async () => {
     setBusy(true);
     setStatus(null);
-    const { error } = await supabase().auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setStatus(error ? error.message : "Magic link sent - check your email.");
-    setBusy(false);
+    try {
+      const { error } = await supabase().auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      setStatus(error ? error.message : "Magic link sent - check your email.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
