@@ -38,6 +38,7 @@ describe("scorecard thresholds (pinned to _metrics_markdown's values)", () => {
   it.each([
     [0.01, "good"],
     [0.015, "watch"],
+    [0.02, "watch"],
     [0.021, "work"],
   ])("jitter %s is %s", (jitter, level) => {
     expect(
@@ -48,6 +49,7 @@ describe("scorecard thresholds (pinned to _metrics_markdown's values)", () => {
   it.each([
     [0.05, "good"],
     [0.08, "watch"],
+    [0.1, "watch"],
     [0.11, "work"],
   ])("shimmer %s is %s", (shimmer, level) => {
     expect(
@@ -74,7 +76,9 @@ describe("scorecard thresholds (pinned to _metrics_markdown's values)", () => {
   it.each([
     [5.0, "good"],
     [6.5, "good"],
+    [4.0, "watch"],
     [4.5, "watch"],
+    [7.0, "watch"],
     [7.5, "work"],
   ])("vibrato rate %s Hz is %s", (rate, level) => {
     expect(levelOf({ ...HEALTHY, vibrato_rate_hz: rate }, "Vibrato rate")).toBe(level);
@@ -83,7 +87,9 @@ describe("scorecard thresholds (pinned to _metrics_markdown's values)", () => {
   it.each([
     [50, "good"],
     [100, "good"],
+    [20, "watch"],
     [30, "watch"],
+    [120, "watch"],
     [130, "work"],
   ])("vibrato depth %s cents is %s", (extent, level) => {
     expect(levelOf({ ...HEALTHY, vibrato_extent_cents: extent }, "Vibrato depth")).toBe(

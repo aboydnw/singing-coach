@@ -28,9 +28,14 @@ export function Recorder({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const disposedRef = useRef(false);
 
   useEffect(() => {
+    disposedRef.current = false;
     return () => {
+      // Ending the tracks fires the recorder's stop event, so onstop must
+      // know this is teardown - not a take to encode and upload.
+      disposedRef.current = true;
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
@@ -46,6 +51,7 @@ export function Recorder({
       recorder.onstop = async () => {
         streamRef.current = null;
         stream?.getTracks().forEach((track) => track.stop());
+        if (disposedRef.current) return;
         try {
           setState({ phase: "encoding" });
           const blob = new Blob(chunksRef.current, {
