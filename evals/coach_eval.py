@@ -16,6 +16,7 @@ deployed route.
 import json
 import os
 import sys
+import urllib.parse
 
 import httpx
 
@@ -109,15 +110,27 @@ def _env(*names: str) -> str:
     raise KeyError(names[0])
 
 
+def _require_https_for_remote(url: str) -> str:
+    """Credentials and tokens travel over these URLs, so plain http is only
+    acceptable when it never leaves the machine."""
+    parsed = urllib.parse.urlparse(url)
+    loopback = parsed.hostname in ("localhost", "127.0.0.1", "::1")
+    if parsed.scheme != "https" and not loopback:
+        raise SystemExit(f"refusing to send credentials over {url!r}; use https")
+    return url
+
+
 def _access_token() -> str:
-    supabase_url = _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL").rstrip("/")
+    supabase_url = _require_https_for_remote(
+        _env("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL").rstrip("/")
+    )
     anon_key = _env("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY")
     response = httpx.post(
         f"{supabase_url}/auth/v1/token?grant_type=password",
         headers={"apikey": anon_key},
         json={
-            "email": os.environ["EVAL_EMAIL"],
-            "password": os.environ["EVAL_PASSWORD"],
+            "email": _env("EVAL_EMAIL"),
+            "password": os.environ["EVAL_PASSWORD"].strip(" \t\r\n"),
         },
         timeout=30,
     )
@@ -143,7 +156,9 @@ def _call_route(
 
 
 def main() -> int:
-    base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    base_url = _require_https_for_remote(
+        sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
+    )
     token = _access_token()
     failures = 0
     for case in CASES:
