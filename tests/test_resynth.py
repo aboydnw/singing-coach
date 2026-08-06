@@ -22,6 +22,17 @@ def _cents_spread(path: Path) -> float:
     return float(np.std(1200.0 * np.log2(voiced / median)))
 
 
+def _median_hz(path: Path) -> float:
+    f0 = resynth.load(path).to_pitch().selected_array["frequency"]
+    return float(np.median(f0[f0 > 0]))
+
+
+def _cents(n: float, around_hz: float) -> float:
+    """n cents expressed in Hz at a given pitch, so the tolerance stays musical
+    rather than drifting with the note."""
+    return around_hz * (2.0 ** (n / 1200.0) - 1.0)
+
+
 def _measure(path: Path):
     sound = resynth.load(path)
     samples = sound.values[0].astype(np.float32)
@@ -41,9 +52,7 @@ def test_steady_pitch_removes_the_planted_vibrato(steady):
 
 
 def test_steady_pitch_keeps_the_original_note(steady):
-    before = _measure(FIXTURE)
-    after = _measure(steady)
-    assert after.vibrato_extent_cents < before.vibrato_extent_cents
+    assert abs(_median_hz(steady) - _median_hz(FIXTURE)) < _cents(25, _median_hz(FIXTURE))
 
 
 def test_injected_vibrato_measures_back_at_the_requested_rate(tmp_path):

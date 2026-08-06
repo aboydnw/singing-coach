@@ -1,4 +1,8 @@
-import { analyzeResponseSchema, type AnalyzeResponse } from "@/lib/schema";
+import {
+  analyzeResponseSchema,
+  coachingResponseSchema,
+  type AnalyzeResponse,
+} from "@/lib/schema";
 import type { CoachingResponse, ExerciseSpec, Measurements } from "@/lib/schema";
 import { accessToken, supabase, userId } from "@/lib/supabase";
 
@@ -129,6 +133,5 @@ export async function coach(
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error ?? `coaching failed with status ${response.status}`);
   }
-  const { coachingResponseSchema } = await import("@/lib/schema");
   return coachingResponseSchema.parse(await response.json());
 }

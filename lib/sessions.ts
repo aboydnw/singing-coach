@@ -209,7 +209,13 @@ export function bestPriorTake(
     const contour = safeParse(row.contour_json) as Contour | null;
     if (!contour || !Array.isArray(contour.times) || contour.times.length === 0) continue;
 
-    if (best === null || cents < best.meanAbsCentsOff) {
+    // The tie-break compares timestamps rather than relying on the caller
+    // handing rows over newest-first, which listSessions happens to do today.
+    const better =
+      best === null ||
+      cents < best.meanAbsCentsOff ||
+      (cents === best.meanAbsCentsOff && row.ts > best.ts);
+    if (better) {
       best = { contour, ts: row.ts, meanAbsCentsOff: cents };
     }
   }

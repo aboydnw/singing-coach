@@ -11,6 +11,9 @@ describe("focus area enum", () => {
   it("rejects a coaching result with an unknown focus area", () => {
     const result = coachingResultSchema.safeParse({
       focus_area: "posture",
+      // Valid so that the focus area is the only reason this can fail.
+      state_id: "hypoadduction",
+      drill_id: "staccato_onsets",
       top_issue: "x",
       why: "y",
       drill: "z",

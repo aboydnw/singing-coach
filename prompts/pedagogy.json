@@ -57,7 +57,7 @@
       "sources": [
         "https://www.voicescience.org/lexicon/breathiness/",
         "https://vocaltoolkit.org/hypohyperphonation/",
-        "https://www.sciencedirect.com/science/article/abs/pii/S0892199718305502"
+        "https://www.voicescience.org/lexicon/phonatory-onset-types/"
       ]
     },
     {
@@ -104,7 +104,6 @@
       "caution": null,
       "sources": [
         "https://pubmed.ncbi.nlm.nih.gov/39909787/",
-        "https://www.sciencedirect.com/science/article/abs/pii/S0892199725000086",
         "https://pmc.ncbi.nlm.nih.gov/articles/PMC4629998/"
       ]
     },
@@ -151,9 +150,9 @@
       ],
       "caution": null,
       "sources": [
-        "https://medslpcollective.com/wp-content/uploads/2021/09/MedSLPCollective-Handout-Vocal-Function-Exercises.pdf",
         "https://uknowledge.uky.edu/cgi/viewcontent.cgi?article=1010&context=commdisorders_etds",
-        "https://www.sciencedirect.com/science/article/abs/pii/S0892199718305502"
+        "https://theadultspeechtherapyworkbook.com/vocal-function-exercises/",
+        "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4587821/"
       ]
     },
     {
@@ -244,7 +243,6 @@
       ],
       "caution": "A straight tone is a legitimate stylistic choice in pop, folk and musical theatre. Do not treat it as a fault unless the singer has said they want vibrato.",
       "sources": [
-        "https://www.thefreelibrary.com/The+Pedagogy+of+Vibrato:+PHYSIOLOGICAL+MECHANISMS,+ACOUSTIC...-a0856935700",
         "https://johnhenny.com/vocal-vibrato-and-how-to-develop-it/"
       ]
     },
@@ -289,7 +287,6 @@
       ],
       "caution": null,
       "sources": [
-        "https://www.thefreelibrary.com/The+Pedagogy+of+Vibrato:+PHYSIOLOGICAL+MECHANISMS,+ACOUSTIC...-a0856935700",
         "https://www.musicalboard.com/blog/2026-05-03-vibrato/"
       ]
     },
@@ -329,16 +326,16 @@
         }
       ],
       "cues": [
-        "Keep the buzz in the same spot when the vowel changes.",
-        "Open the vowel a little more with every step upward, as if starting a yawn.",
+        "Keep the sound landing on the same spot on the wall when the vowel changes.",
+        "Send each higher note further into the room, as if the far wall moved back a step.",
         "Aim for a sound that would carry to the back of a hall without getting louder."
       ],
       "caution": "Formant measurements are sensitive to microphone and room. Do not build strong claims on F1/F2 alone.",
       "sources": [
         "https://www.voicescience.org/lexicon/formant-tuning/",
         "https://www.voicescience.org/lexicon/formant-1/",
-        "https://ncvs.org/archive/pas/2004/abstracts/nix1.htm",
-        "https://theadultspeechtherapyworkbook.com/resonant-voice-therapy-exercises/"
+        "https://theadultspeechtherapyworkbook.com/resonant-voice-therapy-exercises/",
+        "https://www.singwise.com/articles/vowels-formants-modifications"
       ]
     }
   ]
