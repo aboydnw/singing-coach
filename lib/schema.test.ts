@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import coaching from "../prompts/coaching.json";
-import { coachingResultSchema, FOCUS_AREAS, measurementsSchema } from "./schema";
+import {
+  coachingModelOutputSchema,
+  coachingResultSchema,
+  FOCUS_AREAS,
+  measurementsSchema,
+} from "./schema";
 
 describe("focus area enum", () => {
   it("comes from prompts/coaching.json, the single source of truth", () => {
@@ -40,6 +45,31 @@ describe("focus area enum", () => {
   it("rejects a coaching result with no state or drill chosen", () => {
     const result = coachingResultSchema.safeParse({
       focus_area: FOCUS_AREAS[0],
+      top_issue: "x",
+      why: "y",
+      drill: "z",
+      encouragement: "w",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // The model output schema is deliberately looser than the response schema:
+  // a provider that ignores strict mode should reach the fallback rather than
+  // fail validation and cost the singer their coaching.
+  it("accepts model output that omits the identifiers", () => {
+    const result = coachingModelOutputSchema.safeParse({
+      focus_area: FOCUS_AREAS[0],
+      top_issue: "x",
+      why: "y",
+      drill: "z",
+      encouragement: "w",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("still rejects model output with an unknown focus area", () => {
+    const result = coachingModelOutputSchema.safeParse({
+      focus_area: "posture",
       top_issue: "x",
       why: "y",
       drill: "z",

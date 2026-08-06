@@ -231,4 +231,28 @@ describe("resolving what the model chose", () => {
     const resolved = resolveCoaching("nope", "nope", EMPTY);
     expect(resolved.state.drills.map((d) => d.id)).toContain(resolved.drill.id);
   });
+
+  // A provider that ignores the strict schema and omits a field should reach
+  // the fallback, not cost the singer their coaching.
+  it("falls back when the model omits both ids", () => {
+    const resolved = resolveCoaching(
+      undefined,
+      undefined,
+      measurements({ hnr_mean: 10 }),
+    );
+    expect(resolved.state.id).toBe("hypoadduction");
+    expect(resolved.used_fallback).toBe(true);
+  });
+
+  it("keeps a named drill when only the state id is missing", () => {
+    const resolved = resolveCoaching(undefined, "straw_phonation", EMPTY);
+    expect(resolved.state.id).toBe("pressed_phonation");
+    expect(resolved.drill.id).toBe("straw_phonation");
+  });
+
+  it("keeps a named state when only the drill id is missing", () => {
+    const resolved = resolveCoaching("vibrato_absent", undefined, EMPTY);
+    expect(resolved.state.id).toBe("vibrato_absent");
+    expect(resolved.state.drills.map((d) => d.id)).toContain(resolved.drill.id);
+  });
 });

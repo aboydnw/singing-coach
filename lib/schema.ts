@@ -48,6 +48,19 @@ export const coachingResultSchema = z.object({
   encouragement: z.string(),
 });
 
+/** What the model is allowed to hand back.
+ *
+ * The ids are optional here and required in coachingResultSchema on purpose.
+ * The request asks for both under a strict schema, but a provider that ignores
+ * strict mode and omits one should land in the deterministic fallback - which
+ * exists for exactly this - rather than failing validation and costing the
+ * singer their coaching. The route fills both in from the resolved state, so
+ * the response the client sees still always carries them. */
+export const coachingModelOutputSchema = coachingResultSchema.partial({
+  state_id: true,
+  drill_id: true,
+});
+
 export const drillSchema = z.object({
   id: z.string(),
   name: z.string(),
