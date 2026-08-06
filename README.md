@@ -65,7 +65,13 @@ yarn install             # TypeScript: app + tests
 uv run pytest            # analysis regression + parity + prompt-sync tests
 yarn test                # exercises/wav/schema tests
 yarn dev                 # Next.js dev server (needs .env.local, see .env.example)
+yarn storybook           # local component and pattern catalogue
+yarn design:check        # reject unexplained product-interface color literals
 ```
+
+Design foundations, reusable component contracts, workflow patterns and lifecycle labels live in
+[`docs/design/`](docs/design/README.md). Runtime behavior remains authoritative in the component;
+Storybook provides stable executable examples without depending on Supabase or OpenRouter.
 
 `yarn dev` serves the UI and the coach route. The Python `/api/analyze` function only runs on Vercel; point local testing at a preview deployment or use `vercel dev`.
 
@@ -97,10 +103,10 @@ NEXT_PUBLIC_VERCEL_ENV=preview    yarn build && grep -rl riffrec .next/static/  
 Two things that will silently cost you the button:
 
 - **Preview detection needs `NEXT_PUBLIC_VERCEL_ENV`,** which arrives only while the Vercel project
-  has *Automatically expose System Environment Variables* enabled (the default). Without it, a
+  has _Automatically expose System Environment Variables_ enabled (the default). Without it, a
   preview build is indistinguishable from production and the recorder is stripped.
 - **Screen capture needs a secure context.** Preview URLs are HTTPS, so they just work. Locally on
-  a headless VM, `http://<vm-ip>:3000` is *not* a secure context and the browser blocks capture with
+  a headless VM, `http://<vm-ip>:3000` is _not_ a secure context and the browser blocks capture with
   no error. Tunnel instead of using `--host`, which makes it `localhost` on your laptop:
 
   ```bash
