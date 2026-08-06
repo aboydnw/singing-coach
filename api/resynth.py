@@ -121,14 +121,29 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # Identity first: nothing below should run, or allocate, for a caller
         # who has not proved who they are.
+        #
+        # A token we can reject and a JWKS endpoint we cannot reach are
+        # different answers. Reporting an unreachable Supabase as 401 tells the
+        # singer to sign in again, which cannot help and hides an outage.
         try:
             uid = _verify_jwt(self.headers.get("Authorization"))
-        except Exception:
+        except jwt.PyJWKClientConnectionError:
+            self._reply(503, {"error": "could not reach the identity provider"})
+            return
+        except (PermissionError, jwt.InvalidTokenError, jwt.PyJWKClientError):
             self._reply(401, {"error": "invalid or missing token"})
+            return
+        except Exception:
+            self._reply(500, {"error": "could not verify the token"})
             return
 
         try:
             length = int(self.headers.get("Content-Length", 0))
+            # A negative length clears the cap below and makes read() run to
+            # EOF, so the bound has to be two-sided.
+            if length < 0:
+                self._reply(400, {"error": "invalid Content-Length"})
+                return
             if length > MAX_BODY_BYTES:
                 self._reply(413, {"error": "request body too large"})
                 return

@@ -139,16 +139,17 @@ export type ResolvedCoaching = {
 };
 
 /** Resolve the model's chosen ids against the asset, failing closed. An
- * unknown id never propagates: a real drill for a plausible state beats an
- * invented one, so a miss falls back to the signature match rather than to
- * whatever the model wrote. */
+ * unknown or absent id never propagates: a real drill for a plausible state
+ * beats an invented one, so a miss falls back to the signature match rather
+ * than to whatever the model wrote - or to nothing, when a provider ignores
+ * the strict schema and omits the field entirely. */
 export function resolveCoaching(
-  stateId: string,
-  drillId: string,
+  stateId: string | undefined,
+  drillId: string | undefined,
   measurements: Measurements,
 ): ResolvedCoaching {
-  const chosenState = findState(stateId);
-  const chosenDrill = findDrill(drillId);
+  const chosenState = stateId === undefined ? null : findState(stateId);
+  const chosenDrill = drillId === undefined ? null : findDrill(drillId);
 
   if (chosenState && chosenDrill) {
     // A drill from another state is not a miss worth discarding - the families
@@ -156,7 +157,7 @@ export function resolveCoaching(
     return { state: chosenState, drill: chosenDrill, used_fallback: false };
   }
   if (!chosenState && chosenDrill) {
-    const owner = stateForDrill(drillId);
+    const owner = stateForDrill(chosenDrill.id);
     if (owner) return { state: owner, drill: chosenDrill, used_fallback: true };
   }
 

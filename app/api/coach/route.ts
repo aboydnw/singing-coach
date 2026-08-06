@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import coaching from "@/prompts/coaching.json";
 import {
-  coachingResultSchema,
+  coachingModelOutputSchema,
   exerciseSpecSchema,
   measurementsSchema,
 } from "@/lib/schema";
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         userMessage,
         timeoutMs: Math.min(attempt === 0 ? FIRST_ATTEMPT_MS : remaining, remaining),
       });
-      const result = coachingResultSchema.safeParse(raw);
+      const result = coachingModelOutputSchema.safeParse(raw);
       if (result.success) {
         const resolved = resolveCoaching(
           result.data.state_id,
