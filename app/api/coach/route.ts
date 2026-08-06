@@ -6,9 +6,16 @@ import {
   exerciseSpecSchema,
   measurementsSchema,
 } from "@/lib/schema";
+import { DRILL_IDS, STATE_IDS, renderCatalogue, resolveCoaching } from "@/lib/pedagogy";
 import { z } from "zod";
 
 export const maxDuration = 120;
+
+/** Below this many prior sessions the coach reports what it measured but does
+ * not name a chronic problem. Scoring a stranger against universal thresholds
+ * and calling the result a diagnosis is how a first session invents a problem
+ * out of noise. */
+const CALIBRATION_SESSIONS = 3;
 
 // Open-weight reasoning models routed through require_parameters providers
 // can take well over 25s; a timeout here surfaces as a dead coaching step.
@@ -27,6 +34,8 @@ const requestSchema = z.object({
           focus_area: z.string(),
           top_issue: z.string(),
           drill: z.string(),
+          state_id: z.string().optional(),
+          drill_id: z.string().optional(),
         })
         .optional(),
     }),
@@ -62,8 +71,9 @@ function stripNulls(value: unknown): unknown {
 }
 
 /** Mirrors coach.py's _format_user_message: exercise, measurements
- * (nulls stripped, as model_dump_json(exclude_none=True) did), history, task. */
-function formatUserMessage(body: CoachRequest): string {
+ * (nulls stripped, as model_dump_json(exclude_none=True) did), history,
+ * pedagogy catalogue, task. */
+function formatUserMessage(body: CoachRequest, calibrating: boolean): string {
   const blocks: string[] = [];
   if (body.exercise_spec !== null) {
     blocks.push(
@@ -74,11 +84,32 @@ function formatUserMessage(body: CoachRequest): string {
     `<measurements>\n${JSON.stringify(stripNulls(body.measurements), null, 2)}\n</measurements>`,
   );
   blocks.push(`<history>\n${JSON.stringify(body.history, null, 2)}\n</history>`);
+  blocks.push(`<pedagogy>\n${renderCatalogue()}\n</pedagogy>`);
   blocks.push(
     "<task>Coach me. Lead with the most important thing to work on. " +
-      "Specific, actionable. Follow up on your prior advice if history shows any.</task>",
+      "Specific, actionable. Follow up on your prior advice if history shows any. " +
+      "Choose a state_id and a drill_id from the pedagogy block." +
+      (calibrating
+        ? " calibrating: true - this singer does not have enough history for a" +
+          " baseline yet, so describe what you measured without diagnosing a" +
+          " chronic problem, and say you are still learning their normal range."
+        : "") +
+      "</task>",
   );
   return blocks.join("\n\n");
+}
+
+/** The strict schema sent to OpenRouter, with the closed sets injected from
+ * prompts/pedagogy.json. Keeping the enums out of coaching.json means the asset
+ * stays the single source of truth for which states and drills exist - adding a
+ * drill needs one edit, not two that can drift apart. */
+function buildResponseSchema() {
+  const properties = {
+    ...coaching.schema.properties,
+    state_id: { ...coaching.schema.properties.state_id, enum: STATE_IDS },
+    drill_id: { ...coaching.schema.properties.drill_id, enum: DRILL_IDS },
+  };
+  return { ...coaching.schema, properties, additionalProperties: false };
 }
 
 /** An OpenRouter failure that knows whether trying again could help. Credit,
@@ -142,7 +173,7 @@ async function callOpenRouter(userMessage: string): Promise<unknown> {
         json_schema: {
           name: "give_coaching",
           strict: true,
-          schema: { ...coaching.schema, additionalProperties: false },
+          schema: buildResponseSchema(),
         },
       },
       provider: { require_parameters: true },
@@ -202,14 +233,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
   }
 
-  const userMessage = formatUserMessage(body);
+  const calibrating = body.history.length < CALIBRATION_SESSIONS;
+  const userMessage = formatUserMessage(body, calibrating);
   let lastError = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const raw = await callOpenRouter(userMessage);
       const result = coachingResultSchema.safeParse(raw);
       if (result.success) {
-        return NextResponse.json(result.data);
+        const resolved = resolveCoaching(
+          result.data.state_id,
+          result.data.drill_id,
+          body.measurements,
+        );
+        if (resolved.used_fallback) {
+          console.warn(
+            `coach: unresolved ids state_id=${result.data.state_id} ` +
+              `drill_id=${result.data.drill_id}; fell back to ${resolved.state.id}`,
+          );
+        }
+        return NextResponse.json({
+          ...result.data,
+          state_id: resolved.state.id,
+          drill_id: resolved.drill.id,
+          calibrating,
+          resolved: {
+            state_id: resolved.state.id,
+            state_name: resolved.state.display_name,
+            remediation_family: resolved.state.remediation_family,
+            audible_correction: resolved.state.audible_correction,
+            drill: resolved.drill,
+            cues: resolved.state.cues,
+            caution: resolved.state.caution,
+            used_fallback: resolved.used_fallback,
+          },
+        });
       }
       lastError = "model returned a malformed coaching result";
     } catch (error) {
