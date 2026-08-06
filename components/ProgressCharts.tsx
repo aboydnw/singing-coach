@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SessionRow } from "@/lib/sessions";
+import { CHART_THEME } from "@/lib/chartTheme";
 
 /** The six panels from PROGRESS_PANELS: same metrics, same healthy bands,
  * gaps (not interpolation) where a session lacks a metric. */
@@ -101,28 +102,33 @@ export function ProgressCharts({ sessions }: { sessions: SessionRow[] }) {
               <Box h="40">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data}>
-                    <CartesianGrid stroke="#EADFCE" />
-                    <XAxis dataKey="i" tick={false} label={undefined} stroke="#8A7566" />
+                    <CartesianGrid stroke={CHART_THEME.grid} />
+                    <XAxis
+                      dataKey="i"
+                      tick={false}
+                      label={undefined}
+                      stroke={CHART_THEME.axis}
+                    />
                     <YAxis
-                      stroke="#8A7566"
+                      stroke={CHART_THEME.axis}
                       width={44}
                       label={{
                         value: panel.ylabel,
                         angle: -90,
                         position: "insideLeft",
                         fontSize: 10,
-                        fill: "#8A7566",
+                        fill: CHART_THEME.axis,
                       }}
                     />
                     <ReferenceArea
                       y1={panel.healthy[0]}
                       y2={bandTop}
-                      fill="#4C9A70"
+                      fill={CHART_THEME.healthy}
                       fillOpacity={0.12}
                     />
                     <Line
                       dataKey="value"
-                      stroke="#D64B2A"
+                      stroke={CHART_THEME.measured}
                       strokeWidth={2}
                       dot={{ r: 2 }}
                       isAnimationActive={false}

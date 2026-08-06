@@ -33,6 +33,10 @@ function row(overrides: Partial<SessionRow> & { id: string }): SessionRow {
     coaching_json: null,
     audio_key: "uid/a.wav",
     contour_json: JSON.stringify(contour(50)),
+    practice_session_id: null,
+    sequence_number: null,
+    parent_attempt_id: null,
+    attempt_kind: null,
     ...overrides,
   };
 }

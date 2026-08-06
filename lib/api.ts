@@ -4,6 +4,7 @@ import {
   type AnalyzeResponse,
 } from "@/lib/schema";
 import type { CoachingResponse, ExerciseSpec, Measurements } from "@/lib/schema";
+import type { ContextAnchor } from "@/lib/schema";
 import { accessToken, supabase, userId } from "@/lib/supabase";
 
 export async function uploadRecording(
@@ -134,4 +135,43 @@ export async function coach(
     throw new Error(body.error ?? `coaching failed with status ${response.status}`);
   }
   return coachingResponseSchema.parse(await response.json());
+}
+
+export async function streamPracticeCoach(
+  practiceSessionId: string,
+  message: string,
+  contextAnchor: ContextAnchor | null,
+  onDelta: (delta: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+  const response = await fetch("/api/practice/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+    body: JSON.stringify({
+      practice_session_id: practiceSessionId,
+      message,
+      context_anchor: contextAnchor,
+    }),
+  });
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `coaching failed with status ${response.status}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let complete = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const delta = decoder.decode(value, { stream: true });
+    complete += delta;
+    onDelta(delta);
+  }
+  return complete;
 }
