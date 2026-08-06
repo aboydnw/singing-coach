@@ -302,8 +302,8 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
     return (
       <Stack gap={3} align="start">
         <Text color="coral.600">
-          ⚠️ <b>Could not load an exercise.</b> Your calibration is fine — something else
-          went wrong.
+          ⚠️ <b>Could not load an exercise.</b> We could not confirm whether your
+          calibration or session history was available.
         </Text>
         <Text color="cream.600" fontSize="sm">
           {state.message}
