@@ -5,10 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { PitchChart } from "@/components/PitchChart";
 import { Recorder } from "@/components/Recorder";
 import { Scorecard } from "@/components/Scorecard";
+import { Drill } from "@/components/Drill";
+import { HearItRight } from "@/components/HearItRight";
 import { analyze, coach } from "@/lib/api";
-import { nextExercise, skipExercise } from "@/lib/exercises";
+import { exerciseForDrill, nextExercise, skipExercise } from "@/lib/exercises";
 import { playSequence } from "@/lib/toneGen";
 import {
+  bestPriorTake,
   insertSession,
   latestCalibration,
   latestFocusArea,
@@ -17,11 +20,13 @@ import {
   toHistory,
   updateSessionCoaching,
 } from "@/lib/sessions";
+import type { Ghost } from "@/lib/sessions";
 import type {
   AnalyzeResponse,
   Calibration,
-  CoachingResult,
+  CoachingResponse,
   ExerciseSpec,
+  Measurements,
   FocusArea,
 } from "@/lib/schema";
 
@@ -35,10 +40,55 @@ type FlowState =
       phase: "done";
       spec: ExerciseSpec | null;
       analysis: AnalyzeResponse;
-      coaching: CoachingResult | null;
+      coaching: CoachingResponse | null;
       coachingError: string | null;
       sessionId: string;
+      audioKey: string;
     };
+
+/** How this take compares to the singer's own best previous attempt at the same
+ * drill. Absolute thresholds do not transfer between people; a personal best
+ * does, which is why this sits next to the chart rather than in the scorecard. */
+function GhostNote({
+  ghost,
+  measurements,
+}: {
+  ghost: Ghost | null;
+  measurements: Measurements | null;
+}) {
+  if (!ghost) {
+    return (
+      <Text color="cream.600" fontSize="sm">
+        No previous take of this exercise yet — this one becomes the mark to beat.
+      </Text>
+    );
+  }
+  const now = measurements?.accuracy?.mean_abs_cents_off ?? null;
+  const when = new Date(ghost.ts).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  if (now === null) {
+    return (
+      <Text color="cream.600" fontSize="sm">
+        Faded line is your best take of this exercise, from {when}.
+      </Text>
+    );
+  }
+  const delta = ghost.meanAbsCentsOff - now;
+  const rounded = Math.abs(Math.round(delta));
+  const verdict =
+    rounded === 0
+      ? `level with your best, from ${when}`
+      : delta > 0
+        ? `${rounded} cents closer than your best, from ${when}`
+        : `${rounded} cents further off than your best, from ${when}`;
+  return (
+    <Text color={delta >= 0 ? "teal.600" : "cream.600"} fontSize="sm">
+      {verdict}.
+    </Text>
+  );
+}
 
 /** What the coach picked for this visit, kept so a skip can walk the rotation
  * forward without refetching, and so the coach's pick can be restored. */
@@ -58,8 +108,10 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
   const [playing, setPlaying] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [coldStartHint, setColdStartHint] = useState(false);
+  const [ghost, setGhost] = useState<Ghost | null>(null);
 
   const loadExercise = useCallback(async () => {
+    setGhost(null);
     if (freeSing) {
       setState({ phase: "ready", spec: null });
       return;
@@ -94,6 +146,25 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
     const { spec, index } = skipExercise(pick.calibration, from, state.spec);
     setPick({ ...pick, skippedTo: index });
     setState({ phase: "ready", spec });
+  };
+
+  /** Jump straight to the drill the coach just assigned. Skips the rotation
+   * because the point of the button is to do that specific drill now. */
+  const practiceDrill = (exerciseType: string) => {
+    if (!pick || state.phase !== "done" || !state.coaching) return;
+    const drill = state.coaching.resolved.drill;
+    setGhost(null);
+    try {
+      const spec = exerciseForDrill(
+        pick.calibration,
+        pick.baseIndex,
+        exerciseType,
+        drill.name,
+      );
+      setState({ phase: "ready", spec });
+    } catch {
+      void loadExercise();
+    }
   };
 
   /** Back to what the app offered on arrival — the coach's focus drove it only
@@ -136,12 +207,14 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         measurements: analysis.measurements,
         coaching: null,
         audioKey: storageKey,
+        contour: analysis.contour,
       });
 
-      let coaching: CoachingResult | null = null;
+      let coaching: CoachingResponse | null = null;
       let coachingError: string | null = null;
       try {
         const sessions = await listSessions();
+        setGhost(bestPriorTake(sessions, spec, sessionId));
         coaching = await coach(
           analysis.measurements,
           spec,
@@ -152,7 +225,15 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         coaching = null;
         coachingError = error instanceof Error ? error.message : "coaching call failed";
       }
-      setState({ phase: "done", spec, analysis, coaching, coachingError, sessionId });
+      setState({
+        phase: "done",
+        spec,
+        analysis,
+        coaching,
+        coachingError,
+        sessionId,
+        audioKey: storageKey,
+      });
     } catch (error) {
       clearTimeout(hintTimer);
       setColdStartHint(false);
@@ -291,7 +372,12 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
 
       {(state.phase === "coaching" || state.phase === "done") && (
         <Stack gap={5}>
-          <PitchChart contour={state.analysis.contour} spec={spec} />
+          <Stack gap={2}>
+            <PitchChart contour={state.analysis.contour} spec={spec} ghost={ghost} />
+            {spec && (
+              <GhostNote ghost={ghost} measurements={state.analysis.measurements} />
+            )}
+          </Stack>
           {state.analysis.measurements && (
             <Scorecard measurements={state.analysis.measurements} />
           )}
@@ -301,7 +387,13 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       {state.phase === "done" && (
         <Box bg="panel" borderWidth="1px" borderColor="grid" rounded="md" p={5}>
           {state.coaching ? (
-            <Stack gap={2}>
+            <Stack gap={3}>
+              {state.coaching.calibrating && (
+                <Text color="cream.600" fontSize="sm">
+                  Still learning your normal range — the first few sessions set your
+                  baseline, so treat this as a first impression rather than a diagnosis.
+                </Text>
+              )}
               <Heading size="md" color="coral.600">
                 🎯 {state.coaching.top_issue}
               </Heading>
@@ -309,6 +401,13 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
               <Text color="ink.900">
                 <b>Try this:</b> {state.coaching.drill}
               </Text>
+              <Drill resolved={state.coaching.resolved} onPractice={practiceDrill} />
+              {state.coaching.resolved.audible_correction && (
+                <HearItRight
+                  audioKey={state.audioKey}
+                  correction={state.coaching.resolved.audible_correction}
+                />
+              )}
               <Text color="cream.600" fontStyle="italic">
                 {state.coaching.encouragement}
               </Text>

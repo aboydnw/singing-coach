@@ -1,7 +1,12 @@
 """Prompt eval harness for the coaching call.
 
 Each case plants a specific vocal problem in the measurements and checks that
-the coach's structured focus_area lands on it. Calls the real TS route over
+the coach's structured focus_area AND its diagnostic state_id land on it. The
+state check is the stronger of the two: it is a closed-set classification into
+prompts/pedagogy.json, so a miss is unambiguous rather than a judgement about
+prose. The harness also counts fallbacks - a resolved.used_fallback means the
+model named a state or drill that does not exist, which is a prompt bug even
+when the focus area happened to be right. Calls the real TS route over
 HTTP so the eval exercises the code path users hit. The route requires a
 signed-in user, so provide account credentials plus the Supabase project:
 
@@ -76,18 +81,25 @@ CASES = [
         "spec": SUSTAINED_SPEC,
         "measurements": Measurements(**{**HEALTHY, "jitter_local": 0.045, "shimmer_local": 0.14}),
         "expected": {"breath_support"},
+        "expected_states": {"breath_support_deficit"},
     },
     {
         "name": "breathy tone (low HNR)",
         "spec": SUSTAINED_SPEC,
         "measurements": Measurements(**{**HEALTHY, "hnr_mean": 9.0}),
         "expected": {"tone_quality", "breath_support"},
+        "expected_states": {"hypoadduction", "breath_support_deficit"},
     },
     {
         "name": "consistently flat (accuracy planted at -76 cents)",
         "spec": SCALE_SPEC,
         "measurements": Measurements(**HEALTHY, accuracy=_off_pitch_accuracy()),
         "expected": {"pitch_accuracy"},
+        "expected_states": {
+            "breath_support_deficit",
+            "registration_instability",
+            "vowel_placement",
+        },
     },
     {
         "name": "no vibrato on a sustained note",
@@ -96,6 +108,7 @@ CASES = [
             **{**HEALTHY, "vibrato_rate_hz": 0.0, "vibrato_extent_cents": 0.0}
         ),
         "expected": {"vibrato", "tone_quality"},
+        "expected_states": {"vibrato_absent", "vibrato_irregular"},
     },
 ]
 
@@ -161,16 +174,35 @@ def main() -> int:
     )
     token = _access_token()
     failures = 0
+    fallbacks = 0
     for case in CASES:
         result = _call_route(base_url, token, case["spec"], case["measurements"])
-        ok = result["focus_area"] in case["expected"]
-        status = "PASS" if ok else "FAIL"
+        resolved = result.get("resolved", {})
+        focus_ok = result["focus_area"] in case["expected"]
+        state_ok = result.get("state_id") in case["expected_states"]
+        # An id outside the asset is a prompt failure even when the fallback
+        # happens to land on an expected state, so it fails the case.
+        ok = focus_ok and state_ok and not resolved.get("used_fallback")
         if not ok:
             failures += 1
-        print(f"[{status}] {case['name']}")
-        print(f"        expected one of {sorted(case['expected'])}, got {result['focus_area']}")
+        if resolved.get("used_fallback"):
+            fallbacks += 1
+        print(f"[{'PASS' if ok else 'FAIL'}] {case['name']}")
+        print(
+            f"        focus:  expected one of {sorted(case['expected'])}, "
+            f"got {result['focus_area']}"
+        )
+        print(
+            f"        state:  expected one of {sorted(case['expected_states'])}, "
+            f"got {result.get('state_id')}"
+        )
+        print(f"        drill:  {resolved.get('drill', {}).get('id')}")
+        if resolved.get("used_fallback"):
+            print("        NOTE:   the model named an id outside the asset")
         print(f"        top_issue: {result['top_issue']}")
     print(f"\n{len(CASES) - failures}/{len(CASES)} cases passed")
+    if fallbacks:
+        print(f"{fallbacks}/{len(CASES)} cases needed the signature fallback")
     return 1 if failures else 0
 
 
