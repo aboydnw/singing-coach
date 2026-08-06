@@ -8,7 +8,7 @@ Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Ex
 
 ## How to use
 
-1. **Sign in.** Email and password, or a magic link. History and recordings are private to your account.
+1. **Sign in.** Email and password. History and recordings are private to your account.
 
 2. **Calibrate** (~5 min, once). The Calibrate tab asks for four reference notes:
    - Lowest comfortable note
@@ -40,7 +40,15 @@ browser: record -> encode WAV -> upload to Supabase Storage
 
 Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour. That pipeline runs in `src/singing_coach/`, imported unchanged by the `/api/analyze` Vercel Python function — the numbers are the product, so the DSP chain is pinned by a committed regression fixture (`tests/test_regression_fixture.py`) and torchcrepe's pitch dither is seeded so identical audio always measures identically.
 
-Coaching is a single model call. The model gets the measurements, the exercise spec, and your last five sessions — including the advice it gave you after each one — so it can follow up on its own coaching rather than starting cold. The prompt and output schema live in [`prompts/coaching.json`](prompts/coaching.json), shared by the TypeScript route, the Python tests, and the eval harness. Feedback comes back as strict structured output (focus area, top issue, why, drill, encouragement), which is what makes adaptive exercise selection possible.
+Coaching is a single model call. The model gets the measurements, the exercise spec, your last five sessions — including the advice it gave you after each one — and a catalogue of diagnostic states and drills. The prompt and output schema live in [`prompts/coaching.json`](prompts/coaching.json), shared by the TypeScript route, the Python tests, and the eval harness.
+
+**The model selects; it does not invent.** Vocal technique lives in [`prompts/pedagogy.json`](prompts/pedagogy.json) — diagnostic states, each with a metric signature, a named remediation family from the literature (SOVT, glottal onset work, Vocal Function Exercises, resonant voice, messa di voce), drills, cues and cautions. The model returns a `state_id` and a `drill_id` from that closed set, and [`app/api/coach/route.ts`](app/api/coach/route.ts) resolves the canonical instructions server-side. An id that is not in the asset never reaches you: it falls back to a deterministic signature match in [`lib/pedagogy.ts`](lib/pedagogy.ts). A hallucinated drill is advice about someone's throat, which is why the model is allowed to choose and to phrase, but never to make up technique.
+
+The asset is content, not code — a voice teacher can edit it without touching TypeScript, with the eval harness as the acceptance gate. Its one editorial rule: every cue uses an **external** focus of attention ("aim the sound at the far wall") rather than an internal one ("lift your soft palate"), which motor-learning research finds produces better retention and transfer.
+
+Below three sessions the coach sits in a **calibrating** state: it reports what it measured but will not name a chronic problem. Acoustic thresholds vary with pitch, loudness, vowel, microphone and analysis software, and one singer's healthy baseline can look like another's problem — so scoring a stranger against universal bands is how a first session invents a problem out of noise.
+
+Two things replace prose where a sound or a picture teaches better. **Ghost racing** overlays your own best previous take of the same drill on the pitch chart, so the comparison is against yourself rather than a universal band. **Hear it right** rebuilds your take with one flaw corrected — steadier pitch, or an even 5.5 Hz vibrato — using Praat's PSOLA via [`src/singing_coach/resynth.py`](src/singing_coach/resynth.py), so you hear the target in your own voice instead of reading about it. PSOLA reshapes pitch and timing while leaving timbre alone, which is what keeps it sounding like you. Breathiness is deliberately not corrected: that needs spectral subtraction on the aperiodic component, a much larger project than a pitch-tier swap.
 
 The UI is Next.js with Chakra UI. Exercise generation and reference tones run in the browser (`lib/exercises.ts`, `lib/toneGen.ts`); a 168-case parity fixture pins the exercise port to the Python original. Recordings are encoded to WAV in the browser at the microphone's native sample rate — the server's librosa remains the only resampler in the chain, exactly as before the rewrite.
 
@@ -61,7 +69,7 @@ yarn dev                 # Next.js dev server (needs .env.local, see .env.exampl
 
 `yarn dev` serves the UI and the coach route. The Python `/api/analyze` function only runs on Vercel; point local testing at a preview deployment or use `vercel dev`.
 
-To run the coaching eval (plants known vocal problems, checks the model diagnoses them):
+To run the coaching eval (plants known vocal problems, checks the model diagnoses them). It asserts both the focus area and the `state_id`, which is the stronger check — a closed-set classification into `pedagogy.json` is unambiguous in a way a judgement about prose is not. It also counts how often the model named an id outside the asset, which is a prompt bug even when the focus area happened to be right:
 
 ```bash
 yarn dev &
@@ -105,7 +113,7 @@ The app deploys to Vercel from this repo. Requirements beyond the defaults:
 
 - **Large functions.** The analyze function bundles CPU-only PyTorch (~1.2 GB uncompressed), far over the standard 500 MB Python cap. Set `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` as a project env var; Fluid compute with Active CPU must be enabled.
 - **Environment variables:** see [`.env.example`](.env.example) — Supabase URL/keys for the browser and the analyze function, `OPENROUTER_API_KEY` and `COACH_MODEL` for coaching.
-- **Supabase:** run both files in [`supabase/migrations/`](supabase/migrations/) against your project. They create the tables, the private `recordings` bucket, and the row-level-security policies that keep accounts apart.
+- **Supabase:** run every file in [`supabase/migrations/`](supabase/migrations/) against your project, in order. They create the tables, the private `recordings` bucket, the row-level-security policies that keep accounts apart, and the `contour_json` column that ghost racing reads. Ghost racing stays silently empty until `0003` is applied.
 
 `uv.lock` is the single dependency manifest, locally and on Vercel. It pins torch/torchaudio to the CPU index (`[tool.uv.sources]` in `pyproject.toml`): the default PyPI wheels bundle ~4 GB of CUDA libraries that nothing here uses — and that blew even the 5 GB function limit before the pin.
 
@@ -117,7 +125,7 @@ Run the eval before trusting a new model: `uv run python evals/coach_eval.py` ch
 
 ## Privacy
 
-Recordings upload to a **private Supabase Storage bucket** scoped to your account and are kept for playback — this is what makes "listen back on any device" work. Storage policies allow each account to touch only its own files; the analyze function verifies your signed-in identity before reading a recording. Structured measurements, the exercise spec, and recent history — never audio — go to the coaching model via OpenRouter.
+Recordings upload to a **private Supabase Storage bucket** scoped to your account and are kept for playback — this is what makes "listen back on any device" work. Storage policies allow each account to touch only its own files; the analyze and resynth functions both verify your signed-in identity and refuse any storage key outside your own prefix before reading a recording. Corrected clips from "hear it right" are written back into that same private prefix. Structured measurements, the exercise spec, and recent history — never audio — go to the coaching model via OpenRouter.
 
 This replaces the old local-only design, where audio never left the machine that recorded it. If audio-stays-local matters to you, the last Gradio version lives in git history.
 
