@@ -43,6 +43,7 @@ type FlowState =
       analysis: AnalyzeResponse;
       coaching: CoachingResponse | null;
       coachingError: string | null;
+      coachingSaveError: string | null;
       /** null when the session could not be written. The analysis is still
        * worth showing: it is the thing the singer waited for. */
       sessionId: string | null;
@@ -232,6 +233,7 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
 
       let coaching: CoachingResponse | null = null;
       let coachingError: string | null = null;
+      let coachingSaveError: string | null = null;
       try {
         const sessions = await listSessions();
         setGhost(bestPriorTake(sessions, spec, sessionId ?? undefined));
@@ -240,10 +242,17 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
           spec,
           toHistory(sessions.filter((s) => s.id !== sessionId)),
         );
-        if (sessionId !== null) await updateSessionCoaching(sessionId, coaching);
       } catch (error) {
-        coaching = null;
         coachingError = error instanceof Error ? error.message : "coaching call failed";
+      }
+
+      if (sessionId !== null && coaching !== null) {
+        try {
+          await updateSessionCoaching(sessionId, coaching);
+        } catch (error) {
+          coachingSaveError =
+            error instanceof Error ? error.message : "could not save the coaching";
+        }
       }
       setState({
         phase: "done",
@@ -251,6 +260,7 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         analysis,
         coaching,
         coachingError,
+        coachingSaveError,
         sessionId,
         saveError,
         audioKey: storageKey,
@@ -274,8 +284,16 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         state.spec,
         toHistory(sessions.filter((s) => s.id !== sessionId)),
       );
-      if (sessionId !== null) await updateSessionCoaching(sessionId, coaching);
-      setState({ ...state, coaching, coachingError: null });
+      let coachingSaveError: string | null = null;
+      if (sessionId !== null) {
+        try {
+          await updateSessionCoaching(sessionId, coaching);
+        } catch (error) {
+          coachingSaveError =
+            error instanceof Error ? error.message : "could not save the coaching";
+        }
+      }
+      setState({ ...state, coaching, coachingError: null, coachingSaveError });
     } catch (error) {
       setState({
         ...state,
@@ -417,6 +435,18 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
           </Text>
           <Text color="cream.600" fontSize="sm" mt={1}>
             {state.saveError}
+          </Text>
+        </Box>
+      )}
+
+      {state.phase === "done" && state.coachingSaveError && (
+        <Box bg="panel" borderWidth="1px" borderColor="coral.300" rounded="md" p={4}>
+          <Text color="coral.600">
+            ⚠️ <b>Your coaching is ready, but it was not added to session history.</b>
+            The session and scores are still saved.
+          </Text>
+          <Text color="cream.600" fontSize="sm" mt={1}>
+            {state.coachingSaveError}
           </Text>
         </Box>
       )}
