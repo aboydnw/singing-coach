@@ -88,7 +88,7 @@ function SignIn() {
           <Button colorPalette="coral" onClick={signIn} loading={busy}>
             Sign in
           </Button>
-          <Button variant="outline" onClick={signUp} disabled={busy}>
+          <Button variant="outline" onClick={signUp} loading={busy}>
             Sign up
           </Button>
           {status && <Text color="coral.600">{status}</Text>}

@@ -83,6 +83,38 @@ describe("bestPriorTake", () => {
     expect(bestPriorTake(rows, SPEC)?.meanAbsCentsOff).toBe(12);
   });
 
+  it("breaks a tie toward the more recent take", () => {
+    const rows = [
+      row({ id: "older", ts: "2026-07-01T10:00:00.000Z" }),
+      row({ id: "newer", ts: "2026-07-30T10:00:00.000Z" }),
+    ];
+    expect(bestPriorTake(rows, SPEC)?.ts).toBe("2026-07-30T10:00:00.000Z");
+  });
+
+  it("breaks a tie toward the more recent take whatever order rows arrive in", () => {
+    const rows = [
+      row({ id: "newer", ts: "2026-07-30T10:00:00.000Z" }),
+      row({ id: "older", ts: "2026-07-01T10:00:00.000Z" }),
+    ];
+    expect(bestPriorTake(rows, SPEC)?.ts).toBe("2026-07-30T10:00:00.000Z");
+  });
+
+  it("still prefers a better score over a newer one", () => {
+    const rows = [
+      row({
+        id: "newer-worse",
+        ts: "2026-07-30T10:00:00.000Z",
+        measurements_json: JSON.stringify({ accuracy: { mean_abs_cents_off: 40 } }),
+      }),
+      row({
+        id: "older-better",
+        ts: "2026-07-01T10:00:00.000Z",
+        measurements_json: JSON.stringify({ accuracy: { mean_abs_cents_off: 9 } }),
+      }),
+    ];
+    expect(bestPriorTake(rows, SPEC)?.meanAbsCentsOff).toBe(9);
+  });
+
   it("excludes the session being scored right now", () => {
     const rows = [
       row({

@@ -67,6 +67,21 @@ describe("the asset itself", () => {
     }
   });
 
+  // The external-focus rule in _readme was being enforced by review alone, and
+  // review missed two cues. Anatomy words are a crude proxy for an internal
+  // focus, but they are the part a test can catch. Drill instructions are
+  // exempt: naming the jaw while explaining what to do is fine, it is the
+  // in-the-moment cue that has to point outward.
+  it("keeps anatomy out of the cues", () => {
+    const anatomy =
+      /\b(jaw|palate|larynx|diaphragm|throat|tongue|vocal folds?|vocal cords?|buzz\w*)\b/i;
+    for (const state of STATES) {
+      for (const cue of state.cues) {
+        expect(cue, `${state.id}: "${cue}"`).not.toMatch(anatomy);
+      }
+    }
+  });
+
   it("keeps the readme's editorial rule visible in the file", () => {
     expect(JSON.stringify(resynthCorrections._readme)).toContain("EXTERNAL focus");
   });
@@ -133,6 +148,20 @@ describe("the signature fallback", () => {
       measurements({ vibrato_rate_hz: 3.2, vibrato_extent_cents: 90, hnr_mean: 22 }),
     );
     expect(state.id).toBe("vibrato_irregular");
+  });
+
+  it("reads a very wide wobble as irregular even when the rate is unknown", () => {
+    const state = fallbackState(
+      measurements({ vibrato_rate_hz: null, vibrato_extent_cents: 200, hnr_mean: 22 }),
+    );
+    expect(state.id).toBe("vibrato_irregular");
+  });
+
+  it("does not call a healthy-width wobble irregular when the rate is unknown", () => {
+    const state = fallbackState(
+      measurements({ vibrato_rate_hz: null, vibrato_extent_cents: 70, hnr_mean: 22 }),
+    );
+    expect(state.id).not.toBe("vibrato_irregular");
   });
 
   it("reads a healthy straight tone as absent vibrato", () => {

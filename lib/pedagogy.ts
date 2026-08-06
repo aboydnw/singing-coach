@@ -96,8 +96,13 @@ export function fallbackState(m: Measurements): PedagogyState {
   if (jitterHigh && hnrHealthy && extent !== null && extent < 20) {
     return state("pressed_phonation");
   }
-  if (extent !== null && extent >= 20 && rate !== null) {
-    if (rate < 4.5 || rate > 6.5 || extent > 120) return state("vibrato_irregular");
+  // A wobble wider than about 120 cents is its own tell, so it must not be
+  // gated on the rate: vibrato rate extraction fails on plenty of takes the
+  // extent survives, and gating both together dropped a 200-cent wobble
+  // through to the generic support fallback.
+  if (extent !== null && extent >= 20) {
+    const rateOutOfBand = rate !== null && (rate < 4.5 || rate > 6.5);
+    if (rateOutOfBand || extent > 120) return state("vibrato_irregular");
   }
   if (extent !== null && extent < 20 && !jitterHigh && hnrHealthy) {
     return state("vibrato_absent");

@@ -180,7 +180,9 @@ def main() -> int:
         resolved = result.get("resolved", {})
         focus_ok = result["focus_area"] in case["expected"]
         state_ok = result.get("state_id") in case["expected_states"]
-        ok = focus_ok and state_ok
+        # An id outside the asset is a prompt failure even when the fallback
+        # happens to land on an expected state, so it fails the case.
+        ok = focus_ok and state_ok and not resolved.get("used_fallback")
         if not ok:
             failures += 1
         if resolved.get("used_fallback"):

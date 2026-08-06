@@ -33,6 +33,11 @@ SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 BUCKET = "recordings"
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
+# The request body is a storage key and a correction name, so a few kilobytes is
+# generous. Capping the declared Content-Length keeps an unauthenticated caller
+# from making the function allocate whatever it claims to be sending.
+MAX_BODY_BYTES = 16 * 1024
+
 OBJECT_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+\.wav$")
 
 _jwks_client = None
@@ -114,17 +119,22 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length) or b"{}")
-        except (ValueError, json.JSONDecodeError):
-            self._reply(400, {"error": "invalid JSON body"})
-            return
-
+        # Identity first: nothing below should run, or allocate, for a caller
+        # who has not proved who they are.
         try:
             uid = _verify_jwt(self.headers.get("Authorization"))
         except Exception:
             self._reply(401, {"error": "invalid or missing token"})
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            if length > MAX_BODY_BYTES:
+                self._reply(413, {"error": "request body too large"})
+                return
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            self._reply(400, {"error": "invalid JSON body"})
             return
 
         storage_key = body.get("storage_key", "")

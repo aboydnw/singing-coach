@@ -8,7 +8,7 @@ Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Ex
 
 ## How to use
 
-1. **Sign in.** Email and password, or a magic link. History and recordings are private to your account.
+1. **Sign in.** Email and password. History and recordings are private to your account.
 
 2. **Calibrate** (~5 min, once). The Calibrate tab asks for four reference notes:
    - Lowest comfortable note

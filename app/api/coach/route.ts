@@ -53,16 +53,40 @@ const requestSchema = z.object({
 
 type CoachRequest = z.infer<typeof requestSchema>;
 
-/** The route spends OPENROUTER_API_KEY, so only signed-in users may call it. */
-async function authenticate(request: Request): Promise<boolean> {
+/** The route spends OPENROUTER_API_KEY, so only signed-in users may call it.
+ * Returns the caller's bearer token, which is also what lets the route count
+ * their sessions under row-level security rather than trusting the request. */
+async function authenticate(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return false;
+  if (!header.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length);
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
-  const { data, error } = await supabase.auth.getUser(header.slice("Bearer ".length));
-  return !error && data.user !== null;
+  const { data, error } = await supabase.auth.getUser(token);
+  return !error && data.user !== null ? token : null;
+}
+
+/** How many sessions this singer has actually recorded.
+ *
+ * Counted here rather than taken from the request: history is client-supplied,
+ * so a fabricated block would talk the coach out of calibrating during the very
+ * sessions the calibration exists to protect. Row-level security scopes the
+ * count to the caller, so their own token is enough to ask.
+ *
+ * A failed count returns null and the caller keeps calibrating - erring toward
+ * "still learning you" is the safe direction when the truth is unavailable. */
+async function countSessions(token: string): Promise<number | null> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+  const { count, error } = await supabase
+    .from("sessions")
+    .select("id", { count: "exact", head: true });
+  return error ? null : (count ?? 0);
 }
 
 function stripNulls(value: unknown): unknown {
@@ -130,7 +154,8 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  if (!(await authenticate(request))) {
+  const token = await authenticate(request);
+  if (token === null) {
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
   }
 
@@ -141,7 +166,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
   }
 
-  const calibrating = body.history.length < CALIBRATION_SESSIONS;
+  // The session being coached is already in the table by the time this route
+  // runs, so the count includes it: <= 3 keeps the first three sessions in
+  // calibration and releases the fourth, matching what the client-supplied
+  // history length used to produce.
+  const sessionsOnFile = await countSessions(token);
+  const calibrating = sessionsOnFile === null || sessionsOnFile <= CALIBRATION_SESSIONS;
   const userMessage = formatUserMessage(body, calibrating);
   const deadline = Date.now() + ROUTE_BUDGET_MS;
   let lastError = "";
