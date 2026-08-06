@@ -33,6 +33,7 @@ import type {
 type FlowState =
   | { phase: "loading" }
   | { phase: "no-calibration" }
+  | { phase: "load-failed"; message: string }
   | { phase: "ready"; spec: ExerciseSpec | null }
   | { phase: "analyzing"; spec: ExerciseSpec | null }
   | { phase: "coaching"; spec: ExerciseSpec | null; analysis: AnalyzeResponse }
@@ -42,7 +43,10 @@ type FlowState =
       analysis: AnalyzeResponse;
       coaching: CoachingResponse | null;
       coachingError: string | null;
-      sessionId: string;
+      /** null when the session could not be written. The analysis is still
+       * worth showing: it is the thing the singer waited for. */
+      sessionId: string | null;
+      saveError: string | null;
       audioKey: string;
     };
 
@@ -134,8 +138,16 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         phase: "ready",
         spec: nextExercise(calibration, count, focus),
       });
-    } catch {
-      setState({ phase: "no-calibration" });
+    } catch (error) {
+      // Not "no-calibration". This catch used to swallow every failure into
+      // that one phase, so a missing database column told a singer who had
+      // just calibrated to go and calibrate - advice that could not work and
+      // that hid the real fault. Only the explicit check above knows the
+      // calibration is absent; anything reaching here is a genuine error.
+      setState({
+        phase: "load-failed",
+        message: error instanceof Error ? error.message : "could not load an exercise",
+      });
     }
   }, [freeSing]);
 
@@ -202,25 +214,33 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       }
       setState({ phase: "coaching", spec, analysis });
 
-      const sessionId = await insertSession({
-        spec,
-        measurements: analysis.measurements,
-        coaching: null,
-        audioKey: storageKey,
-        contour: analysis.contour,
-      });
+      // Saving is allowed to fail without costing the singer the analysis.
+      // Losing a hard-won recording because a write failed is the wrong trade.
+      let sessionId: string | null = null;
+      let saveError: string | null = null;
+      try {
+        sessionId = await insertSession({
+          spec,
+          measurements: analysis.measurements,
+          coaching: null,
+          audioKey: storageKey,
+          contour: analysis.contour,
+        });
+      } catch (error) {
+        saveError = error instanceof Error ? error.message : "could not save the session";
+      }
 
       let coaching: CoachingResponse | null = null;
       let coachingError: string | null = null;
       try {
         const sessions = await listSessions();
-        setGhost(bestPriorTake(sessions, spec, sessionId));
+        setGhost(bestPriorTake(sessions, spec, sessionId ?? undefined));
         coaching = await coach(
           analysis.measurements,
           spec,
           toHistory(sessions.filter((s) => s.id !== sessionId)),
         );
-        await updateSessionCoaching(sessionId, coaching);
+        if (sessionId !== null) await updateSessionCoaching(sessionId, coaching);
       } catch (error) {
         coaching = null;
         coachingError = error instanceof Error ? error.message : "coaching call failed";
@@ -232,6 +252,7 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
         coaching,
         coachingError,
         sessionId,
+        saveError,
         audioKey: storageKey,
       });
     } catch (error) {
@@ -244,15 +265,16 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
 
   const retryCoaching = async () => {
     if (state.phase !== "done" || !state.analysis.measurements) return;
+    const sessionId = state.sessionId;
     setRetrying(true);
     try {
       const sessions = await listSessions();
       const coaching = await coach(
         state.analysis.measurements,
         state.spec,
-        toHistory(sessions.filter((s) => s.id !== state.sessionId)),
+        toHistory(sessions.filter((s) => s.id !== sessionId)),
       );
-      await updateSessionCoaching(state.sessionId, coaching);
+      if (sessionId !== null) await updateSessionCoaching(sessionId, coaching);
       setState({ ...state, coaching, coachingError: null });
     } catch (error) {
       setState({
@@ -273,6 +295,23 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
       <Text color="cream.600">
         Calibrate your range first — the Calibrate tab takes about two minutes.
       </Text>
+    );
+  }
+
+  if (state.phase === "load-failed") {
+    return (
+      <Stack gap={3} align="start">
+        <Text color="coral.600">
+          ⚠️ <b>Could not load an exercise.</b> Your calibration is fine — something else
+          went wrong.
+        </Text>
+        <Text color="cream.600" fontSize="sm">
+          {state.message}
+        </Text>
+        <Button variant="outline" colorPalette="coral" onClick={loadExercise}>
+          Try again
+        </Button>
+      </Stack>
     );
   }
 
@@ -368,6 +407,18 @@ export function ExerciseFlow({ freeSing = false }: { freeSing?: boolean }) {
           <Spinner color="teal.500" />
           <Text color="cream.600">Measurements in — getting coaching…</Text>
         </Flex>
+      )}
+
+      {state.phase === "done" && state.saveError && (
+        <Box bg="panel" borderWidth="1px" borderColor="coral.300" rounded="md" p={4}>
+          <Text color="coral.600">
+            ⚠️ <b>This session was not saved.</b> Your scores below are real, but they
+            will not appear in Progress and cannot be replayed later.
+          </Text>
+          <Text color="cream.600" fontSize="sm" mt={1}>
+            {state.saveError}
+          </Text>
+        </Box>
       )}
 
       {(state.phase === "coaching" || state.phase === "done") && (
