@@ -23,6 +23,8 @@ describe("focus area enum", () => {
     for (const area of FOCUS_AREAS) {
       const result = coachingResultSchema.safeParse({
         focus_area: area,
+        state_id: "hypoadduction",
+        drill_id: "staccato_onsets",
         top_issue: "x",
         why: "y",
         drill: "z",
@@ -30,6 +32,17 @@ describe("focus area enum", () => {
       });
       expect(result.success).toBe(true);
     }
+  });
+
+  it("rejects a coaching result with no state or drill chosen", () => {
+    const result = coachingResultSchema.safeParse({
+      focus_area: FOCUS_AREAS[0],
+      top_issue: "x",
+      why: "y",
+      drill: "z",
+      encouragement: "w",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

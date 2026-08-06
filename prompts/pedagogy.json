@@ -1,0 +1,345 @@
+{
+  "_readme": [
+    "Curated vocal pedagogy. This file is CONTENT, not code: a voice teacher should be",
+    "able to edit it without touching TypeScript. The coaching model selects a state_id",
+    "and a drill_id from this file; it never invents vocal technique.",
+    "",
+    "EDITORIAL RULE: every cue must use an EXTERNAL focus of attention - aim the singer",
+    "at a sound or target outside their body ('sing into the back wall'), never at their",
+    "own anatomy ('lift your soft palate'). Motor-learning research consistently finds",
+    "external focus produces better retention and transfer than internal focus.",
+    "",
+    "metric_signature entries are HINTS for the model, not thresholds enforced in code.",
+    "Absolute acoustic thresholds do not transfer across singers or across analysis",
+    "software, so they are written as directions of movement, not cutoffs."
+  ],
+  "states": [
+    {
+      "id": "hypoadduction",
+      "display_name": "Breathy tone",
+      "plain_language_description": "Your vocal folds are not quite meeting, so air escapes around the sound instead of being turned into tone. It sounds airy, and it tires you out faster because you spend breath without getting volume back.",
+      "remediation_family": "glottal onset work",
+      "audible_correction": null,
+      "metric_signature": {
+        "hnr_mean": "lower than this singer's usual",
+        "shimmer_local": "elevated",
+        "jitter_local": "normal or only mildly elevated",
+        "notes": "The distinguishing feature is HNR dropping while jitter stays near baseline. If jitter and shimmer are BOTH clearly elevated, consider breath_support_deficit or vocal fatigue instead."
+      },
+      "drills": [
+        {
+          "id": "staccato_onsets",
+          "name": "Staccato 'hey' onsets",
+          "instructions": "On a comfortable mid note, sing five short, separated 'hey' sounds. Each one should start cleanly, like flicking a light switch rather than easing a dimmer. Rest a beat between each.",
+          "duration_s": 45,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "voiced_fricative_ladder",
+          "name": "Buzzy 'v' and 'z' ladder",
+          "instructions": "Hold a 'vvv' for four seconds, then a 'zzz' for four seconds, on the same note. Keep the buzz constant enough that someone in the next room could tell it never stopped.",
+          "duration_s": 60
+        },
+        {
+          "id": "twang_meow",
+          "name": "Bright 'meow'",
+          "instructions": "Slide a slightly bratty 'meow' up and down a small range, like a cartoon cat. Aim for a sound that would carry across a noisy room without getting louder.",
+          "duration_s": 45,
+          "exercise_type": "siren"
+        }
+      ],
+      "cues": [
+        "Aim the sound at a spot on the far wall, not at the ceiling.",
+        "Start the note as if it were already sounding a split second before you opened your mouth.",
+        "Think of the tone as a beam with edges, not a cloud."
+      ],
+      "caution": "Do not push hard glottal onsets when jitter AND shimmer are both clearly elevated - that pattern more often means fatigue, and pressing harder on a tired voice makes it worse. Rest and SOVT work first.",
+      "sources": [
+        "https://www.voicescience.org/lexicon/breathiness/",
+        "https://vocaltoolkit.org/hypohyperphonation/",
+        "https://www.sciencedirect.com/science/article/abs/pii/S0892199718305502"
+      ]
+    },
+    {
+      "id": "pressed_phonation",
+      "display_name": "Pressed or squeezed tone",
+      "plain_language_description": "You are pushing the vocal folds together harder than the note needs. It can sound strong up close but it is effortful, it tires quickly, and it tends to lock up the natural wobble that makes a sustained note sound alive.",
+      "remediation_family": "semi-occluded vocal tract (SOVT)",
+      "audible_correction": "healthy_vibrato",
+      "metric_signature": {
+        "hnr_mean": "normal or high",
+        "jitter_local": "elevated",
+        "vibrato_extent_cents": "suppressed - often under 20",
+        "accuracy": "often sharp rather than flat",
+        "notes": "The tell is effortful stability: clean tone, poor flexibility. Contrast with hypoadduction, where the tone itself is airy."
+      },
+      "drills": [
+        {
+          "id": "straw_phonation",
+          "name": "Straw phonation",
+          "instructions": "Hum a comfortable note through a drinking straw for twenty seconds, then sing the same note on 'ah'. Repeat three times. Keep the straw hum quiet - it should feel easy, almost lazy.",
+          "duration_s": 90,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "lip_trill_glide",
+          "name": "Lip trill glide",
+          "instructions": "Blow a lip trill (a motorboat sound) and glide gently from low to high and back, three times. If the trill stops, you are pushing too much air or too much squeeze - back off until it stays going.",
+          "duration_s": 60,
+          "exercise_type": "siren"
+        },
+        {
+          "id": "descending_release",
+          "name": "Descending five-note release",
+          "instructions": "Sing five notes downward on 'ooh', getting quieter as you descend, as if walking away from the listener rather than toward them.",
+          "duration_s": 45,
+          "exercise_type": "scale"
+        }
+      ],
+      "cues": [
+        "Let the sound fall out of you rather than pushing it out.",
+        "Sing as though the room is small and someone is asleep upstairs.",
+        "Imagine the note is already in the air and you are just joining it."
+      ],
+      "caution": null,
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/39909787/",
+        "https://www.sciencedirect.com/science/article/abs/pii/S0892199725000086",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC4629998/"
+      ]
+    },
+    {
+      "id": "breath_support_deficit",
+      "display_name": "Unsteady breath",
+      "plain_language_description": "The air behind the note is not arriving evenly, so the pitch and volume wobble in a way that is not musical vibrato. Long notes usually sag toward the end.",
+      "remediation_family": "Vocal Function Exercises",
+      "audible_correction": "steady_pitch",
+      "metric_signature": {
+        "jitter_local": "elevated",
+        "shimmer_local": "elevated",
+        "accuracy": "drifting flat, especially on later notes of a sustain",
+        "vibrato_rate_hz": "irregular or drifting",
+        "notes": "Both perturbation measures moving together, plus a downward pitch drift across a held note, is the classic pattern."
+      },
+      "drills": [
+        {
+          "id": "vfe_sustained_ee",
+          "name": "Longest comfortable 'ee'",
+          "instructions": "Sing 'ee' on a comfortable mid note and hold it as long as you can without straining, timing yourself. Do this once, rest, and repeat twice. The goal over weeks is a longer time at the same easy effort.",
+          "duration_s": 90,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "vfe_glide_up_down",
+          "name": "Slow glides on 'knoll'",
+          "instructions": "On the word 'knoll', glide slowly from your lowest comfortable note to your highest, then back down. Two round trips. Keep the sound continuous - no gaps, no jumps.",
+          "duration_s": 75,
+          "exercise_type": "siren"
+        },
+        {
+          "id": "accent_method_pulses",
+          "name": "Rhythmic breath pulses",
+          "instructions": "On a single note, sing four evenly spaced 'ha ha ha ha' pulses, letting each come from a small bounce low in the body rather than from the throat. Keep the note the same the whole time.",
+          "duration_s": 60,
+          "exercise_type": "sustained"
+        }
+      ],
+      "cues": [
+        "Keep the sound arriving at the far wall at the same strength from the first second to the last.",
+        "Imagine a steady candle flame at arm's length that must lean but never go out.",
+        "Spend the breath like it is a long, even pour rather than a splash."
+      ],
+      "caution": null,
+      "sources": [
+        "https://medslpcollective.com/wp-content/uploads/2021/09/MedSLPCollective-Handout-Vocal-Function-Exercises.pdf",
+        "https://uknowledge.uky.edu/cgi/viewcontent.cgi?article=1010&context=commdisorders_etds",
+        "https://www.sciencedirect.com/science/article/abs/pii/S0892199718305502"
+      ]
+    },
+    {
+      "id": "registration_instability",
+      "display_name": "Register breaks",
+      "plain_language_description": "The transition between your lower and upper voice is not smooth yet, so notes near that crossing point flip, crack, or land off target while notes on either side are fine.",
+      "remediation_family": "SOVT sirens and glides",
+      "audible_correction": "steady_pitch",
+      "metric_signature": {
+        "accuracy": "large cents errors clustered at particular notes rather than spread evenly",
+        "jitter_local": "spikes at the transition rather than throughout",
+        "notes": "Look at per-note accuracy, not the mean. A big error on two adjacent notes with clean notes either side points here, not at pitch_accuracy generally."
+      },
+      "drills": [
+        {
+          "id": "straw_siren_through_break",
+          "name": "Straw siren through the break",
+          "instructions": "Through a straw, siren slowly up through the note where you usually flip, and back down. Three round trips. Go slowly enough that you cannot tell where the change happened.",
+          "duration_s": 90,
+          "exercise_type": "siren"
+        },
+        {
+          "id": "octave_ooh_slide",
+          "name": "Octave slide on 'ooh'",
+          "instructions": "Slide up an octave on 'ooh' and back down, staying quiet throughout. Quiet is the point - volume is what makes the flip happen.",
+          "duration_s": 60,
+          "exercise_type": "siren"
+        },
+        {
+          "id": "narrow_arpeggio_crossing",
+          "name": "Arpeggio across the crossing",
+          "instructions": "Sing a four-note arpeggio that starts below your crossing point and ends above it, on 'ooh', three times. Aim for the same colour of sound on the top note as the bottom one.",
+          "duration_s": 60,
+          "exercise_type": "arpeggio"
+        }
+      ],
+      "cues": [
+        "Keep the sound travelling in one continuous line, like a slide whistle rather than a staircase.",
+        "Aim the high note at the same spot on the wall as the low note.",
+        "Get quieter as you go up, not louder."
+      ],
+      "caution": null,
+      "sources": [
+        "https://www.voicescience.org/lexicon/formant-tuning/",
+        "https://faculty.lawrence.edu/bozemank/wp-content/uploads/sites/10/2014/03/Bozeman_JOS-2010_JanFeb-.pdf",
+        "https://pubmed.ncbi.nlm.nih.gov/39909787/"
+      ]
+    },
+    {
+      "id": "vibrato_absent",
+      "display_name": "Straight tone",
+      "plain_language_description": "Your sustained notes are very steady but have almost no natural wobble. A small, even vibrato is a sign of a freely working voice - its absence usually means something is being held rather than released.",
+      "remediation_family": "messa di voce",
+      "audible_correction": "healthy_vibrato",
+      "metric_signature": {
+        "vibrato_extent_cents": "under 20",
+        "jitter_local": "normal",
+        "hnr_mean": "normal",
+        "notes": "Only raise this when the rest of the numbers are healthy. A straight tone alongside elevated jitter is a control problem, not a vibrato problem - and a straight tone can be a deliberate stylistic choice, so ask before treating it as a fault."
+      },
+      "drills": [
+        {
+          "id": "messa_di_voce",
+          "name": "Swell and fade",
+          "instructions": "On one comfortable note, start very quietly, grow to a comfortable full sound, and fade back to nothing. Take about ten seconds for the whole arc. Three times.",
+          "duration_s": 90,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "vibrato_bloom",
+          "name": "Let the note bloom",
+          "instructions": "Begin a note deliberately straight and quiet, then relax into it and let it start moving on its own about halfway through. Do not shake it manually - just stop holding it still.",
+          "duration_s": 60,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "descending_release_vibrato",
+          "name": "Descending sigh",
+          "instructions": "Sigh downward through a comfortable range on 'ah', as relaxed as a sigh of relief at the end of a long day, three times. Then hold the bottom note and let it sit.",
+          "duration_s": 60,
+          "exercise_type": "siren"
+        }
+      ],
+      "cues": [
+        "Stop holding the note still and let it do what it wants.",
+        "Think of a plucked string that is allowed to keep ringing.",
+        "Sigh into the note rather than placing it."
+      ],
+      "caution": "A straight tone is a legitimate stylistic choice in pop, folk and musical theatre. Do not treat it as a fault unless the singer has said they want vibrato.",
+      "sources": [
+        "https://www.thefreelibrary.com/The+Pedagogy+of+Vibrato:+PHYSIOLOGICAL+MECHANISMS,+ACOUSTIC...-a0856935700",
+        "https://johnhenny.com/vocal-vibrato-and-how-to-develop-it/"
+      ]
+    },
+    {
+      "id": "vibrato_irregular",
+      "display_name": "Uneven vibrato",
+      "plain_language_description": "You have vibrato, but its speed or width is outside the range that reads as natural - too slow reads as a wobble, too fast as a bleat, too wide as unstable pitch.",
+      "remediation_family": "messa di voce",
+      "audible_correction": "healthy_vibrato",
+      "metric_signature": {
+        "vibrato_rate_hz": "below about 4.5 or above about 6.5",
+        "vibrato_extent_cents": "above about 120, or varying a lot between notes",
+        "notes": "Rate and extent shifting noticeably from note to note matters more than either number being technically out of band."
+      },
+      "drills": [
+        {
+          "id": "messa_di_voce_metered",
+          "name": "Swell and fade against a beat",
+          "instructions": "Do the swell-and-fade over a slow steady beat, keeping the wobble even the whole way through the swell. If it speeds up as you get louder, get louder more slowly.",
+          "duration_s": 90,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "straw_then_open_vibrato",
+          "name": "Straw, then open",
+          "instructions": "Hold a note through a straw for ten seconds, then take the straw away and hold the same note on 'ah' for ten seconds, trying to keep whatever steadiness the straw gave you.",
+          "duration_s": 90,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "sustained_dynamic_hold",
+          "name": "Even hold at one volume",
+          "instructions": "Hold a comfortable note at one steady, moderate volume for eight seconds without any swell at all. The goal is a wobble that stays the same width from start to finish.",
+          "duration_s": 60,
+          "exercise_type": "sustained"
+        }
+      ],
+      "cues": [
+        "Keep the sound arriving at the wall at one steady strength.",
+        "Let the wobble be a ripple on the surface, not the shape of the note itself.",
+        "Ease off the volume before you try to steady the wobble."
+      ],
+      "caution": null,
+      "sources": [
+        "https://www.thefreelibrary.com/The+Pedagogy+of+Vibrato:+PHYSIOLOGICAL+MECHANISMS,+ACOUSTIC...-a0856935700",
+        "https://www.musicalboard.com/blog/2026-05-03-vibrato/"
+      ]
+    },
+    {
+      "id": "vowel_placement",
+      "display_name": "Vowel shape and resonance",
+      "plain_language_description": "The shape of your mouth and throat is not helping the note carry. Small changes to how open the vowel is can make a note louder and easier without any extra pushing - especially as you go higher.",
+      "remediation_family": "resonant voice therapy",
+      "audible_correction": null,
+      "metric_signature": {
+        "f1_mean": "unusually low for an open vowel, or not rising as pitch rises",
+        "f2_mean": "inconsistent across notes that share a vowel",
+        "hnr_mean": "normal",
+        "notes": "This is the weakest signature of the seven - formants vary a lot with microphone and room. Prefer another state unless the singer is specifically working on higher notes feeling thin or effortful."
+      },
+      "drills": [
+        {
+          "id": "hum_to_vowel",
+          "name": "Hum into the vowel",
+          "instructions": "Hum a comfortable note until you feel a buzz around your nose and lips, then open into 'ah' without losing the buzz. Five times.",
+          "duration_s": 75,
+          "exercise_type": "sustained"
+        },
+        {
+          "id": "jaw_release_ascending",
+          "name": "Open more as you go higher",
+          "instructions": "Sing a five-note scale on 'ah', letting your jaw hang a little more open on each higher note, as if quietly starting a yawn. Three times.",
+          "duration_s": 75,
+          "exercise_type": "scale"
+        },
+        {
+          "id": "ng_to_ah",
+          "name": "'ng' into 'ah'",
+          "instructions": "Sing 'ng' as in 'sing' on a comfortable note, then open to 'ah' and back to 'ng', three times per breath. Keep the sound in the same place when the vowel changes.",
+          "duration_s": 60,
+          "exercise_type": "sustained"
+        }
+      ],
+      "cues": [
+        "Keep the buzz in the same spot when the vowel changes.",
+        "Open the vowel a little more with every step upward, as if starting a yawn.",
+        "Aim for a sound that would carry to the back of a hall without getting louder."
+      ],
+      "caution": "Formant measurements are sensitive to microphone and room. Do not build strong claims on F1/F2 alone.",
+      "sources": [
+        "https://www.voicescience.org/lexicon/formant-tuning/",
+        "https://www.voicescience.org/lexicon/formant-1/",
+        "https://ncvs.org/archive/pas/2004/abstracts/nix1.htm",
+        "https://theadultspeechtherapyworkbook.com/resonant-voice-therapy-exercises/"
+      ]
+    }
+  ]
+}

@@ -63,20 +63,6 @@ function SignIn() {
     }
   };
 
-  const magicLink = async () => {
-    setBusy(true);
-    setStatus(null);
-    try {
-      const { error } = await supabase().auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin },
-      });
-      setStatus(error ? error.message : "Magic link sent - check your email.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <Center minH="100vh" bg="cream.100">
       <Box bg="panel" borderWidth="1px" borderColor="grid" rounded="lg" p={8} w="sm">
@@ -102,14 +88,9 @@ function SignIn() {
           <Button colorPalette="coral" onClick={signIn} loading={busy}>
             Sign in
           </Button>
-          <Stack direction="row" gap={2}>
-            <Button variant="outline" flex="1" onClick={signUp} disabled={busy}>
-              Sign up
-            </Button>
-            <Button variant="outline" flex="1" onClick={magicLink} disabled={busy}>
-              Magic link
-            </Button>
-          </Stack>
+          <Button variant="outline" onClick={signUp} disabled={busy}>
+            Sign up
+          </Button>
           {status && <Text color="coral.600">{status}</Text>}
         </Stack>
       </Box>

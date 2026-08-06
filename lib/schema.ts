@@ -40,10 +40,39 @@ export const measurementsSchema = z.object({
 
 export const coachingResultSchema = z.object({
   focus_area: focusAreaSchema,
+  state_id: z.string(),
+  drill_id: z.string(),
   top_issue: z.string(),
   why: z.string(),
   drill: z.string(),
   encouragement: z.string(),
+});
+
+export const drillSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  instructions: z.string(),
+  duration_s: z.number(),
+  exercise_type: z.string().nullable().optional(),
+});
+
+/** What the singer is shown alongside the model's prose: the canonical drill
+ * and cues, resolved server-side from prompts/pedagogy.json rather than
+ * generated. */
+export const resolvedCoachingSchema = z.object({
+  state_id: z.string(),
+  state_name: z.string(),
+  remediation_family: z.string(),
+  audible_correction: z.string().nullable(),
+  drill: drillSchema,
+  cues: z.array(z.string()),
+  caution: z.string().nullable(),
+  used_fallback: z.boolean(),
+});
+
+export const coachingResponseSchema = coachingResultSchema.extend({
+  resolved: resolvedCoachingSchema,
+  calibrating: z.boolean().default(false),
 });
 
 export const calibrationSchema = z.object({
@@ -69,6 +98,8 @@ export type FocusArea = z.infer<typeof focusAreaSchema>;
 export type ExerciseSpec = z.infer<typeof exerciseSpecSchema>;
 export type Measurements = z.infer<typeof measurementsSchema>;
 export type CoachingResult = z.infer<typeof coachingResultSchema>;
+export type ResolvedCoachingPayload = z.infer<typeof resolvedCoachingSchema>;
+export type CoachingResponse = z.infer<typeof coachingResponseSchema>;
 export type Calibration = z.infer<typeof calibrationSchema>;
 export type Contour = z.infer<typeof contourSchema>;
 export type AnalyzeResponse = z.infer<typeof analyzeResponseSchema>;

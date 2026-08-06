@@ -94,15 +94,15 @@ export function skipExercise(
   return candidate;
 }
 
-export function nextExercise(
+/** The note grid for one exercise type at one point in the rotation walk.
+ * Extracted so a drill can request a type directly; the arithmetic is pinned by
+ * the parity fixture, so it must stay identical for both callers. */
+function buildSpec(
   calibration: Calibration,
   sessionIndex: number,
-  focusArea: FocusArea | null = null,
+  exerciseType: ExerciseType,
+  suffix: string,
 ): ExerciseSpec {
-  const exerciseType: ExerciseType =
-    focusArea !== null && focusArea in FOCUS_TO_TYPE
-      ? FOCUS_TO_TYPE[focusArea]
-      : TYPE_ROTATION[sessionIndex % TYPE_ROTATION.length];
   const shape = SHAPES[exerciseType];
   const span = Math.max(...shape);
 
@@ -120,17 +120,44 @@ export function nextExercise(
   const walkPosition = Math.floor(sessionIndex / TYPE_ROTATION.length) % startingOptions;
   const startingNote = minStarting + walkPosition;
 
-  const targetNotes = shape.map((offset) => startingNote + offset);
-  let displayName = `${exerciseType} on 'ah', starting ${midiToName(startingNote)}`;
-  if (focusArea !== null && focusArea in FOCUS_TO_TYPE) {
-    displayName += ` (focus: ${FOCUS_LABELS[focusArea]})`;
-  }
-
   return {
     type: exerciseType,
-    target_notes_midi: targetNotes,
+    target_notes_midi: shape.map((offset) => startingNote + offset),
     duration_per_note_s: DURATIONS[exerciseType],
     vowel: "ah",
-    display_name: displayName,
+    display_name:
+      `${exerciseType} on 'ah', starting ${midiToName(startingNote)}` + suffix,
   };
+}
+
+export function nextExercise(
+  calibration: Calibration,
+  sessionIndex: number,
+  focusArea: FocusArea | null = null,
+): ExerciseSpec {
+  const targeted = focusArea !== null && focusArea in FOCUS_TO_TYPE;
+  const exerciseType: ExerciseType = targeted
+    ? FOCUS_TO_TYPE[focusArea]
+    : TYPE_ROTATION[sessionIndex % TYPE_ROTATION.length];
+  const suffix = targeted ? ` (focus: ${FOCUS_LABELS[focusArea]})` : "";
+  return buildSpec(calibration, sessionIndex, exerciseType, suffix);
+}
+
+/** The exercise a coaching drill asked for by name, so "practice this drill"
+ * lands on the right shape rather than on whatever the rotation was up to. */
+export function exerciseForDrill(
+  calibration: Calibration,
+  sessionIndex: number,
+  exerciseType: string,
+  drillName: string,
+): ExerciseSpec {
+  if (!(TYPE_ROTATION as readonly string[]).includes(exerciseType)) {
+    throw new Error(`unknown exercise type '${exerciseType}'`);
+  }
+  return buildSpec(
+    calibration,
+    sessionIndex,
+    exerciseType as ExerciseType,
+    ` (drill: ${drillName})`,
+  );
 }

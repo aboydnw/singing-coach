@@ -1,5 +1,5 @@
 import { analyzeResponseSchema, type AnalyzeResponse } from "@/lib/schema";
-import type { CoachingResult, ExerciseSpec, Measurements } from "@/lib/schema";
+import type { CoachingResponse, ExerciseSpec, Measurements } from "@/lib/schema";
 import { accessToken, supabase, userId } from "@/lib/supabase";
 
 export async function uploadRecording(
@@ -64,18 +64,52 @@ export async function analyze(
   return analyzeResponseSchema.parse(await response.json());
 }
 
+/** Ask the analysis runtime for a corrected version of a take, in the singer's
+ * own voice. Returns the Storage key of the rendered clip. */
+export async function resynthesize(
+  storageKey: string,
+  correction: string,
+): Promise<string> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+
+  const response = await fetch("/api/resynth", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ storage_key: storageKey, correction }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `resynthesis failed with status ${response.status}`);
+  }
+  const body = await response.json();
+  if (typeof body.storage_key !== "string") {
+    throw new Error("resynthesis returned no clip");
+  }
+  return body.storage_key;
+}
+
 export type HistoryEntry = {
   ts: string | null;
   exercise_type: string | null;
   measurements: Record<string, unknown> | null;
-  advice_given?: { focus_area: string; top_issue: string; drill: string };
+  advice_given?: {
+    focus_area: string;
+    top_issue: string;
+    drill: string;
+    state_id?: string;
+    drill_id?: string;
+  };
 };
 
 export async function coach(
   measurements: Measurements,
   exerciseSpec: ExerciseSpec | null,
   history: HistoryEntry[],
-): Promise<CoachingResult> {
+): Promise<CoachingResponse> {
   const token = await accessToken();
   if (!token) throw new Error("not signed in");
 
@@ -95,6 +129,6 @@ export async function coach(
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error ?? `coaching failed with status ${response.status}`);
   }
-  const { coachingResultSchema } = await import("@/lib/schema");
-  return coachingResultSchema.parse(await response.json());
+  const { coachingResponseSchema } = await import("@/lib/schema");
+  return coachingResponseSchema.parse(await response.json());
 }
