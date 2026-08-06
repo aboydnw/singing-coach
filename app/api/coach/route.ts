@@ -6,13 +6,22 @@ import {
   exerciseSpecSchema,
   measurementsSchema,
 } from "@/lib/schema";
+import { OpenRouterError, callOpenRouter } from "@/lib/openrouter";
 import { z } from "zod";
 
 export const maxDuration = 120;
 
-// Open-weight reasoning models routed through require_parameters providers
-// can take well over 25s; a timeout here surfaces as a dead coaching step.
-const OPENROUTER_TIMEOUT_MS = 50_000;
+// Open-weight reasoning models routed through require_parameters providers can
+// take well over 25s, and two 50s attempts used to consume nearly the whole
+// function budget before failing - so a model that simply needed 60s could
+// never succeed, however many times it was retried. The first attempt now gets
+// a slice long enough to finish, and the retry gets whatever is left.
+//
+// These must add up to less than maxDuration with room for auth, the Supabase
+// round trip and the response.
+const ROUTE_BUDGET_MS = 105_000;
+const FIRST_ATTEMPT_MS = 70_000;
+const MIN_ATTEMPT_MS = 20_000;
 
 const requestSchema = z.object({
   exercise_spec: exerciseSpecSchema.nullable(),
@@ -81,109 +90,6 @@ function formatUserMessage(body: CoachRequest): string {
   return blocks.join("\n\n");
 }
 
-/** An OpenRouter failure that knows whether trying again could help. Credit,
- * key and model-capability problems are settled facts, so retrying them only
- * doubles the wait before the singer sees why coaching failed. */
-class OpenRouterError extends Error {
-  constructor(
-    message: string,
-    readonly retryable: boolean,
-  ) {
-    super(message);
-  }
-}
-
-const RETRYABLE_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
-
-const MAX_ERROR_TEXT = 200;
-
-/** Capping every message on the way into an OpenRouterError, rather than at
- * each source, is what keeps a stray HTML error page or a verbose provider
- * message out of the UI: the status prefix leads, so it always survives. */
-function truncate(text: string): string {
-  return text.length > MAX_ERROR_TEXT ? `${text.slice(0, MAX_ERROR_TEXT)}…` : text;
-}
-
-/** OpenRouter reports failures as {"error": {"code", "message"}}, but a bare
- * string or an HTML error page both happen too, hence the raw-body fallback. */
-function describeError(body: string): string {
-  try {
-    const parsed = JSON.parse(body);
-    const message = parsed?.error?.message ?? parsed?.message;
-    if (typeof message === "string" && message.length > 0) return message;
-  } catch {
-    // not JSON; fall through to the raw body
-  }
-  return body;
-}
-
-type OpenRouterPayload = {
-  error?: unknown;
-  choices?: Array<{ message?: { content?: unknown } }>;
-};
-
-async function callOpenRouter(userMessage: string): Promise<unknown> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "X-Title": "Singing Coach",
-    },
-    signal: AbortSignal.timeout(OPENROUTER_TIMEOUT_MS),
-    body: JSON.stringify({
-      model: process.env.COACH_MODEL,
-      messages: [
-        { role: "system", content: coaching.system_prompt },
-        { role: "user", content: userMessage },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "give_coaching",
-          strict: true,
-          schema: { ...coaching.schema, additionalProperties: false },
-        },
-      },
-      provider: { require_parameters: true },
-    }),
-  });
-  if (!response.ok) {
-    const detail = describeError(await response.text().catch(() => ""));
-    throw new OpenRouterError(
-      truncate(`OpenRouter returned ${response.status}${detail ? `: ${detail}` : ""}`),
-      RETRYABLE_STATUSES.has(response.status),
-    );
-  }
-
-  // A gateway between here and the model can answer 200 with an HTML error
-  // page. Parsing that raises a SyntaxError whose message says nothing useful
-  // about what actually failed, so it becomes an OpenRouterError instead.
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new OpenRouterError("OpenRouter returned a body that was not JSON", true);
-  }
-  if (payload === null || typeof payload !== "object") {
-    throw new OpenRouterError("OpenRouter returned an unexpected body", true);
-  }
-
-  const body = payload as OpenRouterPayload;
-  // An upstream provider failure arrives as HTTP 200 with an error field.
-  if (body.error) {
-    throw new OpenRouterError(
-      truncate(`OpenRouter reported: ${describeError(JSON.stringify(body))}`),
-      true,
-    );
-  }
-  const content = body.choices?.[0]?.message?.content;
-  if (typeof content !== "string") {
-    throw new OpenRouterError("OpenRouter response had no message content", true);
-  }
-  return JSON.parse(content);
-}
-
 export async function POST(request: Request) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
     return NextResponse.json(
@@ -203,10 +109,20 @@ export async function POST(request: Request) {
   }
 
   const userMessage = formatUserMessage(body);
+  const deadline = Date.now() + ROUTE_BUDGET_MS;
   let lastError = "";
   for (let attempt = 0; attempt < 2; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining < MIN_ATTEMPT_MS) break;
     try {
-      const raw = await callOpenRouter(userMessage);
+      const raw = await callOpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY!,
+        model: process.env.COACH_MODEL!,
+        systemPrompt: coaching.system_prompt,
+        schema: coaching.schema,
+        userMessage,
+        timeoutMs: Math.min(attempt === 0 ? FIRST_ATTEMPT_MS : remaining, remaining),
+      });
       const result = coachingResultSchema.safeParse(raw);
       if (result.success) {
         return NextResponse.json(result.data);
