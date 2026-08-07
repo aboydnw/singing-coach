@@ -10,7 +10,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { Shell } from "@/components/Shell";
 import { AppNotice } from "@/components/ui/AppNotice";
@@ -29,14 +29,17 @@ export default function ProgressPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [practiceError, setPracticeError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([listSessions(), listPractices(100)])
-      .then(([attemptRows, practiceRows]) => {
-        setSessions(attemptRows);
-        setPractices(practiceRows.filter((row) => row.status === "ended"));
-      })
+    listSessions()
+      .then(setSessions)
       .catch((e) => setError(e instanceof Error ? e.message : "failed to load"));
+    listPractices(100)
+      .then((rows) => setPractices(rows.filter((row) => row.status === "ended")))
+      .catch((e) => {
+        setPracticeError(e instanceof Error ? e.message : "failed to load practices");
+      });
   }, []);
 
   const filtered = (sessions ?? []).filter((row) =>
@@ -46,6 +49,16 @@ export default function ProgressPage() {
         ? row.exercise_type === "free_sing"
         : row.exercise_type !== "free_sing",
   );
+  const attemptsByPractice = useMemo(() => {
+    const grouped = new Map<string, SessionRow[]>();
+    for (const row of sessions ?? []) {
+      if (!row.practice_session_id) continue;
+      const attempts = grouped.get(row.practice_session_id);
+      if (attempts) attempts.push(row);
+      else grouped.set(row.practice_session_id, [row]);
+    }
+    return grouped;
+  }, [sessions]);
 
   const play = async (row: SessionRow) => {
     if (!row.audio_key) return;
@@ -72,77 +85,85 @@ export default function ProgressPage() {
             {error}
           </AppNotice>
         ) : null}
-        {(!sessions || !practices) && !error ? <LoadingSurface lines={6} /> : null}
-        {sessions && practices && (
+        {practiceError ? (
+          <AppNotice tone="danger" title="Practice history is unavailable">
+            Your attempt charts are still available. {practiceError}
+          </AppNotice>
+        ) : null}
+        {!sessions && !error ? <LoadingSurface lines={6} /> : null}
+        {sessions && (
           <>
             <ProgressCharts sessions={filtered} />
-            <Box>
-              <Heading size="md" mb={3}>
-                Practice history
-              </Heading>
-              {practices.length === 0 ? (
-                <EmptyState title="No completed practice yet">
-                  End a practice session to see its attempts grouped here.
-                </EmptyState>
-              ) : (
-                <Stack gap={2}>
-                  {practices.map((practice) => {
-                    const attempts = sessions.filter(
-                      (row) => row.practice_session_id === practice.id,
-                    );
-                    return (
-                      <Button
-                        key={practice.id}
-                        variant="outline"
-                        borderColor="grid"
-                        bg="panel"
-                        height="auto"
-                        py={4}
-                        px={4}
-                        justifyContent="space-between"
-                        textAlign="left"
-                        onClick={() => router.push(`/practice/${practice.id}`)}
-                      >
-                        <Box>
-                          <Text fontWeight="semibold">
-                            {new Date(practice.started_at).toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
-                          </Text>
-                          <Text
-                            mt={1}
-                            color="cream.700"
-                            fontWeight="normal"
-                            whiteSpace="normal"
-                          >
-                            {practice.summary_json?.focus ??
-                              practice.learning_contract_json?.focus ??
-                              "Practice session"}{" "}
-                            · {attempts.length} attempt{attempts.length === 1 ? "" : "s"}
-                          </Text>
-                          {practice.summary_json?.change ? (
+            {practices ? (
+              <Box>
+                <Heading size="md" mb={3}>
+                  Practice history
+                </Heading>
+                {practices.length === 0 ? (
+                  <EmptyState title="No completed practice yet">
+                    End a practice session to see its attempts grouped here.
+                  </EmptyState>
+                ) : (
+                  <Stack gap={2}>
+                    {practices.map((practice) => {
+                      const attempts = attemptsByPractice.get(practice.id) ?? [];
+                      return (
+                        <Button
+                          key={practice.id}
+                          variant="outline"
+                          borderColor="grid"
+                          bg="panel"
+                          height="auto"
+                          py={4}
+                          px={4}
+                          justifyContent="space-between"
+                          textAlign="left"
+                          onClick={() => router.push(`/practice/${practice.id}`)}
+                        >
+                          <Box>
+                            <Text fontWeight="semibold">
+                              {new Date(practice.started_at).toLocaleDateString([], {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </Text>
                             <Text
                               mt={1}
-                              color="teal.700"
-                              fontSize="sm"
+                              color="cream.700"
                               fontWeight="normal"
                               whiteSpace="normal"
                             >
-                              {practice.summary_json.change}
+                              {practice.summary_json?.focus ??
+                                practice.learning_contract_json?.focus ??
+                                "Practice session"}{" "}
+                              · {attempts.length} attempt
+                              {attempts.length === 1 ? "" : "s"}
                             </Text>
-                          ) : null}
-                        </Box>
-                        <Text color="coral.600" ml={4}>
-                          Review →
-                        </Text>
-                      </Button>
-                    );
-                  })}
-                </Stack>
-              )}
-            </Box>
+                            {practice.summary_json?.change ? (
+                              <Text
+                                mt={1}
+                                color="teal.700"
+                                fontSize="sm"
+                                fontWeight="normal"
+                                whiteSpace="normal"
+                              >
+                                {practice.summary_json.change}
+                              </Text>
+                            ) : null}
+                          </Box>
+                          <Text color="coral.600" ml={4}>
+                            Review →
+                          </Text>
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            ) : !practiceError ? (
+              <LoadingSurface lines={3} />
+            ) : null}
             <Box>
               <Heading size="md" mb={3}>
                 All attempts

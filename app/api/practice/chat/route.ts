@@ -1,7 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { contextAnchorSchema } from "@/lib/schema";
+import {
+  coachingResponseSchema,
+  contextAnchorSchema,
+  measurementsSchema,
+} from "@/lib/schema";
+import { authenticateRequest } from "@/lib/serverAuth";
+import { describeError, isTimeout, truncate } from "@/lib/openrouter";
+import { parseStoredJson } from "@/lib/storedJson";
 
 export const maxDuration = 120;
 
@@ -9,26 +16,16 @@ const requestSchema = z.object({
   practice_session_id: z.string().uuid(),
   message: z.string().trim().min(1).max(2000),
   context_anchor: contextAnchorSchema.nullable().default(null),
+  client_request_id: z.string().uuid(),
+  user_message_id: z.string().uuid(),
 });
-
-async function authenticate(request: Request): Promise<string | null> {
-  const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return null;
-  const token = header.slice(7);
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-  const { data, error } = await client.auth.getUser(token);
-  return !error && data.user ? token : null;
-}
 
 export async function POST(request: Request) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
     return NextResponse.json({ error: "coaching is not configured" }, { status: 500 });
   }
-  const token = await authenticate(request);
-  if (!token)
+  const auth = await authenticateRequest(request);
+  if (!auth)
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
@@ -38,7 +35,7 @@ export async function POST(request: Request) {
   const client = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } },
+    { global: { headers: { Authorization: `Bearer ${auth.token}` } } },
   );
   const { data: practice, error: practiceError } = await client
     .from("practice_sessions")
@@ -50,16 +47,29 @@ export async function POST(request: Request) {
   if (practice.status !== "in_progress")
     return NextResponse.json({ error: "this practice has ended" }, { status: 409 });
 
+  const { data: userMessage, error: userMessageError } = await client
+    .from("practice_messages")
+    .select("id")
+    .eq("id", parsed.data.user_message_id)
+    .eq("practice_session_id", practice.id)
+    .eq("role", "user")
+    .maybeSingle();
+  if (userMessageError || !userMessage) {
+    return NextResponse.json({ error: "user message not found" }, { status: 400 });
+  }
+
   const [attemptsResult, messagesResult] = await Promise.all([
     client
       .from("sessions")
-      .select("exercise_type, measurements_json, coaching_json, sequence_number")
+      .select("exercise_type, measurements_json, coaching_json, sequence_number, ts")
       .eq("practice_session_id", practice.id)
       .order("sequence_number", { ascending: true })
+      .order("ts", { ascending: true })
+      .order("id", { ascending: true })
       .limit(30),
     client
       .from("practice_messages")
-      .select("role, content_json")
+      .select("id, role, content_json")
       .eq("practice_session_id", practice.id)
       .eq("status", "complete")
       .order("created_at", { ascending: false })
@@ -72,63 +82,120 @@ export async function POST(request: Request) {
     );
   }
 
-  const recent = (messagesResult.data ?? []).reverse();
-  if (
-    recent.at(-1)?.role === "user" &&
-    String(recent.at(-1)?.content_json?.text ?? "") === parsed.data.message
-  ) {
-    recent.pop();
+  const assistantId = crypto.randomUUID();
+  const { error: messageError } = await client.from("practice_messages").insert({
+    id: assistantId,
+    practice_session_id: practice.id,
+    user_id: auth.userId,
+    role: "assistant",
+    content_json: { text: "" },
+    context_anchor_json: parsed.data.context_anchor,
+    status: "streaming",
+    client_request_id: parsed.data.client_request_id,
+    completed_at: null,
+  });
+  if (messageError && messageError.code !== "23505") {
+    return NextResponse.json(
+      { error: "could not start the coach response" },
+      { status: 500 },
+    );
   }
-  const history = recent.map((message) => ({
-    role: message.role,
-    content: String(message.content_json?.text ?? ""),
-  }));
+
+  const recent = (messagesResult.data ?? []).reverse();
+  const history = recent
+    .filter((message) => message.id !== parsed.data.user_message_id)
+    .map((message) => ({
+      role: message.role,
+      content: String(message.content_json?.text ?? ""),
+    }));
   const context = {
     starting_direction: practice.starting_direction,
     practice_compass: practice.learning_contract_json,
     attempts: (attemptsResult.data ?? []).map((attempt) => ({
       sequence_number: attempt.sequence_number,
       exercise_type: attempt.exercise_type,
-      measurements: safeJson(attempt.measurements_json),
-      assessment: safeJson(attempt.coaching_json),
+      measurements: parseStoredJson(attempt.measurements_json, measurementsSchema),
+      assessment: parseStoredJson(attempt.coaching_json, coachingResponseSchema),
     })),
     selected_context: parsed.data.context_anchor,
   };
 
-  const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "X-Title": "Singing Coach Practice",
-    },
-    signal: AbortSignal.timeout(110_000),
-    body: JSON.stringify({
-      model: process.env.COACH_MODEL,
-      stream: true,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are the singer's vocal coach inside an active practice. Answer the current question in plain language and stay anchored to the supplied measurements, original assessments, canonical cues, and selected context. Clarify; do not rewrite prior measurements or assessments. Give at most one actionable cue at a time. Use an external sound target rather than anatomical manipulation. Clearly distinguish observation from inference. If evidence cannot answer, say so. If the singer reports pain, tell them to stop and rest. Keep the answer concise enough to act on immediately.",
-        },
-        { role: "system", content: `Practice context:\n${JSON.stringify(context)}` },
-        ...history,
-        { role: "user", content: parsed.data.message },
-      ],
-    }),
-  }).catch(() => null);
+  const upstreamController = new AbortController();
+  let upstream: Response;
+  try {
+    upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "X-Title": "Singing Coach Practice",
+      },
+      signal: AbortSignal.any([AbortSignal.timeout(110_000), upstreamController.signal]),
+      body: JSON.stringify({
+        model: process.env.COACH_MODEL,
+        stream: true,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are the singer's vocal coach inside an active practice. Answer the current question in plain language and stay anchored to the supplied measurements, original assessments, canonical cues, and selected context. Clarify; do not rewrite prior measurements or assessments. Give at most one actionable cue at a time. Use an external sound target rather than anatomical manipulation. Clearly distinguish observation from inference. If evidence cannot answer, say so. If the singer reports pain, tell them to stop and rest. Keep the answer concise enough to act on immediately.",
+          },
+          { role: "system", content: `Practice context:\n${JSON.stringify(context)}` },
+          ...history,
+          { role: "user", content: parsed.data.message },
+        ],
+      }),
+    });
+  } catch (error) {
+    await markMessageFailed(client, practice.id, parsed.data.client_request_id);
+    return NextResponse.json(
+      { error: isTimeout(error) ? "the coach timed out" : "could not reach the coach" },
+      { status: isTimeout(error) ? 504 : 502 },
+    );
+  }
 
-  if (!upstream || !upstream.ok || !upstream.body) {
-    return NextResponse.json({ error: "the coach could not respond" }, { status: 502 });
+  if (!upstream.ok || !upstream.body) {
+    const detail = describeError(await upstream.text().catch(() => ""));
+    await markMessageFailed(client, practice.id, parsed.data.client_request_id);
+    return NextResponse.json(
+      {
+        error: truncate(
+          `the coach returned ${upstream.status}${detail ? `: ${detail}` : ""}`,
+        ),
+      },
+      { status: 502 },
+    );
   }
 
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   let buffer = "";
+  let complete = "";
+  let stopped = false;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  const persistStreaming = async () => {
+    await client
+      .from("practice_messages")
+      .update({ content_json: { text: complete } })
+      .eq("practice_session_id", practice.id)
+      .eq("client_request_id", parsed.data.client_request_id)
+      .eq("status", "streaming");
+  };
+  const finishMessage = async (status: "complete" | "failed" | "stopped") => {
+    await client
+      .from("practice_messages")
+      .update({
+        content_json: { text: complete },
+        status,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("practice_session_id", practice.id)
+      .eq("client_request_id", parsed.data.client_request_id);
+  };
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = upstream.body!.getReader();
+      reader = upstream.body!.getReader();
+      const flushTimer = setInterval(() => void persistStreaming(), 2_000);
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -143,18 +210,35 @@ export async function POST(request: Request) {
             try {
               const payload = JSON.parse(data);
               const delta = payload.choices?.[0]?.delta?.content;
-              if (typeof delta === "string") controller.enqueue(encoder.encode(delta));
+              if (typeof delta === "string") {
+                complete += delta;
+                controller.enqueue(encoder.encode(delta));
+              }
             } catch {
               // Ignore keepalive and provider metadata frames.
             }
           }
         }
-        controller.close();
+        if (!stopped) {
+          await finishMessage("complete");
+          controller.close();
+        }
       } catch (error) {
-        controller.error(error);
+        if (!stopped) {
+          await finishMessage("failed");
+          controller.error(error);
+        }
       } finally {
-        reader.releaseLock();
+        clearInterval(flushTimer);
+        reader?.releaseLock();
+        reader = null;
       }
+    },
+    async cancel() {
+      stopped = true;
+      upstreamController.abort();
+      await reader?.cancel().catch(() => undefined);
+      await finishMessage("stopped");
     },
   });
 
@@ -166,11 +250,14 @@ export async function POST(request: Request) {
   });
 }
 
-function safeJson(value: string | null): unknown {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
+async function markMessageFailed(
+  client: SupabaseClient,
+  practiceId: string,
+  clientRequestId: string,
+) {
+  await client
+    .from("practice_messages")
+    .update({ status: "failed", completed_at: new Date().toISOString() })
+    .eq("practice_session_id", practiceId)
+    .eq("client_request_id", clientRequestId);
 }

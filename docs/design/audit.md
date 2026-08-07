@@ -13,19 +13,18 @@ Last reviewed: 2026-08-06.
 
 ## Parity inventory
 
-| Capability            | Code                                       | Tokens            | States                                | Docs        | Status      |
-| --------------------- | ------------------------------------------ | ----------------- | ------------------------------------- | ----------- | ----------- |
-| Application shell     | `components/Shell.tsx`                     | Semantic          | Active route                          | Foundations | Established |
-| Practice start/resume | `PracticeHome`                             | Semantic          | Loading, empty, active, error         | Patterns    | Provisional |
-| Coach snapshot        | `CoachSnapshot`                            | Semantic          | Early/history                         | Components  | Provisional |
-| Practice Compass      | `PracticeCompass`                          | Semantic          | Confidence, optional fields           | Patterns    | Provisional |
-| Exercise proposal     | `ExerciseProposal`                         | Semantic          | Proposed, accepted, retry, processing | Patterns    | Provisional |
-| Attempt result        | `AttemptResult`                            | Semantic + chart  | Initial, retry, expanded              | Patterns    | Provisional |
-| Contextual coaching   | `PracticeConversation`, `PracticeComposer` | Semantic          | Anchored, streaming, stopped, error   | Patterns    | Provisional |
-| Recorder              | `Recorder`                                 | Semantic          | Full media lifecycle                  | Components  | Established |
-| Scorecard             | `Scorecard`                                | Product + data    | Missing and scored values             | Components  | Established |
-| Charts                | `PitchChart`, `ProgressCharts`             | `chartTheme`      | Empty and populated                   | Foundations | Exception   |
-| Old exercise flow     | `ExerciseFlow`                             | Legacy primitives | Historical                            | Components  | Deprecated  |
+| Capability            | Code                                       | Tokens           | States                                | Docs        | Status      |
+| --------------------- | ------------------------------------------ | ---------------- | ------------------------------------- | ----------- | ----------- |
+| Application shell     | `components/Shell.tsx`                     | Semantic         | Active route                          | Foundations | Established |
+| Practice start/resume | `PracticeHome`                             | Semantic         | Loading, empty, active, error         | Patterns    | Provisional |
+| Coach snapshot        | `CoachSnapshot`                            | Semantic         | Early/history                         | Components  | Provisional |
+| Practice Compass      | `PracticeCompass`                          | Semantic         | Confidence, optional fields           | Patterns    | Provisional |
+| Exercise proposal     | `ExerciseProposal`                         | Semantic         | Proposed, accepted, retry, processing | Patterns    | Provisional |
+| Attempt result        | `AttemptResult`                            | Semantic + chart | Initial, retry, expanded              | Patterns    | Provisional |
+| Contextual coaching   | `PracticeConversation`, `PracticeComposer` | Semantic         | Anchored, streaming, stopped, error   | Patterns    | Provisional |
+| Recorder              | `Recorder`                                 | Semantic         | Full media lifecycle                  | Components  | Established |
+| Scorecard             | `Scorecard`                                | Product + data   | Missing and scored values             | Components  | Established |
+| Charts                | `PitchChart`, `ProgressCharts`             | `chartTheme`     | Empty and populated                   | Foundations | Exception   |
 
 ## Review questions
 

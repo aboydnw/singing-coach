@@ -13,10 +13,11 @@ export function PracticeConversation({
   streamingText: string;
   anchor: ContextAnchor | null;
 }) {
-  if (messages.length === 0 && !streamingText) return null;
+  const visibleMessages = messages.filter((message) => message.content_json?.text);
+  if (visibleMessages.length === 0 && !streamingText) return null;
   return (
     <Stack gap={3} aria-live="polite" aria-label="Practice conversation">
-      {messages.map((message) => (
+      {visibleMessages.map((message) => (
         <Surface
           key={message.id}
           variant={message.role === "user" ? "subtle" : "base"}

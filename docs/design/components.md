@@ -27,7 +27,6 @@ composition stay local.
 | `PracticeComposer`     | Provisional | Global/contextual question entry and session shortcuts              |
 | `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata |
 | `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle            |
-| `ExerciseFlow`         | Deprecated  | Replaced by Practice routes; retain only until migration cleanup    |
 
 ## Abstraction rule
 

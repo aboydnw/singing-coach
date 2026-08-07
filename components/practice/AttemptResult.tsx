@@ -1,4 +1,5 @@
 import { Badge, Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import { memo, useMemo } from "react";
 import { Drill } from "@/components/Drill";
 import { HearItRight } from "@/components/HearItRight";
 import { PitchChart } from "@/components/PitchChart";
@@ -6,23 +7,46 @@ import { Scorecard } from "@/components/Scorecard";
 import { ContextAction } from "@/components/ui/ContextAction";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
-import type { ExerciseSpec, Measurements } from "@/lib/schema";
+import {
+  coachingResponseSchema,
+  contourSchema,
+  exerciseSpecSchema,
+  measurementsSchema,
+} from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
+import { parseStoredJson } from "@/lib/storedJson";
 
-export function AttemptResult(props: {
+type AttemptResultProps = {
   attempt: SessionRow;
   number: number;
   parent: SessionRow | null;
   expanded: boolean;
   onToggle: () => void;
   onAsk: (label: string, value: string) => void;
-}) {
-  const coaching = parse(props.attempt.coaching_json);
-  const measurements = parse(props.attempt.measurements_json) as Measurements | null;
-  const contour = parse(props.attempt.contour_json);
-  const spec = parse(props.attempt.exercise_spec_json) as ExerciseSpec | null;
+};
+
+export const AttemptResult = memo(function AttemptResult(props: AttemptResultProps) {
+  const coaching = useMemo(
+    () => parseStoredJson(props.attempt.coaching_json, coachingResponseSchema),
+    [props.attempt.coaching_json],
+  );
+  const measurements = useMemo(
+    () => parseStoredJson(props.attempt.measurements_json, measurementsSchema),
+    [props.attempt.measurements_json],
+  );
+  const contour = useMemo(
+    () => parseStoredJson(props.attempt.contour_json, contourSchema),
+    [props.attempt.contour_json],
+  );
+  const spec = useMemo(
+    () => parseStoredJson(props.attempt.exercise_spec_json, exerciseSpecSchema),
+    [props.attempt.exercise_spec_json],
+  );
   const parentCents = props.parent ? centsFrom(props.parent) : null;
-  const currentCents = centsFrom(props.attempt);
+  const currentCents =
+    typeof measurements?.accuracy?.mean_abs_cents_off === "number"
+      ? measurements.accuracy.mean_abs_cents_off
+      : null;
   const delta =
     parentCents !== null && currentCents !== null
       ? Math.round(parentCents - currentCents)
@@ -117,18 +141,22 @@ export function AttemptResult(props: {
       ) : null}
     </Surface>
   );
-}
+}, sameAttemptResultProps);
 
-function parse(value: string | null): any {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
+function sameAttemptResultProps(
+  previous: AttemptResultProps,
+  next: AttemptResultProps,
+): boolean {
+  return (
+    previous.attempt === next.attempt &&
+    previous.parent === next.parent &&
+    previous.number === next.number &&
+    previous.expanded === next.expanded
+  );
 }
 
 function centsFrom(attempt: SessionRow): number | null {
-  const value = parse(attempt.measurements_json)?.accuracy?.mean_abs_cents_off;
+  const value = parseStoredJson(attempt.measurements_json, measurementsSchema)?.accuracy
+    ?.mean_abs_cents_off;
   return typeof value === "number" ? value : null;
 }
