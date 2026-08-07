@@ -8,19 +8,24 @@ import {
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
-const contractCoachingSchema = z.object({
-  focus_area: z.string().optional(),
-  top_issue: z.string().optional(),
-  why: z.string().optional(),
-  drill: z.string().optional(),
-  encouragement: z.string().optional(),
-  resolved: z
-    .object({
-      cues: z.array(z.string()).optional(),
-      caution: z.string().nullable().optional(),
-    })
-    .optional(),
-});
+const contractCoachingSchema = z
+  .object({
+    focus_area: z.string().optional(),
+    top_issue: z.string().optional(),
+    why: z.string().optional(),
+    drill: z.string().optional(),
+    encouragement: z.string().optional(),
+    resolved: z
+      .object({
+        cues: z.array(z.string()).optional(),
+        caution: z.string().nullable().optional(),
+      })
+      .optional(),
+  })
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    "coaching must include at least one recognized field",
+  );
 import { supabase, userId } from "@/lib/supabase";
 
 export type PracticeStatus = "in_progress" | "ended";
@@ -128,7 +133,8 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
       )
       .eq("practice_session_id", id)
       .order("sequence_number", { ascending: true })
-      .order("ts", { ascending: true }),
+      .order("ts", { ascending: true })
+      .order("id", { ascending: true }),
     supabase()
       .from("practice_messages")
       .select("*")

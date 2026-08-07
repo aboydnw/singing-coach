@@ -59,4 +59,9 @@ describe("contractFromAttempt", () => {
     const prior = initialContract("tone");
     expect(contractFromAttempt(prior, attempt(null))).toBe(prior);
   });
+
+  it("rejects stored coaching with no recognized fields", () => {
+    const prior = initialContract("tone");
+    expect(contractFromAttempt(prior, attempt({ unrelated: true }))).toBe(prior);
+  });
 });

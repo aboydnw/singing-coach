@@ -63,7 +63,6 @@ export function PracticeHome() {
       setActive(rows.find((row) => row.status === "in_progress") ?? null);
       setPractices(rows.filter((row) => row.status === "ended"));
     } catch (reason) {
-      setPractices([]);
       setError(reason instanceof Error ? reason.message : "Could not load practice.");
     }
   };
@@ -124,7 +123,9 @@ export function PracticeHome() {
       >
         <Surface variant="raised" p={{ base: 5, md: 7 }}>
           {practices === null ? (
-            <LoadingSurface lines={4} />
+            error ? null : (
+              <LoadingSurface lines={4} />
+            )
           ) : active ? (
             <Stack gap={5}>
               <Stack gap={2}>
@@ -227,10 +228,12 @@ export function PracticeHome() {
           Recent practice
         </Heading>
         {practices === null ? (
-          <Stack gap={3} mt={4}>
-            <Skeleton height="24" />
-            <Skeleton height="24" />
-          </Stack>
+          error ? null : (
+            <Stack gap={3} mt={4}>
+              <Skeleton height="24" />
+              <Skeleton height="24" />
+            </Stack>
+          )
         ) : practices.length === 0 ? (
           <Box mt={4}>
             <EmptyState title="No completed practice yet">

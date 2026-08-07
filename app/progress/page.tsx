@@ -10,7 +10,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { Shell } from "@/components/Shell";
 import { AppNotice } from "@/components/ui/AppNotice";
@@ -38,7 +38,6 @@ export default function ProgressPage() {
     listPractices(100)
       .then((rows) => setPractices(rows.filter((row) => row.status === "ended")))
       .catch((e) => {
-        setPractices([]);
         setPracticeError(e instanceof Error ? e.message : "failed to load practices");
       });
   }, []);
@@ -50,6 +49,16 @@ export default function ProgressPage() {
         ? row.exercise_type === "free_sing"
         : row.exercise_type !== "free_sing",
   );
+  const attemptsByPractice = useMemo(() => {
+    const grouped = new Map<string, SessionRow[]>();
+    for (const row of sessions ?? []) {
+      if (!row.practice_session_id) continue;
+      const attempts = grouped.get(row.practice_session_id);
+      if (attempts) attempts.push(row);
+      else grouped.set(row.practice_session_id, [row]);
+    }
+    return grouped;
+  }, [sessions]);
 
   const play = async (row: SessionRow) => {
     if (!row.audio_key) return;
@@ -97,9 +106,7 @@ export default function ProgressPage() {
                 ) : (
                   <Stack gap={2}>
                     {practices.map((practice) => {
-                      const attempts = sessions.filter(
-                        (row) => row.practice_session_id === practice.id,
-                      );
+                      const attempts = attemptsByPractice.get(practice.id) ?? [];
                       return (
                         <Button
                           key={practice.id}
@@ -154,9 +161,9 @@ export default function ProgressPage() {
                   </Stack>
                 )}
               </Box>
-            ) : (
+            ) : !practiceError ? (
               <LoadingSurface lines={3} />
-            )}
+            ) : null}
             <Box>
               <Heading size="md" mb={3}>
                 All attempts

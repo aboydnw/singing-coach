@@ -1,6 +1,16 @@
 "use client";
 
-import { Box, Button, Dialog, Flex, Grid, Heading, Stack, Text } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Button,
+  Dialog,
+  Flex,
+  Grid,
+  Heading,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AttemptResult } from "@/components/practice/AttemptResult";
@@ -161,6 +171,7 @@ export function PracticeSession() {
       if ((reason as { name?: string })?.name === "AbortError") {
         await refresh();
       } else {
+        await refresh().catch(() => undefined);
         setError(
           reason instanceof Error ? reason.message : "The coach could not respond.",
         );
@@ -208,7 +219,7 @@ export function PracticeSession() {
         coaching = await coach(
           analysis.measurements,
           proposal.spec,
-          toHistory(allSessions.filter((row) => row.id !== attemptId)),
+          toHistory(allSessions),
         );
       } catch (reason) {
         coachingError = reason instanceof Error ? reason.message : "Coaching failed.";
@@ -339,7 +350,13 @@ export function PracticeSession() {
 
   const differentExercise = async () => {
     if (!bundle) return;
-    const calibration = await latestCalibration();
+    let calibration;
+    try {
+      calibration = await latestCalibration();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
+      return;
+    }
     if (!calibration || calibration.tessitura_low_midi === null) {
       setNeedsCalibration(true);
       return;
@@ -360,7 +377,13 @@ export function PracticeSession() {
 
   const nextFromCoach = async () => {
     if (!bundle) return;
-    const calibration = await latestCalibration();
+    let calibration;
+    try {
+      calibration = await latestCalibration();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
+      return;
+    }
     if (!calibration || calibration.tessitura_low_midi === null) {
       setNeedsCalibration(true);
       return;
@@ -496,7 +519,7 @@ export function PracticeSession() {
       ) : null}
 
       {needsCalibration && !ended ? (
-        <AppNotice tone="danger" title="Calibrate before guided exercises">
+        <AppNotice tone="warning" title="Calibrate before guided exercises">
           Guided exercises need your comfortable range. Free Sing works without it.
           <Flex mt={3} gap={3} wrap="wrap">
             <Button
@@ -545,19 +568,24 @@ export function PracticeSession() {
             );
           })}
           {unsavedAttempt ? (
-            <AttemptResult
-              attempt={unsavedAttempt}
-              number={bundle.attempts.length + 1}
-              parent={null}
-              expanded={Boolean(details[unsavedAttempt.id])}
-              onToggle={() =>
-                setDetails((current) => ({
-                  ...current,
-                  [unsavedAttempt.id]: !current[unsavedAttempt.id],
-                }))
-              }
-              onAsk={(label, value) => askAbout(label, value, unsavedAttempt.id)}
-            />
+            <Box borderWidth="2px" borderColor="coral.400" rounded="surface" p={1}>
+              <Badge m={3} mb={1} colorPalette="coral" variant="subtle">
+                Not saved to history
+              </Badge>
+              <AttemptResult
+                attempt={unsavedAttempt}
+                number={bundle.attempts.length + 1}
+                parent={null}
+                expanded={Boolean(details[unsavedAttempt.id])}
+                onToggle={() =>
+                  setDetails((current) => ({
+                    ...current,
+                    [unsavedAttempt.id]: !current[unsavedAttempt.id],
+                  }))
+                }
+                onAsk={(label, value) => askAbout(label, value, bundle.practice.id)}
+              />
+            </Box>
           ) : null}
           <PracticeConversation
             messages={bundle.messages}

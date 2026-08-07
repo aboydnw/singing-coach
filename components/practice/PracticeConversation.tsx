@@ -13,7 +13,7 @@ export function PracticeConversation({
   streamingText: string;
   anchor: ContextAnchor | null;
 }) {
-  const visibleMessages = messages.filter((message) => message.content_json.text);
+  const visibleMessages = messages.filter((message) => message.content_json?.text);
   if (visibleMessages.length === 0 && !streamingText) return null;
   return (
     <Stack gap={3} aria-live="polite" aria-label="Practice conversation">

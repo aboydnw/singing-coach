@@ -147,7 +147,12 @@ export async function listSessions(limit?: number): Promise<SessionRow[]> {
       "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
     )
     .order("ts", { ascending: false });
-  if (limit) query = query.limit(limit);
+  if (limit !== undefined) {
+    if (!Number.isInteger(limit) || limit < 0) {
+      throw new Error("limit must be a non-negative integer");
+    }
+    query = query.limit(limit);
+  }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data ?? [];
