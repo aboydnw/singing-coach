@@ -141,6 +141,8 @@ export async function streamPracticeCoach(
   practiceSessionId: string,
   message: string,
   contextAnchor: ContextAnchor | null,
+  clientRequestId: string,
+  userMessageId: string,
   onDelta: (delta: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
@@ -157,6 +159,8 @@ export async function streamPracticeCoach(
       practice_session_id: practiceSessionId,
       message,
       context_anchor: contextAnchor,
+      client_request_id: clientRequestId,
+      user_message_id: userMessageId,
     }),
   });
   if (!response.ok || !response.body) {

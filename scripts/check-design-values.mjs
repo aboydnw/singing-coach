@@ -5,7 +5,7 @@ const files = ["app", "components"]
   .flatMap(walk)
   .filter((file) => file.endsWith(".tsx") && !file.endsWith(".stories.tsx"));
 const literal = /#[0-9a-fA-F]{3,8}|rgba?\(/g;
-const exceptions = new Set(["components/ExerciseFlow.tsx"]);
+const exceptions = new Set();
 const findings = [];
 
 for (const file of files) {

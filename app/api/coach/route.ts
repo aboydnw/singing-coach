@@ -8,6 +8,7 @@ import {
 } from "@/lib/schema";
 import { DRILL_IDS, STATE_IDS, renderCatalogue, resolveCoaching } from "@/lib/pedagogy";
 import { OpenRouterError, callOpenRouter } from "@/lib/openrouter";
+import { authenticateRequest } from "@/lib/serverAuth";
 import { z } from "zod";
 
 export const maxDuration = 120;
@@ -52,21 +53,6 @@ const requestSchema = z.object({
 });
 
 type CoachRequest = z.infer<typeof requestSchema>;
-
-/** The route spends OPENROUTER_API_KEY, so only signed-in users may call it.
- * Returns the caller's bearer token, which is also what lets the route count
- * their sessions under row-level security rather than trusting the request. */
-async function authenticate(request: Request): Promise<string | null> {
-  const header = request.headers.get("authorization") ?? "";
-  if (!header.startsWith("Bearer ")) return null;
-  const token = header.slice("Bearer ".length);
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-  const { data, error } = await supabase.auth.getUser(token);
-  return !error && data.user !== null ? token : null;
-}
 
 /** How many sessions this singer has actually recorded.
  *
@@ -154,7 +140,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  const token = await authenticate(request);
+  const token = await authenticateRequest(request);
   if (token === null) {
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
   }
