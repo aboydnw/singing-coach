@@ -4,7 +4,8 @@ import { DevFeedback } from "@/components/DevFeedback";
 
 export const metadata: Metadata = {
   title: "Singing Coach",
-  description: "Record an exercise, get measurement-backed coaching.",
+  description:
+    "Practice with a measurement-backed vocal coach and learn to hear your own singing patterns.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

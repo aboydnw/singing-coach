@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { midiToName } from "@/lib/exercises";
+import { CHART_THEME } from "@/lib/chartTheme";
 import type { Ghost } from "@/lib/sessions";
 import type { Contour, ExerciseSpec } from "@/lib/schema";
 
@@ -66,33 +67,33 @@ export function PitchChart({
     <Box h="64" bg="panel" borderWidth="1px" borderColor="grid" rounded="md" p={2}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <CartesianGrid stroke="#EADFCE" />
+          <CartesianGrid stroke={CHART_THEME.grid} />
           <XAxis
             dataKey="t"
             type="number"
             domain={["dataMin", "dataMax"]}
             tickFormatter={(v: number) => `${v.toFixed(0)}s`}
-            stroke="#8A7566"
+            stroke={CHART_THEME.axis}
           />
           <YAxis
             domain={[lo, hi]}
             tickFormatter={(v: number) => midiToName(Math.round(v))}
-            stroke="#8A7566"
+            stroke={CHART_THEME.axis}
             width={44}
           />
           {targets.map((midi) => (
             <ReferenceLine
               key={midi}
               y={midi}
-              stroke="#00917C"
+              stroke={CHART_THEME.target}
               strokeDasharray="4 4"
-              label={{ value: midiToName(midi), fill: "#00917C", fontSize: 11 }}
+              label={{ value: midiToName(midi), fill: CHART_THEME.target, fontSize: 11 }}
             />
           ))}
           {ghost && (
             <Line
               dataKey="ghost"
-              stroke="#8A7566"
+              stroke={CHART_THEME.ghost}
               strokeWidth={2}
               strokeOpacity={0.45}
               dot={false}
@@ -102,7 +103,7 @@ export function PitchChart({
           )}
           <Line
             dataKey="midi"
-            stroke="#D64B2A"
+            stroke={CHART_THEME.measured}
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}

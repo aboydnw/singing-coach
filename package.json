@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build --output-dir storybook-static",
+    "design:check": "node scripts/check-design-values.mjs",
+    "verify": "yarn format:check && yarn design:check && yarn test && yarn build && yarn storybook:build",
     "format": "prettier --write \"{app,components,lib,evals}/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"{app,components,lib,evals}/**/*.{ts,tsx}\""
   },
@@ -21,12 +25,17 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.5.7",
+    "@storybook/addon-docs": "^10.5.7",
+    "@storybook/react-vite": "^10.5.7",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "prettier": "^3.4.0",
     "riffrec": "^2.1.1",
+    "storybook": "^10.5.7",
     "typescript": "^5.7.0",
+    "vite": "^7.1.0",
     "vitest": "^3.0.0"
   },
   "packageManager": "yarn@4.13.0"

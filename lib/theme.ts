@@ -5,9 +5,22 @@ import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
 /** The warm cream/coral palette carried over from the Gradio THEME in app.py. */
 const config = defineConfig({
   globalCss: {
+    html: {
+      scrollBehavior: "smooth",
+    },
     body: {
       bg: "cream.100",
       color: "ink.900",
+      fontFeatureSettings: '"kern", "liga", "tnum"',
+      backgroundImage:
+        "radial-gradient(circle at 8% 2%, rgba(238,156,124,.11), transparent 28rem), radial-gradient(circle at 92% 38%, rgba(0,145,124,.055), transparent 30rem)",
+    },
+    "button, a": {
+      transition:
+        "transform 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease",
+    },
+    "button:active": {
+      transform: "translateY(1px)",
     },
   },
   theme: {
@@ -65,9 +78,61 @@ const config = defineConfig({
           DEFAULT: { value: "#4C9A70" },
         },
       },
+      shadows: {
+        raised: { value: "0 18px 50px rgba(92, 61, 43, .08)" },
+        active: { value: "0 18px 45px rgba(135, 76, 46, .10)" },
+        overlay: { value: "0 -8px 30px rgba(92, 61, 43, .07)" },
+      },
+      radii: {
+        surface: { value: "1rem" },
+        inner: { value: "0.625rem" },
+      },
+      durations: {
+        fast: { value: "120ms" },
+        normal: { value: "180ms" },
+        slow: { value: "260ms" },
+      },
+      easings: {
+        standard: { value: "cubic-bezier(.2, .8, .2, 1)" },
+      },
     },
     semanticTokens: {
       colors: {
+        bg: {
+          canvas: { value: "{colors.cream.100}" },
+          surface: { value: "{colors.panel}" },
+          subtle: { value: "{colors.cream.50}" },
+          inverse: { value: "{colors.cream.900}" },
+          overlay: { value: "rgba(255, 248, 239, .94)" },
+        },
+        fg: {
+          default: { value: "{colors.ink.900}" },
+          muted: { value: "{colors.cream.700}" },
+          subtle: { value: "{colors.cream.500}" },
+          inverse: { value: "{colors.cream.50}" },
+        },
+        border: {
+          default: { value: "{colors.grid}" },
+          focus: { value: "{colors.coral.500}" },
+        },
+        action: {
+          primary: { value: "{colors.coral.600}" },
+          secondary: { value: "{colors.teal.700}" },
+        },
+        feedback: {
+          danger: { value: "{colors.coral.700}" },
+          dangerSurface: { value: "{colors.coral.50}" },
+          success: { value: "{colors.teal.700}" },
+          successSurface: { value: "{colors.teal.50}" },
+        },
+        coaching: {
+          focus: { value: "{colors.coral.700}" },
+          surface: { value: "{colors.coral.50}" },
+        },
+        singer: {
+          agency: { value: "{colors.teal.700}" },
+          surface: { value: "{colors.teal.50}" },
+        },
         coral: {
           solid: { value: "{colors.coral.500}" },
           contrast: { value: "white" },

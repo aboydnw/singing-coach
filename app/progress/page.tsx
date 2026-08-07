@@ -13,19 +13,29 @@ import {
 import { useEffect, useState } from "react";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { Shell } from "@/components/Shell";
+import { AppNotice } from "@/components/ui/AppNotice";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingSurface } from "@/components/ui/LoadingSurface";
+import { listPractices, type PracticeSessionRow } from "@/lib/practice";
 import { listSessions, signedAudioUrl, type SessionRow } from "@/lib/sessions";
+import { useRouter } from "next/navigation";
 
 type Filter = "all" | "exercises" | "free-sing";
 
 export default function ProgressPage() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
+  const [practices, setPractices] = useState<PracticeSessionRow[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listSessions()
-      .then(setSessions)
+    Promise.all([listSessions(), listPractices(100)])
+      .then(([attemptRows, practiceRows]) => {
+        setSessions(attemptRows);
+        setPractices(practiceRows.filter((row) => row.status === "ended"));
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "failed to load"));
   }, []);
 
@@ -57,12 +67,86 @@ export default function ProgressPage() {
         <Heading size="lg" color="ink.900">
           Progress
         </Heading>
-        {error && <Text color="coral.600">⚠️ {error}</Text>}
-        {!sessions && !error && <Spinner color="coral.500" />}
-        {sessions && (
+        {error ? (
+          <AppNotice tone="danger" title="Could not load progress">
+            {error}
+          </AppNotice>
+        ) : null}
+        {(!sessions || !practices) && !error ? <LoadingSurface lines={6} /> : null}
+        {sessions && practices && (
           <>
             <ProgressCharts sessions={filtered} />
             <Box>
+              <Heading size="md" mb={3}>
+                Practice history
+              </Heading>
+              {practices.length === 0 ? (
+                <EmptyState title="No completed practice yet">
+                  End a practice session to see its attempts grouped here.
+                </EmptyState>
+              ) : (
+                <Stack gap={2}>
+                  {practices.map((practice) => {
+                    const attempts = sessions.filter(
+                      (row) => row.practice_session_id === practice.id,
+                    );
+                    return (
+                      <Button
+                        key={practice.id}
+                        variant="outline"
+                        borderColor="grid"
+                        bg="panel"
+                        height="auto"
+                        py={4}
+                        px={4}
+                        justifyContent="space-between"
+                        textAlign="left"
+                        onClick={() => router.push(`/practice/${practice.id}`)}
+                      >
+                        <Box>
+                          <Text fontWeight="semibold">
+                            {new Date(practice.started_at).toLocaleDateString([], {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </Text>
+                          <Text
+                            mt={1}
+                            color="cream.700"
+                            fontWeight="normal"
+                            whiteSpace="normal"
+                          >
+                            {practice.summary_json?.focus ??
+                              practice.learning_contract_json?.focus ??
+                              "Practice session"}{" "}
+                            · {attempts.length} attempt{attempts.length === 1 ? "" : "s"}
+                          </Text>
+                          {practice.summary_json?.change ? (
+                            <Text
+                              mt={1}
+                              color="teal.700"
+                              fontSize="sm"
+                              fontWeight="normal"
+                              whiteSpace="normal"
+                            >
+                              {practice.summary_json.change}
+                            </Text>
+                          ) : null}
+                        </Box>
+                        <Text color="coral.600" ml={4}>
+                          Review →
+                        </Text>
+                      </Button>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
+            <Box>
+              <Heading size="md" mb={3}>
+                All attempts
+              </Heading>
               <Flex gap={2} mb={3}>
                 {(["all", "exercises", "free-sing"] as const).map((f) => (
                   <Button
