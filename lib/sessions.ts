@@ -23,6 +23,10 @@ export type SessionRow = {
   coaching_json: string | null;
   audio_key: string | null;
   contour_json: string | null;
+  practice_session_id: string | null;
+  sequence_number: number | null;
+  parent_attempt_id: string | null;
+  attempt_kind: "initial" | "retry" | null;
 };
 
 /** The overlay needs the shape of the note, not every frame, so contours are
@@ -92,6 +96,10 @@ export async function insertSession(args: {
   coaching: CoachingResponse | null;
   audioKey: string;
   contour?: Contour | null;
+  practiceSessionId?: string | null;
+  sequenceNumber?: number | null;
+  parentAttemptId?: string | null;
+  attemptKind?: "initial" | "retry";
 }): Promise<string> {
   const uid = await userId();
   if (!uid) throw new Error("not signed in");
@@ -109,6 +117,10 @@ export async function insertSession(args: {
       coaching_json: args.coaching ? JSON.stringify(args.coaching) : null,
       audio_key: args.audioKey,
       contour_json: args.contour ? JSON.stringify(decimateContour(args.contour)) : null,
+      practice_session_id: args.practiceSessionId ?? null,
+      sequence_number: args.sequenceNumber ?? null,
+      parent_attempt_id: args.parentAttemptId ?? null,
+      attempt_kind: args.attemptKind ?? "initial",
     });
   if (error) throw new Error(error.message);
   return id;
@@ -132,7 +144,7 @@ export async function listSessions(): Promise<SessionRow[]> {
   const { data, error } = await supabase()
     .from("sessions")
     .select(
-      "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json",
+      "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
     )
     .order("ts", { ascending: false });
   if (error) throw new Error(error.message);

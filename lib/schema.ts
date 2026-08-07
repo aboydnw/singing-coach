@@ -107,6 +107,33 @@ export const analyzeResponseSchema = z.object({
   contour: contourSchema,
 });
 
+export const startingDirectionSchema = z.enum([
+  "coach_pick",
+  "pitch",
+  "steadiness",
+  "tone",
+  "free_sing",
+]);
+
+export const learningContractSchema = z.object({
+  focusArea: focusAreaSchema.nullable(),
+  focus: z.string(),
+  listenFor: z.string(),
+  tryCue: z.string(),
+  avoid: z.string().nullable(),
+  strength: z.string().nullable(),
+  readyWhen: z.string(),
+  updatedAfterAttemptId: z.string().nullable(),
+  confidence: z.enum(["early", "developing", "supported"]),
+});
+
+export const contextAnchorSchema = z.object({
+  kind: z.enum(["coaching_text", "exercise_instruction", "measurement", "compass_field"]),
+  sourceId: z.string(),
+  label: z.string(),
+  value: z.string(),
+});
+
 export type FocusArea = z.infer<typeof focusAreaSchema>;
 export type ExerciseSpec = z.infer<typeof exerciseSpecSchema>;
 export type Measurements = z.infer<typeof measurementsSchema>;
@@ -116,3 +143,6 @@ export type CoachingResponse = z.infer<typeof coachingResponseSchema>;
 export type Calibration = z.infer<typeof calibrationSchema>;
 export type Contour = z.infer<typeof contourSchema>;
 export type AnalyzeResponse = z.infer<typeof analyzeResponseSchema>;
+export type StartingDirection = z.infer<typeof startingDirectionSchema>;
+export type LearningContract = z.infer<typeof learningContractSchema>;
+export type ContextAnchor = z.infer<typeof contextAnchorSchema>;
