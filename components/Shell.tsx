@@ -7,6 +7,7 @@ import { AuthGate } from "@/components/AuthGate";
 
 const TABS = [
   { href: "/practice", label: "Practice" },
+  { href: "/calibrate", label: "Calibrate" },
   { href: "/progress", label: "Progress" },
   { href: "/account", label: "Account" },
 ];

@@ -22,7 +22,6 @@ import { Surface } from "@/components/ui/Surface";
 import type { StartingDirection } from "@/lib/schema";
 import {
   STARTING_DIRECTION_LABELS,
-  activePractice,
   createPractice,
   listPractices,
   type PracticeSessionRow,
@@ -56,15 +55,21 @@ export function PracticeHome() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const load = async () => {
+    setError(null);
+    setPractices(null);
+    try {
+      const rows = await listPractices();
+      setActive(rows.find((row) => row.status === "in_progress") ?? null);
+      setPractices(rows.filter((row) => row.status === "ended"));
+    } catch (reason) {
+      setPractices([]);
+      setError(reason instanceof Error ? reason.message : "Could not load practice.");
+    }
+  };
+
   useEffect(() => {
-    Promise.all([activePractice(), listPractices()])
-      .then(([current, rows]) => {
-        setActive(current);
-        setPractices(rows.filter((row) => row.status === "ended"));
-      })
-      .catch((reason) =>
-        setError(reason instanceof Error ? reason.message : "Could not load practice."),
-      );
+    void load();
   }, []);
 
   const start = async () => {
@@ -106,6 +111,9 @@ export function PracticeHome() {
       {error ? (
         <AppNotice tone="danger" title="Could not load practice">
           {error}
+          <Button mt={3} size="sm" variant="outline" onClick={load}>
+            Try again
+          </Button>
         </AppNotice>
       ) : null}
 

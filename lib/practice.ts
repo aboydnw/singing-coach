@@ -1,5 +1,26 @@
-import type { ContextAnchor, LearningContract, StartingDirection } from "@/lib/schema";
+import { z } from "zod";
+import {
+  measurementsSchema,
+  type ContextAnchor,
+  type LearningContract,
+  type StartingDirection,
+} from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
+import { parseStoredJson } from "@/lib/storedJson";
+
+const contractCoachingSchema = z.object({
+  focus_area: z.string().optional(),
+  top_issue: z.string().optional(),
+  why: z.string().optional(),
+  drill: z.string().optional(),
+  encouragement: z.string().optional(),
+  resolved: z
+    .object({
+      cues: z.array(z.string()).optional(),
+      caution: z.string().nullable().optional(),
+    })
+    .optional(),
+});
 import { supabase, userId } from "@/lib/supabase";
 
 export type PracticeStatus = "in_progress" | "ended";
@@ -106,7 +127,8 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
         "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
       )
       .eq("practice_session_id", id)
-      .order("sequence_number", { ascending: true }),
+      .order("sequence_number", { ascending: true })
+      .order("ts", { ascending: true }),
     supabase()
       .from("practice_messages")
       .select("*")
@@ -133,7 +155,6 @@ export async function savePracticeMessage(args: {
 }): Promise<PracticeMessageRow> {
   const uid = await userId();
   if (!uid) throw new Error("not signed in");
-  const now = new Date().toISOString();
   const { data, error } = await supabase()
     .from("practice_messages")
     .insert({
@@ -145,8 +166,7 @@ export async function savePracticeMessage(args: {
       context_anchor_json: args.contextAnchor ?? null,
       status: args.status ?? "complete",
       client_request_id: args.clientRequestId ?? null,
-      created_at: now,
-      completed_at: args.status === "streaming" ? null : now,
+      completed_at: args.status === "streaming" ? null : new Date().toISOString(),
     })
     .select("*")
     .single();
@@ -250,8 +270,8 @@ export function contractFromAttempt(
   attempt: SessionRow,
 ): LearningContract {
   if (!attempt.coaching_json) return prior;
-  try {
-    const coaching = JSON.parse(attempt.coaching_json);
+  const coaching = parseStoredJson(attempt.coaching_json, contractCoachingSchema);
+  if (coaching) {
     return {
       focusArea: coaching.focus_area ?? prior.focusArea,
       focus: coaching.top_issue ?? prior.focus,
@@ -263,9 +283,8 @@ export function contractFromAttempt(
       updatedAfterAttemptId: attempt.id,
       confidence: "developing",
     };
-  } catch {
-    return prior;
   }
+  return prior;
 }
 
 function readinessFor(focus: string | undefined): string {
@@ -283,11 +302,8 @@ function readinessFor(focus: string | undefined): string {
 function summarizeChange(attempts: SessionRow[]): string | null {
   const cents = attempts
     .map((attempt) => {
-      try {
-        return JSON.parse(attempt.measurements_json)?.accuracy?.mean_abs_cents_off;
-      } catch {
-        return null;
-      }
+      return parseStoredJson(attempt.measurements_json, measurementsSchema)?.accuracy
+        ?.mean_abs_cents_off;
     })
     .filter((value): value is number => typeof value === "number");
   if (cents.length < 2) return null;

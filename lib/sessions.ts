@@ -140,13 +140,15 @@ export async function updateSessionCoaching(
   if (error) throw new Error(error.message);
 }
 
-export async function listSessions(): Promise<SessionRow[]> {
-  const { data, error } = await supabase()
+export async function listSessions(limit?: number): Promise<SessionRow[]> {
+  let query = supabase()
     .from("sessions")
     .select(
       "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
     )
     .order("ts", { ascending: false });
+  if (limit) query = query.limit(limit);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data ?? [];
 }
