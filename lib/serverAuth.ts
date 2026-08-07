@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-export async function authenticateRequest(request: Request): Promise<string | null> {
+export type AuthenticatedRequest = { token: string; userId: string };
+
+export async function authenticateRequest(
+  request: Request,
+): Promise<AuthenticatedRequest | null> {
   const header = request.headers.get("authorization") ?? "";
   if (!header.startsWith("Bearer ")) return null;
   const token = header.slice("Bearer ".length);
@@ -9,5 +13,5 @@ export async function authenticateRequest(request: Request): Promise<string | nu
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
   const { data, error } = await client.auth.getUser(token);
-  return !error && data.user ? token : null;
+  return !error && data.user ? { token, userId: data.user.id } : null;
 }

@@ -140,8 +140,8 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-  const token = await authenticateRequest(request);
-  if (token === null) {
+  const auth = await authenticateRequest(request);
+  if (auth === null) {
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
   }
 
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
   // runs, so the count includes it: <= 3 keeps the first three sessions in
   // calibration and releases the fourth, matching what the client-supplied
   // history length used to produce.
-  const sessionsOnFile = await countSessions(token);
+  const sessionsOnFile = await countSessions(auth.token);
   const calibrating = sessionsOnFile === null || sessionsOnFile <= CALIBRATION_SESSIONS;
   const userMessage = formatUserMessage(body, calibrating);
   const deadline = Date.now() + ROUTE_BUDGET_MS;

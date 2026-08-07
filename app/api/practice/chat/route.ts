@@ -24,8 +24,8 @@ export async function POST(request: Request) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
     return NextResponse.json({ error: "coaching is not configured" }, { status: 500 });
   }
-  const token = await authenticateRequest(request);
-  if (!token)
+  const auth = await authenticateRequest(request);
+  if (!auth)
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const client = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${token}` } } },
+    { global: { headers: { Authorization: `Bearer ${auth.token}` } } },
   );
   const { data: practice, error: practiceError } = await client
     .from("practice_sessions")
@@ -47,6 +47,17 @@ export async function POST(request: Request) {
   if (practice.status !== "in_progress")
     return NextResponse.json({ error: "this practice has ended" }, { status: 409 });
 
+  const { data: userMessage, error: userMessageError } = await client
+    .from("practice_messages")
+    .select("id")
+    .eq("id", parsed.data.user_message_id)
+    .eq("practice_session_id", practice.id)
+    .eq("role", "user")
+    .maybeSingle();
+  if (userMessageError || !userMessage) {
+    return NextResponse.json({ error: "user message not found" }, { status: 400 });
+  }
+
   const [attemptsResult, messagesResult] = await Promise.all([
     client
       .from("sessions")
@@ -54,6 +65,7 @@ export async function POST(request: Request) {
       .eq("practice_session_id", practice.id)
       .order("sequence_number", { ascending: true })
       .order("ts", { ascending: true })
+      .order("id", { ascending: true })
       .limit(30),
     client
       .from("practice_messages")
@@ -74,7 +86,7 @@ export async function POST(request: Request) {
   const { error: messageError } = await client.from("practice_messages").insert({
     id: assistantId,
     practice_session_id: practice.id,
-    user_id: (await client.auth.getUser()).data.user!.id,
+    user_id: auth.userId,
     role: "assistant",
     content_json: { text: "" },
     context_anchor_json: parsed.data.context_anchor,
@@ -108,6 +120,7 @@ export async function POST(request: Request) {
     selected_context: parsed.data.context_anchor,
   };
 
+  const upstreamController = new AbortController();
   let upstream: Response;
   try {
     upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -117,7 +130,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
         "X-Title": "Singing Coach Practice",
       },
-      signal: AbortSignal.timeout(110_000),
+      signal: AbortSignal.any([AbortSignal.timeout(110_000), upstreamController.signal]),
       body: JSON.stringify({
         model: process.env.COACH_MODEL,
         stream: true,
@@ -158,6 +171,16 @@ export async function POST(request: Request) {
   const encoder = new TextEncoder();
   let buffer = "";
   let complete = "";
+  let stopped = false;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  const persistStreaming = async () => {
+    await client
+      .from("practice_messages")
+      .update({ content_json: { text: complete } })
+      .eq("practice_session_id", practice.id)
+      .eq("client_request_id", parsed.data.client_request_id)
+      .eq("status", "streaming");
+  };
   const finishMessage = async (status: "complete" | "failed" | "stopped") => {
     await client
       .from("practice_messages")
@@ -171,7 +194,8 @@ export async function POST(request: Request) {
   };
   const stream = new ReadableStream({
     async start(controller) {
-      const reader = upstream.body!.getReader();
+      reader = upstream.body!.getReader();
+      const flushTimer = setInterval(() => void persistStreaming(), 2_000);
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -195,16 +219,25 @@ export async function POST(request: Request) {
             }
           }
         }
-        await finishMessage("complete");
-        controller.close();
+        if (!stopped) {
+          await finishMessage("complete");
+          controller.close();
+        }
       } catch (error) {
-        await finishMessage("failed");
-        controller.error(error);
+        if (!stopped) {
+          await finishMessage("failed");
+          controller.error(error);
+        }
       } finally {
-        reader.releaseLock();
+        clearInterval(flushTimer);
+        reader?.releaseLock();
+        reader = null;
       }
     },
     async cancel() {
+      stopped = true;
+      upstreamController.abort();
+      await reader?.cancel().catch(() => undefined);
       await finishMessage("stopped");
     },
   });
@@ -218,7 +251,7 @@ export async function POST(request: Request) {
 }
 
 async function markMessageFailed(
-  client: SupabaseClient<any, any, any>,
+  client: SupabaseClient,
   practiceId: string,
   clientRequestId: string,
 ) {

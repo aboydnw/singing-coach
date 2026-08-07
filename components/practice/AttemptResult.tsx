@@ -16,14 +16,16 @@ import {
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
-export const AttemptResult = memo(function AttemptResult(props: {
+type AttemptResultProps = {
   attempt: SessionRow;
   number: number;
   parent: SessionRow | null;
   expanded: boolean;
   onToggle: () => void;
   onAsk: (label: string, value: string) => void;
-}) {
+};
+
+export const AttemptResult = memo(function AttemptResult(props: AttemptResultProps) {
   const coaching = useMemo(
     () => parseStoredJson(props.attempt.coaching_json, coachingResponseSchema),
     [props.attempt.coaching_json],
@@ -41,7 +43,10 @@ export const AttemptResult = memo(function AttemptResult(props: {
     [props.attempt.exercise_spec_json],
   );
   const parentCents = props.parent ? centsFrom(props.parent) : null;
-  const currentCents = centsFrom(props.attempt);
+  const currentCents =
+    typeof measurements?.accuracy?.mean_abs_cents_off === "number"
+      ? measurements.accuracy.mean_abs_cents_off
+      : null;
   const delta =
     parentCents !== null && currentCents !== null
       ? Math.round(parentCents - currentCents)
@@ -136,7 +141,19 @@ export const AttemptResult = memo(function AttemptResult(props: {
       ) : null}
     </Surface>
   );
-});
+}, sameAttemptResultProps);
+
+function sameAttemptResultProps(
+  previous: AttemptResultProps,
+  next: AttemptResultProps,
+): boolean {
+  return (
+    previous.attempt === next.attempt &&
+    previous.parent === next.parent &&
+    previous.number === next.number &&
+    previous.expanded === next.expanded
+  );
+}
 
 function centsFrom(attempt: SessionRow): number | null {
   const value = parseStoredJson(attempt.measurements_json, measurementsSchema)?.accuracy
