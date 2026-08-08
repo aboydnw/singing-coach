@@ -85,3 +85,6 @@ create policy practice_messages_owner_update on public.practice_messages
   with check ((select auth.uid()) = user_id);
 create policy practice_messages_owner_delete on public.practice_messages
   for delete using ((select auth.uid()) = user_id);
+
+grant select, insert, update, delete on table public.practice_sessions to authenticated;
+grant select, insert, update, delete on table public.practice_messages to authenticated;
