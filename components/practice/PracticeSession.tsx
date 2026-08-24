@@ -220,6 +220,7 @@ export function PracticeSession() {
           analysis.measurements,
           proposal.spec,
           toHistory(allSessions),
+          bundle.practice.id,
         );
       } catch (reason) {
         coachingError = reason instanceof Error ? reason.message : "Coaching failed.";
@@ -321,6 +322,7 @@ export function PracticeSession() {
         coachingRetry.measurements,
         coachingRetry.spec,
         toHistory(sessions.filter((row) => row.id !== coachingRetry.attemptId)),
+        bundle.practice.id,
       );
       await updateSessionCoaching(coachingRetry.attemptId, coaching);
       setCoachingRetry(null);

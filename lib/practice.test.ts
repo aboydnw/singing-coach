@@ -46,6 +46,11 @@ describe("contractFromAttempt", () => {
         why: "The beginning started below the target.",
         drill: "Repeat the landing.",
         encouragement: "The held portion stayed centered.",
+        compass: {
+          overall_trend: "Pitch starts are becoming more consistent.",
+          current_session: "Today's second landing moved closer to the target.",
+          next_direction: "Carry the cleaner onset into the next exercise.",
+        },
         resolved: { cues: ["Place the note on the far wall"], caution: null },
       }),
     );
@@ -53,6 +58,11 @@ describe("contractFromAttempt", () => {
     expect(next.tryCue).toBe("Place the note on the far wall");
     expect(next.strength).toBe("The held portion stayed centered.");
     expect(next.updatedAfterAttemptId).toBe("attempt-1");
+    expect(next.compass).toEqual({
+      overallTrend: "Pitch starts are becoming more consistent.",
+      currentSession: "Today's second landing moved closer to the target.",
+      nextDirection: "Carry the cleaner onset into the next exercise.",
+    });
   });
 
   it("leaves the Compass untouched when coaching is absent", () => {

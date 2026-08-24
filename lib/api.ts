@@ -99,6 +99,7 @@ export async function resynthesize(
 
 export type HistoryEntry = {
   ts: string | null;
+  practice_session_id: string | null;
   exercise_type: string | null;
   measurements: Record<string, unknown> | null;
   advice_given?: {
@@ -114,6 +115,7 @@ export async function coach(
   measurements: Measurements,
   exerciseSpec: ExerciseSpec | null,
   history: HistoryEntry[],
+  currentPracticeSessionId: string | null = null,
 ): Promise<CoachingResponse> {
   const token = await accessToken();
   if (!token) throw new Error("not signed in");
@@ -128,6 +130,7 @@ export async function coach(
       measurements,
       exercise_spec: exerciseSpec,
       history,
+      current_practice_session_id: currentPracticeSessionId,
     }),
   });
   if (!response.ok) {

@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import coaching from "../prompts/coaching.json";
 import {
+  compassModelSchema,
   coachingModelOutputSchema,
   coachingResultSchema,
   FOCUS_AREAS,
   measurementsSchema,
 } from "./schema";
+
+const compass = {
+  overall_trend: "Pitch starts are becoming more consistent across practices.",
+  current_session: "Today's retries moved closer to the target.",
+  next_direction: "Keep the cleaner onset while changing notes.",
+};
 
 describe("focus area enum", () => {
   it("comes from prompts/coaching.json, the single source of truth", () => {
@@ -23,6 +30,7 @@ describe("focus area enum", () => {
       why: "y",
       drill: "z",
       encouragement: "w",
+      compass,
     });
     expect(result.success).toBe(false);
   });
@@ -37,6 +45,7 @@ describe("focus area enum", () => {
         why: "y",
         drill: "z",
         encouragement: "w",
+        compass,
       });
       expect(result.success).toBe(true);
     }
@@ -49,6 +58,7 @@ describe("focus area enum", () => {
       why: "y",
       drill: "z",
       encouragement: "w",
+      compass,
     });
     expect(result.success).toBe(false);
   });
@@ -63,6 +73,7 @@ describe("focus area enum", () => {
       why: "y",
       drill: "z",
       encouragement: "w",
+      compass,
     });
     expect(result.success).toBe(true);
   });
@@ -74,8 +85,21 @@ describe("focus area enum", () => {
       why: "y",
       drill: "z",
       encouragement: "w",
+      compass,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("practice Compass schema", () => {
+  it("requires the cross-session trend, current session read, and next direction", () => {
+    expect(compassModelSchema.parse(compass)).toEqual(compass);
+  });
+
+  it("rejects generated Compass sentences longer than 180 characters", () => {
+    expect(() =>
+      compassModelSchema.parse({ ...compass, overall_trend: "x".repeat(181) }),
+    ).toThrow();
   });
 });
 

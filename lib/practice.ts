@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  compassModelSchema,
   measurementsSchema,
   type ContextAnchor,
   type LearningContract,
@@ -15,6 +16,7 @@ const contractCoachingSchema = z
     why: z.string().optional(),
     drill: z.string().optional(),
     encouragement: z.string().optional(),
+    compass: compassModelSchema.optional(),
     resolved: z
       .object({
         cues: z.array(z.string()).optional(),
@@ -288,9 +290,36 @@ export function contractFromAttempt(
       readyWhen: readinessFor(coaching.focus_area),
       updatedAfterAttemptId: attempt.id,
       confidence: "developing",
+      compass: coaching.compass
+        ? {
+            overallTrend: coaching.compass.overall_trend,
+            currentSession: coaching.compass.current_session,
+            nextDirection: coaching.compass.next_direction,
+          }
+        : prior.compass,
     };
   }
   return prior;
+}
+
+export function compassForContract(contract: LearningContract) {
+  if (contract.compass) return contract.compass;
+  return {
+    overallTrend:
+      contract.confidence === "early"
+        ? "I’m still learning your usual pattern across practices."
+        : "Your longer-term trend will become clearer with more practice evidence.",
+    currentSession: contract.strength
+      ? shortenCompassSentence(contract.strength)
+      : shortenCompassSentence(`This practice is focusing on ${contract.focus}.`),
+    nextDirection: shortenCompassSentence(contract.tryCue),
+  };
+}
+
+function shortenCompassSentence(value: string): string {
+  const sentence = value.trim();
+  if (sentence.length <= 180) return sentence;
+  return `${sentence.slice(0, 177).trimEnd()}…`;
 }
 
 function readinessFor(focus: string | undefined): string {

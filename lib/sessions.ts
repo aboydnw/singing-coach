@@ -172,6 +172,7 @@ export function toHistory(rows: SessionRow[], limit = 5): HistoryEntry[] {
   return rows.slice(0, limit).map((row) => {
     const entry: HistoryEntry = {
       ts: row.ts,
+      practice_session_id: row.practice_session_id,
       exercise_type: row.exercise_type,
       measurements: safeParse(row.measurements_json),
     };
