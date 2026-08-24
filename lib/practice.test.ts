@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { contractFromAttempt, initialContract } from "@/lib/practice";
+import {
+  contractFromAttempt,
+  initialContract,
+  messagesForAttempt,
+  type PracticeMessageRow,
+} from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 
 function attempt(coaching: Record<string, unknown> | null): SessionRow {
@@ -17,6 +22,22 @@ function attempt(coaching: Record<string, unknown> | null): SessionRow {
     sequence_number: 1,
     parent_attempt_id: null,
     attempt_kind: "initial",
+  };
+}
+
+function message(id: string, attemptId: string | null): PracticeMessageRow {
+  return {
+    id,
+    practice_session_id: "practice-1",
+    attempt_id: attemptId,
+    user_id: "user-1",
+    role: "user",
+    content_json: { text: id },
+    context_anchor_json: null,
+    status: "complete",
+    client_request_id: null,
+    created_at: "2026-08-06T10:00:00.000Z",
+    completed_at: "2026-08-06T10:00:01.000Z",
   };
 }
 
@@ -73,5 +94,19 @@ describe("contractFromAttempt", () => {
   it("rejects stored coaching with no recognized fields", () => {
     const prior = initialContract("tone");
     expect(contractFromAttempt(prior, attempt({ unrelated: true }))).toBe(prior);
+  });
+});
+
+describe("messagesForAttempt", () => {
+  it("keeps each conversation inside its owning attempt", () => {
+    const messages = [
+      message("first-question", "attempt-1"),
+      message("second-question", "attempt-2"),
+      message("legacy-session-message", null),
+    ];
+
+    expect(messagesForAttempt(messages, "attempt-2").map((row) => row.id)).toEqual([
+      "second-question",
+    ]);
   });
 });

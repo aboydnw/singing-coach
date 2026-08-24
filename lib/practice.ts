@@ -55,6 +55,7 @@ export type PracticeSummary = {
 export type PracticeMessageRow = {
   id: string;
   practice_session_id: string;
+  attempt_id: string | null;
   user_id: string;
   role: "user" | "assistant";
   content_json: { text: string };
@@ -155,6 +156,7 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
 
 export async function savePracticeMessage(args: {
   practiceSessionId: string;
+  attemptId: string;
   role: "user" | "assistant";
   text: string;
   contextAnchor?: ContextAnchor | null;
@@ -168,6 +170,7 @@ export async function savePracticeMessage(args: {
     .insert({
       id: crypto.randomUUID(),
       practice_session_id: args.practiceSessionId,
+      attempt_id: args.attemptId,
       user_id: uid,
       role: args.role,
       content_json: { text: args.text },
@@ -180,6 +183,13 @@ export async function savePracticeMessage(args: {
     .single();
   if (error) throw new Error(error.message);
   return data as PracticeMessageRow;
+}
+
+export function messagesForAttempt(
+  messages: PracticeMessageRow[],
+  attemptId: string,
+): PracticeMessageRow[] {
+  return messages.filter((message) => message.attempt_id === attemptId);
 }
 
 export async function updateLearningContract(

@@ -137,6 +137,8 @@ export function PracticeSession() {
   const sendQuestion = async () => {
     const text = question.trim();
     if (!bundle || !text || streaming || ended) return;
+    const attemptId = bundle.attempts.at(-1)?.id;
+    if (!attemptId) return;
     const clientRequestId = crypto.randomUUID();
     const assistantRequestId = crypto.randomUUID();
     setStreaming(true);
@@ -145,6 +147,7 @@ export function PracticeSession() {
     try {
       const userMessage = await savePracticeMessage({
         practiceSessionId: bundle.practice.id,
+        attemptId,
         role: "user",
         text,
         contextAnchor: anchor,
@@ -313,7 +316,7 @@ export function PracticeSession() {
   };
 
   const retryCoaching = async () => {
-    if (!coachingRetry) return;
+    if (!coachingRetry || !bundle) return;
     setProcessing(true);
     setError(null);
     try {

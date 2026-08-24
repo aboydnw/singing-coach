@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(21);
 
 select has_table('public', 'practice_sessions', 'practice_sessions exists');
 select has_table('public', 'practice_messages', 'practice_messages exists');
@@ -7,6 +7,24 @@ select has_column('public', 'sessions', 'practice_session_id', 'sessions link to
 select has_column('public', 'sessions', 'sequence_number', 'sessions have a practice sequence');
 select has_column('public', 'sessions', 'parent_attempt_id', 'sessions can link retries');
 select has_column('public', 'sessions', 'attempt_kind', 'sessions identify attempt kind');
+select has_column('public', 'practice_messages', 'attempt_id', 'messages link to an attempt thread');
+select col_is_null('public', 'practice_messages', 'attempt_id', 'legacy messages without attempts remain valid');
+select has_index(
+  'public',
+  'practice_messages',
+  'practice_messages_practice_attempt_created',
+  'attempt conversations have an ordered read index'
+);
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_constraint
+    where conname = 'practice_messages_attempt_id_fkey'
+      and contype = 'f'
+  $$,
+  array[1],
+  'practice message attempt ownership has a foreign key'
+);
 
 select results_eq(
   $$ select relrowsecurity from pg_class where oid = 'public.practice_sessions'::regclass $$,
