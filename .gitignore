@@ -15,6 +15,7 @@ next-env.d.ts
 .vercel/
 supabase/.temp/
 .feedback/
+.superpowers/
 storybook-static/
 *.tsbuildinfo
 
