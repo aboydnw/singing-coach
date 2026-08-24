@@ -240,7 +240,7 @@ export function PracticeSession() {
         coaching = await coach(
           analysis.measurements,
           proposal.spec,
-          toHistory(allSessions),
+          toHistory(allSessions, 30),
           bundle.practice.id,
         );
       } catch (reason) {
@@ -341,7 +341,10 @@ export function PracticeSession() {
       const coaching = await coach(
         coachingRetry.measurements,
         coachingRetry.spec,
-        toHistory(sessions.filter((row) => row.id !== coachingRetry.attemptId)),
+        toHistory(
+          sessions.filter((row) => row.id !== coachingRetry.attemptId),
+          30,
+        ),
         bundle.practice.id,
       );
       await updateSessionCoaching(coachingRetry.attemptId, coaching);
@@ -719,6 +722,7 @@ export function PracticeSession() {
         {contract ? (
           <PracticeCompass
             contract={contract}
+            canAsk={Boolean(activeThread.attempt) && !ended}
             onAsk={(label, value) => {
               if (activeThread.attempt) {
                 askAbout(label, value, bundle.practice.id, "compass_field");

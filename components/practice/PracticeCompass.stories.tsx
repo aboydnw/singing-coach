@@ -11,6 +11,11 @@ const contract = {
   readyWhen: "Two attempts begin near the target without a corrective slide",
   updatedAfterAttemptId: "attempt-2",
   confidence: "developing" as const,
+  compass: {
+    overallTrend: "Pitch starts are becoming more consistent across practices.",
+    currentSession: "Today’s second attempt landed closer to the target.",
+    nextDirection: "Keep the cleaner onset while changing notes.",
+  },
 };
 
 const meta = {
@@ -27,10 +32,15 @@ const meta = {
 } satisfies Meta<typeof PracticeCompass>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const Developing: Story = {};
-export const Early: Story = {
-  args: { contract: { ...contract, confidence: "early", strength: null, avoid: null } },
-};
-export const Supported: Story = {
-  args: { contract: { ...contract, confidence: "supported" } },
+export const Generated: Story = {};
+export const LegacyFallback: Story = {
+  args: {
+    contract: {
+      ...contract,
+      confidence: "early",
+      strength: null,
+      avoid: null,
+      compass: undefined,
+    },
+  },
 };

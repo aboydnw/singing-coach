@@ -3,6 +3,7 @@ import coaching from "../prompts/coaching.json";
 import {
   compassModelSchema,
   coachingModelOutputSchema,
+  coachingResponseSchema,
   coachingResultSchema,
   FOCUS_AREAS,
   measurementsSchema,
@@ -100,6 +101,36 @@ describe("practice Compass schema", () => {
     expect(() =>
       compassModelSchema.parse({ ...compass, overall_trend: "x".repeat(181) }),
     ).toThrow();
+  });
+
+  it("keeps legacy stored coaching readable without generated Compass fields", () => {
+    const result = coachingResponseSchema.safeParse({
+      focus_area: FOCUS_AREAS[0],
+      state_id: "hypoadduction",
+      drill_id: "staccato_onsets",
+      top_issue: "Land closer to the note",
+      why: "The onset began below the target.",
+      drill: "Repeat the landing.",
+      encouragement: "The held vowel stayed clear.",
+      calibrating: false,
+      resolved: {
+        state_id: "hypoadduction",
+        state_name: "Breathy onset",
+        remediation_family: "closure",
+        audible_correction: null,
+        drill: {
+          id: "staccato_onsets",
+          name: "Staccato onsets",
+          instructions: "Send each onset to the wall.",
+          duration_s: 30,
+        },
+        cues: ["Send each onset to the wall."],
+        caution: null,
+        used_fallback: false,
+      },
+    });
+
+    expect(result.success).toBe(true);
   });
 });
 

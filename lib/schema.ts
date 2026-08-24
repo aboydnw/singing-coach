@@ -97,6 +97,7 @@ export const resolvedCoachingSchema = z.object({
 });
 
 export const coachingResponseSchema = coachingResultSchema.extend({
+  compass: compassModelSchema.optional(),
   resolved: resolvedCoachingSchema,
   calibrating: z.boolean().default(false),
 });
