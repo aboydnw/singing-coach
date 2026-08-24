@@ -7,21 +7,28 @@ import { blobToWav } from "@/lib/wav";
 
 export type RecorderState =
   | { phase: "idle" }
+  | { phase: "requesting" }
   | { phase: "recording" }
   | { phase: "encoding" }
   | { phase: "uploading"; fraction: number }
   | { phase: "done"; storageKey: string }
   | { phase: "error"; message: string };
 
+export function isRecorderBusy(state: RecorderState): boolean {
+  return ["requesting", "recording", "encoding", "uploading"].includes(state.phase);
+}
+
 /** Record -> WAV -> Supabase Storage. Used by calibrate, exercise and
  * free-sing; hands the storage key back once the upload lands. */
 export function Recorder({
   label,
   onUploaded,
+  onStateChange,
   disabled = false,
 }: {
   label?: string;
   onUploaded: (storageKey: string) => void;
+  onStateChange?: (state: RecorderState) => void;
   disabled?: boolean;
 }) {
   const [state, setState] = useState<RecorderState>({ phase: "idle" });
@@ -40,9 +47,21 @@ export function Recorder({
     };
   }, []);
 
+  useEffect(() => {
+    onStateChange?.(state);
+  }, [onStateChange, state]);
+
+  useEffect(
+    () => () => {
+      onStateChange?.({ phase: "idle" });
+    },
+    [onStateChange],
+  );
+
   const start = async () => {
     let stream: MediaStream | null = null;
     try {
+      setState({ phase: "requesting" });
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
@@ -103,13 +122,19 @@ export function Recorder({
             variant="outline"
             onClick={start}
             disabled={
-              disabled || state.phase === "encoding" || state.phase === "uploading"
+              disabled ||
+              state.phase === "encoding" ||
+              state.phase === "uploading" ||
+              state.phase === "requesting"
             }
           >
             🎙 {state.phase === "done" ? "Re-record" : "Record"}
           </Button>
         )}
         {state.phase === "recording" && <Text color="coral.600">Recording…</Text>}
+        {state.phase === "requesting" && (
+          <Text color="cream.600">Waiting for microphone…</Text>
+        )}
         {state.phase === "encoding" && <Text color="cream.600">Encoding…</Text>}
         {state.phase === "uploading" && (
           <Flex align="center" gap={2} minW="40">

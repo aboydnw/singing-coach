@@ -1,5 +1,6 @@
 import { Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { Recorder } from "@/components/Recorder";
+import type { RecorderState } from "@/components/Recorder";
 import { ContextAction } from "@/components/ui/ContextAction";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
@@ -17,6 +18,7 @@ export function ExerciseProposal(props: {
   accepted: boolean;
   processing: boolean;
   playing: boolean;
+  recorderBusy: boolean;
   onAccept: () => void;
   onUploaded: (key: string) => void;
   onHear: () => void;
@@ -24,6 +26,8 @@ export function ExerciseProposal(props: {
   onFreeSing: () => void;
   onMoveOn: () => void;
   onAsk: () => void;
+  onCancel: () => void;
+  onRecorderStateChange: (state: RecorderState) => void;
 }) {
   const { proposal, accepted } = props;
   return (
@@ -98,6 +102,9 @@ export function ExerciseProposal(props: {
                 Move on
               </Button>
             ) : null}
+            <Button variant="plain" color="fg.muted" px={0} onClick={props.onCancel}>
+              Cancel
+            </Button>
           </Flex>
         </Stack>
       ) : (
@@ -113,11 +120,26 @@ export function ExerciseProposal(props: {
                 colorPalette="teal"
                 onClick={props.onHear}
                 loading={props.playing}
+                disabled={props.recorderBusy}
               >
                 Hear the reference
               </Button>
             ) : null}
-            <Recorder onUploaded={props.onUploaded} disabled={props.processing} />
+            <Recorder
+              onUploaded={props.onUploaded}
+              onStateChange={props.onRecorderStateChange}
+              disabled={props.processing}
+            />
+            <Button
+              alignSelf="start"
+              variant="plain"
+              color="fg.muted"
+              px={0}
+              onClick={props.onCancel}
+              disabled={props.processing || props.recorderBusy}
+            >
+              Cancel
+            </Button>
             {props.processing ? (
               <Text color="singer.agency" role="status">
                 Listening for the pattern and preparing one useful correction…

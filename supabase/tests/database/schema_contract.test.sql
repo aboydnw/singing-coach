@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(25);
 
 select has_table('public', 'practice_sessions', 'practice_sessions exists');
 select has_table('public', 'practice_messages', 'practice_messages exists');
@@ -22,8 +22,41 @@ select results_eq(
     where conname = 'practice_messages_attempt_id_fkey'
       and contype = 'f'
   $$,
+  array[0],
+  'single-column attempt foreign key is replaced by thread ownership'
+);
+
+select has_index(
+  'public',
+  'sessions',
+  'sessions_attempt_practice_owner',
+  'attempt ownership has a composite reference key'
+);
+select has_index(
+  'public',
+  'practice_sessions',
+  'practice_sessions_id_owner',
+  'practice ownership has a composite reference key'
+);
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_constraint
+    where conname = 'practice_messages_attempt_context_fkey'
+      and contype = 'f'
+  $$,
   array[1],
-  'practice message attempt ownership has a foreign key'
+  'message attempts must match their practice and owner'
+);
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_constraint
+    where conname = 'practice_messages_practice_owner_fkey'
+      and contype = 'f'
+  $$,
+  array[1],
+  'messages must match their practice owner'
 );
 
 select results_eq(

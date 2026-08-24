@@ -13,12 +13,13 @@ import {
   exerciseSpecSchema,
   measurementsSchema,
 } from "@/lib/schema";
+import { attemptNavigationLabel } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
 type AttemptResultProps = {
   attempt: SessionRow;
-  number: number;
+  fallbackIndex: number;
   parent: SessionRow | null;
   expanded: boolean;
   onToggle: () => void;
@@ -63,7 +64,7 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
         <Flex justify="space-between" gap={3} wrap="wrap">
           <Box>
             <Text color="fg.muted" fontSize="sm">
-              {props.parent ? "Focused retry" : `Attempt ${props.number}`}
+              {attemptNavigationLabel(props.attempt, props.fallbackIndex)}
             </Text>
             <Heading mt={1} size="md">
               {spec?.display_name ?? "Free sing"}
@@ -151,7 +152,7 @@ function sameAttemptResultProps(
   return (
     previous.attempt === next.attempt &&
     previous.parent === next.parent &&
-    previous.number === next.number &&
+    previous.fallbackIndex === next.fallbackIndex &&
     previous.expanded === next.expanded
   );
 }

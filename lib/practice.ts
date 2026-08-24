@@ -4,6 +4,7 @@ import {
   exerciseSpecSchema,
   measurementsSchema,
   type ContextAnchor,
+  type ExerciseSpec,
   type LearningContract,
   type StartingDirection,
 } from "@/lib/schema";
@@ -222,9 +223,31 @@ export function activePracticeThread(
 }
 
 export function attemptNavigationLabel(attempt: SessionRow, index: number): string {
-  return attempt.parent_attempt_id
-    ? `Focused retry ${index + 1}`
-    : `Attempt ${index + 1}`;
+  const number =
+    typeof attempt.sequence_number === "number" && attempt.sequence_number > 0
+      ? attempt.sequence_number
+      : index + 1;
+  const retry = attempt.attempt_kind === "retry" || Boolean(attempt.parent_attempt_id);
+  return retry ? `Focused retry ${number}` : `Attempt ${number}`;
+}
+
+export function nextAttemptSequence(attempts: SessionRow[]): number {
+  const highestPersisted = attempts.reduce(
+    (highest, attempt) =>
+      typeof attempt.sequence_number === "number" && attempt.sequence_number > highest
+        ? attempt.sequence_number
+        : highest,
+    0,
+  );
+  return Math.max(attempts.length, highestPersisted) + 1;
+}
+
+export function currentExerciseForChange(
+  setupOpen: boolean,
+  proposalSpec: ExerciseSpec | null | undefined,
+  selectedAttemptSpec: ExerciseSpec | null,
+): ExerciseSpec | null {
+  return setupOpen && proposalSpec !== undefined ? proposalSpec : selectedAttemptSpec;
 }
 
 export function attemptExerciseName(attempt: SessionRow): string {

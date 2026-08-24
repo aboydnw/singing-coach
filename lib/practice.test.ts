@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   activePracticeThread,
+  attemptNavigationLabel,
   contractFromAttempt,
+  currentExerciseForChange,
   initialContract,
   messagesForAttempt,
+  nextAttemptSequence,
   selectedAttemptAfterRefresh,
   type PracticeMessageRow,
 } from "@/lib/practice";
@@ -136,6 +139,76 @@ describe("selectedAttemptAfterRefresh", () => {
 
   it("returns no selection before the first recording", () => {
     expect(selectedAttemptAfterRefresh(null, [])).toBeNull();
+  });
+});
+
+describe("attemptNavigationLabel", () => {
+  it("keeps persisted sequence numbers stable when the list has gaps", () => {
+    expect(attemptNavigationLabel({ ...attempt(null), sequence_number: 4 }, 1)).toBe(
+      "Attempt 4",
+    );
+  });
+
+  it("uses attempt kind when a legacy retry has lost its parent link", () => {
+    expect(
+      attemptNavigationLabel(
+        {
+          ...attempt(null),
+          sequence_number: 5,
+          attempt_kind: "retry",
+          parent_attempt_id: null,
+        },
+        1,
+      ),
+    ).toBe("Focused retry 5");
+  });
+
+  it("falls back to list position for legacy attempts", () => {
+    expect(attemptNavigationLabel({ ...attempt(null), sequence_number: null }, 2)).toBe(
+      "Attempt 3",
+    );
+  });
+});
+
+describe("nextAttemptSequence", () => {
+  it("continues after the highest persisted sequence when attempts have gaps", () => {
+    expect(
+      nextAttemptSequence([
+        { ...attempt(null), sequence_number: 1 },
+        { ...attempt(null), id: "attempt-3", sequence_number: 3 },
+        { ...attempt(null), id: "attempt-4", sequence_number: 4 },
+      ]),
+    ).toBe(5);
+  });
+
+  it("falls back to list length for legacy attempts", () => {
+    expect(nextAttemptSequence([{ ...attempt(null), sequence_number: null }])).toBe(2);
+  });
+});
+
+describe("currentExerciseForChange", () => {
+  const selected = {
+    type: "sustained_note",
+    target_notes_midi: [60],
+    duration_per_note_s: 2,
+    vowel: "ah",
+    display_name: "Selected exercise",
+  } as const;
+  const proposed = {
+    type: "scale",
+    target_notes_midi: [60, 62, 64],
+    duration_per_note_s: 0.5,
+    vowel: "ah",
+    display_name: "Proposed exercise",
+  } as const;
+
+  it("ignores a hidden stale proposal after selecting an attempt", () => {
+    expect(currentExerciseForChange(false, proposed, selected)).toBe(selected);
+  });
+
+  it("uses the visible setup proposal, including free sing", () => {
+    expect(currentExerciseForChange(true, proposed, selected)).toBe(proposed);
+    expect(currentExerciseForChange(true, null, selected)).toBeNull();
   });
 });
 
