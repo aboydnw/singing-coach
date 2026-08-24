@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(29);
 
 select has_table('public', 'practice_sessions', 'practice_sessions exists');
 select has_table('public', 'practice_messages', 'practice_messages exists');
@@ -57,6 +57,92 @@ select results_eq(
   $$,
   array[1],
   'messages must match their practice owner'
+);
+
+insert into auth.users (id)
+values
+  ('11111111-1111-1111-1111-111111111111'),
+  ('22222222-2222-2222-2222-222222222222');
+
+insert into public.practice_sessions (
+  id, user_id, starting_direction, status, ended_at
+)
+values
+  ('11111111-1111-1111-1111-111111111101', '11111111-1111-1111-1111-111111111111', 'pitch', 'in_progress', null),
+  ('11111111-1111-1111-1111-111111111102', '11111111-1111-1111-1111-111111111111', 'tone', 'ended', now()),
+  ('22222222-2222-2222-2222-222222222201', '22222222-2222-2222-2222-222222222222', 'pitch', 'in_progress', null);
+
+insert into public.sessions (
+  id, user_id, ts, exercise_type, measurements_json,
+  practice_session_id, sequence_number, attempt_kind
+)
+values (
+  '11111111-1111-1111-1111-111111111110',
+  '11111111-1111-1111-1111-111111111111',
+  now(), 'sustained_note', '{}',
+  '11111111-1111-1111-1111-111111111101', 1, 'initial'
+);
+
+select lives_ok(
+  $$
+    insert into public.practice_messages (
+      id, practice_session_id, attempt_id, user_id, role, content_json
+    ) values (
+      '11111111-1111-1111-1111-111111111120',
+      '11111111-1111-1111-1111-111111111101',
+      '11111111-1111-1111-1111-111111111110',
+      '11111111-1111-1111-1111-111111111111',
+      'user', '{"text":"matching thread"}'
+    )
+  $$,
+  'a message can reference its own attempt thread'
+);
+
+select throws_ok(
+  $$
+    insert into public.practice_messages (
+      id, practice_session_id, attempt_id, user_id, role, content_json
+    ) values (
+      '11111111-1111-1111-1111-111111111121',
+      '11111111-1111-1111-1111-111111111102',
+      '11111111-1111-1111-1111-111111111110',
+      '11111111-1111-1111-1111-111111111111',
+      'user', '{"text":"wrong practice"}'
+    )
+  $$,
+  '23503', null,
+  'an attempt cannot be attached to a different practice'
+);
+
+select throws_ok(
+  $$
+    insert into public.practice_messages (
+      id, practice_session_id, attempt_id, user_id, role, content_json
+    ) values (
+      '11111111-1111-1111-1111-111111111122',
+      '22222222-2222-2222-2222-222222222201',
+      null,
+      '11111111-1111-1111-1111-111111111111',
+      'user', '{"text":"wrong owner"}'
+    )
+  $$,
+  '23503', null,
+  'a message cannot be attached to another owner practice'
+);
+
+select lives_ok(
+  $$
+    insert into public.practice_messages (
+      id, practice_session_id, attempt_id, user_id, role, content_json
+    ) values (
+      '11111111-1111-1111-1111-111111111123',
+      '11111111-1111-1111-1111-111111111101',
+      null,
+      '11111111-1111-1111-1111-111111111111',
+      'user', '{"text":"legacy message"}'
+    )
+  $$,
+  'legacy messages may keep a null attempt within their owner practice'
 );
 
 select results_eq(

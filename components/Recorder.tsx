@@ -36,6 +36,8 @@ export function Recorder({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const disposedRef = useRef(false);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const operationRef = useRef(0);
 
   useEffect(() => {
     disposedRef.current = false;
@@ -43,6 +45,8 @@ export function Recorder({
       // Ending the tracks fires the recorder's stop event, so onstop must
       // know this is teardown - not a take to encode and upload.
       disposedRef.current = true;
+      operationRef.current += 1;
+      uploadAbortRef.current?.abort();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
@@ -60,9 +64,14 @@ export function Recorder({
 
   const start = async () => {
     let stream: MediaStream | null = null;
+    const operationId = ++operationRef.current;
     try {
       setState({ phase: "requesting" });
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (disposedRef.current || operationId !== operationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -70,20 +79,33 @@ export function Recorder({
       recorder.onstop = async () => {
         streamRef.current = null;
         stream?.getTracks().forEach((track) => track.stop());
-        if (disposedRef.current) return;
+        if (disposedRef.current || operationId !== operationRef.current) return;
         try {
           setState({ phase: "encoding" });
           const blob = new Blob(chunksRef.current, {
             type: recorder.mimeType || "audio/webm",
           });
           const wav = await blobToWav(blob);
+          if (disposedRef.current || operationId !== operationRef.current) return;
           setState({ phase: "uploading", fraction: 0 });
-          const key = await uploadRecording(wav, (fraction) =>
-            setState({ phase: "uploading", fraction }),
+          const uploadController = new AbortController();
+          uploadAbortRef.current = uploadController;
+          const key = await uploadRecording(
+            wav,
+            (fraction) => {
+              if (!disposedRef.current && operationId === operationRef.current) {
+                setState({ phase: "uploading", fraction });
+              }
+            },
+            uploadController.signal,
           );
+          uploadAbortRef.current = null;
+          if (disposedRef.current || operationId !== operationRef.current) return;
           setState({ phase: "done", storageKey: key });
           onUploaded(key);
         } catch (error) {
+          uploadAbortRef.current = null;
+          if (disposedRef.current || operationId !== operationRef.current) return;
           setState({
             phase: "error",
             message: error instanceof Error ? error.message : "recording failed",
@@ -96,6 +118,7 @@ export function Recorder({
     } catch {
       stream?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      if (disposedRef.current || operationId !== operationRef.current) return;
       setState({ phase: "error", message: "microphone access was denied" });
     }
   };

@@ -85,7 +85,9 @@ export function PracticeSession() {
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [recorderState, setRecorderState] = useState<RecorderState>({ phase: "idle" });
+  const [proposalLoading, setProposalLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const proposalRequestRef = useRef(0);
 
   const refresh = useCallback(
     async (newlyCreatedId?: string | null) => {
@@ -380,65 +382,69 @@ export function PracticeSession() {
   };
 
   const differentExercise = async () => {
-    if (!bundle || recorderBusy) return;
-    let calibration;
+    if (!bundle || recorderBusy || proposalLoading) return;
+    const requestId = ++proposalRequestRef.current;
+    setProposalLoading(true);
     try {
-      calibration = await latestCalibration();
+      const calibration = await latestCalibration();
+      if (requestId !== proposalRequestRef.current) return;
+      if (!calibration || calibration.tessitura_low_midi === null) {
+        setNeedsCalibration(true);
+        return;
+      }
+      const current = currentExerciseForChange(
+        setupOpen,
+        proposal?.spec,
+        parseStoredJson(
+          activeThread.attempt?.exercise_spec_json ?? null,
+          exerciseSpecSchema,
+        ),
+      );
+      const spec = current
+        ? skipExercise(calibration, bundle.attempts.length, current).spec
+        : nextExercise(calibration, bundle.attempts.length, null);
+      setNeedsCalibration(false);
+      setAccepted(false);
+      setProposal({
+        spec,
+        reason: "A different shape, while keeping today’s listening focus in view.",
+        parentAttemptId: null,
+        retry: false,
+      });
+      setSetupOpen(true);
+      requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
-      return;
+      if (requestId === proposalRequestRef.current) {
+        setError(
+          reason instanceof Error ? reason.message : "Could not load calibration.",
+        );
+      }
+    } finally {
+      if (requestId === proposalRequestRef.current) setProposalLoading(false);
     }
-    if (!calibration || calibration.tessitura_low_midi === null) {
-      setNeedsCalibration(true);
-      return;
-    }
-    const current = currentExerciseForChange(
-      setupOpen,
-      proposal?.spec,
-      parseStoredJson(
-        activeThread.attempt?.exercise_spec_json ?? null,
-        exerciseSpecSchema,
-      ),
-    );
-    const spec = current
-      ? skipExercise(calibration, bundle.attempts.length, current).spec
-      : nextExercise(calibration, bundle.attempts.length, null);
-    setNeedsCalibration(false);
-    setAccepted(false);
-    setProposal({
-      spec,
-      reason: "A different shape, while keeping today’s listening focus in view.",
-      parentAttemptId: null,
-      retry: false,
-    });
-    setSetupOpen(true);
-    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
   };
 
   const nextFromCoach = async () => {
-    if (!bundle || recorderBusy) return;
-    let calibration;
+    if (!bundle || recorderBusy || proposalLoading) return;
+    const requestId = ++proposalRequestRef.current;
+    setProposalLoading(true);
     try {
-      calibration = await latestCalibration();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
-      return;
-    }
-    if (!calibration || calibration.tessitura_low_midi === null) {
-      setNeedsCalibration(true);
-      return;
-    }
-    const latest = bundle.attempts.at(-1);
-    let spec = nextExercise(
-      calibration,
-      bundle.attempts.length,
-      contract?.focusArea ?? null,
-    );
-    setNeedsCalibration(false);
-    if (latest?.coaching_json) {
-      const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
-      if (coaching) {
-        if (coaching.resolved?.drill?.exercise_type) {
+      const calibration = await latestCalibration();
+      if (requestId !== proposalRequestRef.current) return;
+      if (!calibration || calibration.tessitura_low_midi === null) {
+        setNeedsCalibration(true);
+        return;
+      }
+      const latest = bundle.attempts.at(-1);
+      let spec = nextExercise(
+        calibration,
+        bundle.attempts.length,
+        contract?.focusArea ?? null,
+      );
+      setNeedsCalibration(false);
+      if (latest?.coaching_json) {
+        const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
+        if (coaching?.resolved?.drill?.exercise_type) {
           spec = exerciseForDrill(
             calibration,
             bundle.attempts.length,
@@ -447,21 +453,29 @@ export function PracticeSession() {
           );
         }
       }
+      setAccepted(false);
+      setProposal({
+        spec,
+        reason:
+          "The next exercise keeps the same focus but changes what your voice has to coordinate.",
+        parentAttemptId: null,
+        retry: false,
+      });
+      setSetupOpen(true);
+      requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+    } catch (reason) {
+      if (requestId === proposalRequestRef.current) {
+        setError(
+          reason instanceof Error ? reason.message : "Could not load calibration.",
+        );
+      }
+    } finally {
+      if (requestId === proposalRequestRef.current) setProposalLoading(false);
     }
-    setAccepted(false);
-    setProposal({
-      spec,
-      reason:
-        "The next exercise keeps the same focus but changes what your voice has to coordinate.",
-      parentAttemptId: null,
-      retry: false,
-    });
-    setSetupOpen(true);
-    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
   };
 
   const freeSing = () => {
-    if (recorderBusy) return;
+    if (recorderBusy || proposalLoading) return;
     setNeedsCalibration(false);
     setAccepted(false);
     setProposal({
@@ -476,7 +490,7 @@ export function PracticeSession() {
   };
 
   const retrySelected = () => {
-    if (!activeThread.attempt || recorderBusy) return;
+    if (!activeThread.attempt || recorderBusy || proposalLoading) return;
     setAccepted(false);
     setProposal({
       spec: parseStoredJson(activeThread.attempt.exercise_spec_json, exerciseSpecSchema),
@@ -493,6 +507,7 @@ export function PracticeSession() {
     if (
       streaming ||
       recorderBusy ||
+      proposalLoading ||
       !bundle?.attempts.some((attempt) => attempt.id === attemptId)
     )
       return;
@@ -573,7 +588,7 @@ export function PracticeSession() {
           <Button
             variant="ghost"
             colorPalette="coral"
-            disabled={processing || streaming || recorderBusy}
+            disabled={processing || streaming || recorderBusy || proposalLoading}
             onClick={() => setEndOpen(true)}
           >
             End practice
@@ -623,7 +638,7 @@ export function PracticeSession() {
           selectedAttemptId={selectedAttemptId}
           onSelect={selectAttempt}
           onNewAttempt={nextFromCoach}
-          disabled={processing || streaming || recorderBusy}
+          disabled={processing || streaming || recorderBusy || proposalLoading}
           ended={ended}
         />
 
@@ -687,7 +702,7 @@ export function PracticeSession() {
               onRetry={retrySelected}
               onDifferent={differentExercise}
               streaming={streaming}
-              disabled={processing || recorderBusy}
+              disabled={processing || recorderBusy || proposalLoading}
               onStop={() => abortRef.current?.abort()}
             />
           ) : null}
@@ -698,6 +713,7 @@ export function PracticeSession() {
               processing={processing}
               playing={playing}
               recorderBusy={recorderBusy}
+              proposalLoading={proposalLoading}
               onAccept={() => setAccepted(true)}
               onUploaded={onUploaded}
               onHear={async () => {
@@ -714,6 +730,8 @@ export function PracticeSession() {
               onMoveOn={nextFromCoach}
               onCancel={() => {
                 if (recorderBusy) return;
+                proposalRequestRef.current += 1;
+                setProposalLoading(false);
                 setSetupOpen(false);
                 setProposal(null);
                 setAccepted(false);

@@ -61,6 +61,7 @@ export function AttemptNavigator(props: AttemptNavigatorProps) {
                 px={3}
                 py={2}
                 aria-current={selected ? "true" : undefined}
+                disabled={props.disabled}
                 onClick={() => props.onSelect(attempt.id)}
               >
                 <Box minW={0}>
@@ -86,7 +87,7 @@ export function AttemptNavigator(props: AttemptNavigatorProps) {
             <label htmlFor="practice-attempt-select">
               <Text fontSize="sm">Attempt</Text>
             </label>
-            <NativeSelect.Root mt={1}>
+            <NativeSelect.Root mt={1} disabled={props.disabled}>
               <NativeSelect.Field
                 id="practice-attempt-select"
                 value={props.selectedAttemptId ?? ""}

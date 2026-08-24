@@ -19,6 +19,7 @@ export function ExerciseProposal(props: {
   processing: boolean;
   playing: boolean;
   recorderBusy: boolean;
+  proposalLoading: boolean;
   onAccept: () => void;
   onUploaded: (key: string) => void;
   onHear: () => void;
@@ -64,7 +65,11 @@ export function ExerciseProposal(props: {
       {!accepted ? (
         <Stack mt={5} gap={3}>
           <Flex gap={3} wrap="wrap">
-            <Button colorPalette="coral" onClick={props.onAccept}>
+            <Button
+              colorPalette="coral"
+              onClick={props.onAccept}
+              disabled={props.proposalLoading}
+            >
               {proposal.retry ? "Try it now" : "Start this exercise"}
             </Button>
             {proposal.spec ? (
@@ -73,6 +78,7 @@ export function ExerciseProposal(props: {
                 colorPalette="teal"
                 onClick={props.onHear}
                 loading={props.playing}
+                disabled={props.proposalLoading}
               >
                 Hear it
               </Button>
@@ -80,15 +86,33 @@ export function ExerciseProposal(props: {
           </Flex>
           <Flex gap={4} wrap="wrap">
             <ContextAction onClick={props.onAsk}>Ask about this</ContextAction>
-            <Button variant="plain" color="fg.muted" px={0} onClick={props.onDifferent}>
+            <Button
+              variant="plain"
+              color="fg.muted"
+              px={0}
+              onClick={props.onDifferent}
+              loading={props.proposalLoading}
+            >
               Different exercise
             </Button>
             {proposal.spec ? (
-              <Button variant="plain" color="fg.muted" px={0} onClick={props.onFreeSing}>
+              <Button
+                variant="plain"
+                color="fg.muted"
+                px={0}
+                onClick={props.onFreeSing}
+                disabled={props.proposalLoading}
+              >
                 Free sing instead
               </Button>
             ) : (
-              <Button variant="plain" color="fg.muted" px={0} onClick={props.onMoveOn}>
+              <Button
+                variant="plain"
+                color="fg.muted"
+                px={0}
+                onClick={props.onMoveOn}
+                disabled={props.proposalLoading}
+              >
                 Coach’s exercise instead
               </Button>
             )}
@@ -98,6 +122,7 @@ export function ExerciseProposal(props: {
                 color="action.primary"
                 px={0}
                 onClick={props.onMoveOn}
+                disabled={props.proposalLoading}
               >
                 Move on
               </Button>

@@ -24,6 +24,7 @@ const meta = {
     processing: false,
     playing: false,
     recorderBusy: false,
+    proposalLoading: false,
     onAccept: () => undefined,
     onUploaded: () => undefined,
     onHear: () => undefined,
