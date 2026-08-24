@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   compassModelSchema,
+  exerciseSpecSchema,
   measurementsSchema,
   type ContextAnchor,
   type LearningContract,
@@ -190,6 +191,50 @@ export function messagesForAttempt(
   attemptId: string,
 ): PracticeMessageRow[] {
   return messages.filter((message) => message.attempt_id === attemptId);
+}
+
+export function selectedAttemptAfterRefresh(
+  currentId: string | null,
+  attempts: SessionRow[],
+  newlyCreatedId?: string | null,
+): string | null {
+  if (newlyCreatedId && attempts.some((attempt) => attempt.id === newlyCreatedId)) {
+    return newlyCreatedId;
+  }
+  if (currentId && attempts.some((attempt) => attempt.id === currentId)) {
+    return currentId;
+  }
+  return attempts.at(-1)?.id ?? null;
+}
+
+export function attemptNavigationLabel(attempt: SessionRow, index: number): string {
+  return attempt.parent_attempt_id
+    ? `Focused retry ${index + 1}`
+    : `Attempt ${index + 1}`;
+}
+
+export function attemptExerciseName(attempt: SessionRow): string {
+  return (
+    parseStoredJson(attempt.exercise_spec_json, exerciseSpecSchema)?.display_name ??
+    "Free sing"
+  );
+}
+
+export function attemptOutcome(attempt: SessionRow): string {
+  const coaching = parseStoredJson(attempt.coaching_json, contractCoachingSchema);
+  if (coaching?.top_issue) return shortenNavigationText(coaching.top_issue);
+  const accuracy = parseStoredJson(attempt.measurements_json, measurementsSchema)
+    ?.accuracy?.mean_abs_cents_off;
+  if (typeof accuracy === "number") {
+    return `${Math.round(accuracy)} cents off average`;
+  }
+  return attempt.coaching_json ? "Feedback available" : "Analysis saved";
+}
+
+function shortenNavigationText(value: string): string {
+  const text = value.trim();
+  if (text.length <= 88) return text;
+  return `${text.slice(0, 85).trimEnd()}…`;
 }
 
 export async function updateLearningContract(

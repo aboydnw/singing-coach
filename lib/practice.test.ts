@@ -3,6 +3,7 @@ import {
   contractFromAttempt,
   initialContract,
   messagesForAttempt,
+  selectedAttemptAfterRefresh,
   type PracticeMessageRow,
 } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
@@ -108,5 +109,31 @@ describe("messagesForAttempt", () => {
     expect(messagesForAttempt(messages, "attempt-2").map((row) => row.id)).toEqual([
       "second-question",
     ]);
+  });
+});
+
+describe("selectedAttemptAfterRefresh", () => {
+  const attempts = [attempt(null), { ...attempt(null), id: "attempt-2" }];
+
+  it("selects the latest attempt on first load", () => {
+    expect(selectedAttemptAfterRefresh(null, attempts)).toBe("attempt-2");
+  });
+
+  it("preserves a selected attempt that still exists", () => {
+    expect(selectedAttemptAfterRefresh("attempt-1", attempts)).toBe("attempt-1");
+  });
+
+  it("falls back to the latest attempt when selection is stale", () => {
+    expect(selectedAttemptAfterRefresh("missing", attempts)).toBe("attempt-2");
+  });
+
+  it("prefers a newly created attempt", () => {
+    expect(selectedAttemptAfterRefresh("attempt-1", attempts, "attempt-2")).toBe(
+      "attempt-2",
+    );
+  });
+
+  it("returns no selection before the first recording", () => {
+    expect(selectedAttemptAfterRefresh(null, [])).toBeNull();
   });
 });
