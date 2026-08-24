@@ -160,6 +160,7 @@ export function PracticeSession() {
       abortRef.current = controller;
       const answer = await streamPracticeCoach(
         bundle.practice.id,
+        attemptId,
         text,
         anchor,
         assistantRequestId,

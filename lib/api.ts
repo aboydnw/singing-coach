@@ -142,6 +142,7 @@ export async function coach(
 
 export async function streamPracticeCoach(
   practiceSessionId: string,
+  attemptId: string,
   message: string,
   contextAnchor: ContextAnchor | null,
   clientRequestId: string,
@@ -160,6 +161,7 @@ export async function streamPracticeCoach(
     signal,
     body: JSON.stringify({
       practice_session_id: practiceSessionId,
+      attempt_id: attemptId,
       message,
       context_anchor: contextAnchor,
       client_request_id: clientRequestId,
