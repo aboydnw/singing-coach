@@ -25,8 +25,12 @@ composition stay local.
 | `AttemptResult`        | Provisional | Immutable assessment and progressive analysis disclosure            |
 | `PracticeConversation` | Provisional | Persisted and streaming contextual messages                         |
 | `PracticeComposer`     | Provisional | Global/contextual question entry and session shortcuts              |
+| `AttemptNavigator`     | Established | Attempt selection, active state, and new-attempt entry point         |
 | `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata |
 | `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle            |
+
+`PracticeComposer` is inline and attempt-scoped. It owns the question input plus the Try again and
+Try a different exercise footer actions; it does not float over the page.
 
 ## Abstraction rule
 

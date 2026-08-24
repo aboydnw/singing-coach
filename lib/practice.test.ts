@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activePracticeThread,
   contractFromAttempt,
   initialContract,
   messagesForAttempt,
@@ -135,5 +136,29 @@ describe("selectedAttemptAfterRefresh", () => {
 
   it("returns no selection before the first recording", () => {
     expect(selectedAttemptAfterRefresh(null, [])).toBeNull();
+  });
+});
+
+describe("activePracticeThread", () => {
+  it("returns one selected attempt with only its conversation", () => {
+    const first = attempt(null);
+    const second = { ...attempt(null), id: "attempt-2" };
+    const firstQuestion = message("first-question", first.id);
+    const secondQuestion = message("second-question", second.id);
+
+    expect(
+      activePracticeThread(
+        [first, second],
+        [firstQuestion, secondQuestion, message("legacy", null)],
+        second.id,
+      ),
+    ).toEqual({ attempt: second, messages: [secondQuestion] });
+  });
+
+  it("returns an empty thread before the first recording", () => {
+    expect(activePracticeThread([], [message("legacy", null)], null)).toEqual({
+      attempt: null,
+      messages: [],
+    });
   });
 });

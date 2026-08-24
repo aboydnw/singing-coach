@@ -207,6 +207,20 @@ export function selectedAttemptAfterRefresh(
   return attempts.at(-1)?.id ?? null;
 }
 
+export function activePracticeThread(
+  attempts: SessionRow[],
+  messages: PracticeMessageRow[],
+  selectedAttemptId: string | null,
+): { attempt: SessionRow | null; messages: PracticeMessageRow[] } {
+  if (!selectedAttemptId) return { attempt: null, messages: [] };
+  const attempt = attempts.find((row) => row.id === selectedAttemptId) ?? null;
+  if (!attempt) return { attempt: null, messages: [] };
+  return {
+    attempt,
+    messages: messagesForAttempt(messages, attempt.id),
+  };
+}
+
 export function attemptNavigationLabel(attempt: SessionRow, index: number): string {
   return attempt.parent_attempt_id
     ? `Focused retry ${index + 1}`

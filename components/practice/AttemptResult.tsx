@@ -55,6 +55,7 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
     <Surface
       as="article"
       id={`attempt-${props.attempt.id}`}
+      tabIndex={-1}
       overflow="hidden"
       style={{ contentVisibility: "auto" }}
     >

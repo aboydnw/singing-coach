@@ -29,6 +29,8 @@ export function ExerciseProposal(props: {
   return (
     <Surface
       as="article"
+      id="exercise-setup"
+      tabIndex={-1}
       variant={accepted ? "raised" : "base"}
       borderColor={accepted ? "coral.300" : "border.default"}
       borderLeftWidth="4px"

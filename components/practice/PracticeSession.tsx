@@ -13,6 +13,7 @@ import {
 } from "@chakra-ui/react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AttemptNavigator } from "@/components/practice/AttemptNavigator";
 import { AttemptResult } from "@/components/practice/AttemptResult";
 import {
   ExerciseProposal,
@@ -27,15 +28,18 @@ import { StatusLabel } from "@/components/ui/StatusLabel";
 import { analyze, coach, streamPracticeCoach } from "@/lib/api";
 import { exerciseForDrill, nextExercise, skipExercise } from "@/lib/exercises";
 import {
+  activePracticeThread,
   contractFromAttempt,
   endPractice,
   loadPractice,
   savePracticeMessage,
+  selectedAttemptAfterRefresh,
   updateLearningContract,
   type PracticeBundle,
 } from "@/lib/practice";
 import {
   coachingResponseSchema,
+  exerciseSpecSchema,
   type ContextAnchor,
   type CoachingResponse,
   type ExerciseSpec,
@@ -75,13 +79,21 @@ export function PracticeSession() {
   } | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [details, setDetails] = useState<Record<string, boolean>>({});
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const refresh = useCallback(async () => {
-    const loaded = await loadPractice(params.id);
-    setBundle(loaded);
-    return loaded;
-  }, [params.id]);
+  const refresh = useCallback(
+    async (newlyCreatedId?: string | null) => {
+      const loaded = await loadPractice(params.id);
+      setBundle(loaded);
+      setSelectedAttemptId((current) =>
+        selectedAttemptAfterRefresh(current, loaded.attempts, newlyCreatedId),
+      );
+      return loaded;
+    },
+    [params.id],
+  );
 
   useEffect(() => {
     refresh()
@@ -95,6 +107,7 @@ export function PracticeSession() {
             parentAttemptId: null,
             retry: false,
           });
+          setSetupOpen(loaded.attempts.length === 0);
           return;
         }
         const calibration = await latestCalibration();
@@ -112,6 +125,7 @@ export function PracticeSession() {
           parentAttemptId: null,
           retry: false,
         });
+        setSetupOpen(loaded.attempts.length === 0);
       })
       .catch((reason) =>
         setError(
@@ -122,6 +136,9 @@ export function PracticeSession() {
 
   const contract = bundle?.practice.learning_contract_json;
   const ended = bundle?.practice.status === "ended";
+  const activeThread = bundle
+    ? activePracticeThread(bundle.attempts, bundle.messages, selectedAttemptId)
+    : { attempt: null, messages: [] };
 
   const askAbout = (
     label: string,
@@ -137,7 +154,7 @@ export function PracticeSession() {
   const sendQuestion = async () => {
     const text = question.trim();
     if (!bundle || !text || streaming || ended) return;
-    const attemptId = bundle.attempts.at(-1)?.id;
+    const attemptId = activeThread.attempt?.id;
     if (!attemptId) return;
     const clientRequestId = crypto.randomUUID();
     const assistantRequestId = crypto.randomUUID();
@@ -260,7 +277,7 @@ export function PracticeSession() {
         );
       }
 
-      let loaded = attemptId ? await refresh() : bundle;
+      let loaded = attemptId ? await refresh(attemptId) : bundle;
       if (attemptId && coaching && coachingSaveError) {
         loaded = {
           ...loaded,
@@ -300,13 +317,12 @@ export function PracticeSession() {
         });
       }
       setAccepted(false);
-      setProposal({
-        spec: proposal.spec,
-        reason:
-          "Try the same sound once more while the correction is fresh, or move on when you can hear the pattern yourself.",
-        parentAttemptId: attemptId,
-        retry: true,
-      });
+      if (attemptId) {
+        setProposal(null);
+        setSetupOpen(false);
+      } else {
+        setSetupOpen(true);
+      }
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "This attempt could not be completed.",
@@ -367,7 +383,12 @@ export function PracticeSession() {
       setNeedsCalibration(true);
       return;
     }
-    const current = proposal?.spec;
+    const current =
+      proposal?.spec ??
+      parseStoredJson(
+        activeThread.attempt?.exercise_spec_json ?? null,
+        exerciseSpecSchema,
+      );
     const spec = current
       ? skipExercise(calibration, bundle.attempts.length, current).spec
       : nextExercise(calibration, bundle.attempts.length, null);
@@ -379,6 +400,8 @@ export function PracticeSession() {
       parentAttemptId: null,
       retry: false,
     });
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
   };
 
   const nextFromCoach = async () => {
@@ -422,6 +445,8 @@ export function PracticeSession() {
       parentAttemptId: null,
       retry: false,
     });
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
   };
 
   const freeSing = () => {
@@ -434,6 +459,32 @@ export function PracticeSession() {
       parentAttemptId: null,
       retry: false,
     });
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+  };
+
+  const retrySelected = () => {
+    if (!activeThread.attempt) return;
+    setAccepted(false);
+    setProposal({
+      spec: parseStoredJson(activeThread.attempt.exercise_spec_json, exerciseSpecSchema),
+      reason:
+        "Repeat the same sound while the feedback is fresh, then compare it with this attempt.",
+      parentAttemptId: activeThread.attempt.id,
+      retry: true,
+    });
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+  };
+
+  const selectAttempt = (attemptId: string) => {
+    if (streaming || !bundle?.attempts.some((attempt) => attempt.id === attemptId))
+      return;
+    setSelectedAttemptId(attemptId);
+    setSetupOpen(false);
+    setAccepted(false);
+    setAnchor(null);
+    requestAnimationFrame(() => document.getElementById(`attempt-${attemptId}`)?.focus());
   };
 
   const finish = async () => {
@@ -467,7 +518,7 @@ export function PracticeSession() {
   }
 
   return (
-    <Stack gap={6} pb={ended ? 0 : "8rem"}>
+    <Stack gap={6}>
       <Flex
         justify="space-between"
         align={{ base: "start", md: "center" }}
@@ -545,34 +596,47 @@ export function PracticeSession() {
       <Grid
         templateColumns={{
           base: "minmax(0, 1fr)",
-          lg: "minmax(0, 1.85fr) minmax(17rem, .75fr)",
+          lg: "15rem minmax(0, 1fr) 18rem",
         }}
         gap={6}
         alignItems="start"
       >
+        <AttemptNavigator
+          attempts={bundle.attempts}
+          selectedAttemptId={selectedAttemptId}
+          onSelect={selectAttempt}
+          onNewAttempt={nextFromCoach}
+          disabled={processing || streaming}
+          ended={ended}
+        />
+
         <Stack gap={5}>
           <SessionOrigin direction={bundle.practice.starting_direction} />
-          {bundle.attempts.map((attempt, index) => {
-            const parent = attempt.parent_attempt_id
-              ? bundle.attempts.find((row) => row.id === attempt.parent_attempt_id)
-              : null;
-            return (
-              <AttemptResult
-                key={attempt.id}
-                attempt={attempt}
-                number={index + 1}
-                parent={parent ?? null}
-                expanded={Boolean(details[attempt.id])}
-                onToggle={() =>
-                  setDetails((current) => ({
-                    ...current,
-                    [attempt.id]: !current[attempt.id],
-                  }))
-                }
-                onAsk={(label, value) => askAbout(label, value, attempt.id)}
-              />
-            );
-          })}
+          {activeThread.attempt ? (
+            <AttemptResult
+              attempt={activeThread.attempt}
+              number={
+                bundle.attempts.findIndex(
+                  (attempt) => attempt.id === activeThread.attempt?.id,
+                ) + 1
+              }
+              parent={
+                activeThread.attempt.parent_attempt_id
+                  ? (bundle.attempts.find(
+                      (attempt) => attempt.id === activeThread.attempt?.parent_attempt_id,
+                    ) ?? null)
+                  : null
+              }
+              expanded={Boolean(details[activeThread.attempt.id])}
+              onToggle={() =>
+                setDetails((current) => ({
+                  ...current,
+                  [activeThread.attempt!.id]: !current[activeThread.attempt!.id],
+                }))
+              }
+              onAsk={(label, value) => askAbout(label, value, activeThread.attempt!.id)}
+            />
+          ) : null}
           {unsavedAttempt ? (
             <Box borderWidth="2px" borderColor="coral.400" rounded="surface" p={1}>
               <Badge m={3} mb={1} colorPalette="coral" variant="subtle">
@@ -594,11 +658,25 @@ export function PracticeSession() {
             </Box>
           ) : null}
           <PracticeConversation
-            messages={bundle.messages}
+            messages={activeThread.messages}
             streamingText={streamingText}
             anchor={anchor}
           />
-          {!ended && proposal ? (
+          {!ended && activeThread.attempt ? (
+            <PracticeComposer
+              value={question}
+              onChange={setQuestion}
+              anchor={anchor}
+              onClearAnchor={() => setAnchor(null)}
+              onSend={sendQuestion}
+              onRetry={retrySelected}
+              onDifferent={differentExercise}
+              streaming={streaming}
+              disabled={processing}
+              onStop={() => abortRef.current?.abort()}
+            />
+          ) : null}
+          {!ended && setupOpen && proposal ? (
             <ExerciseProposal
               proposal={proposal}
               accepted={accepted}
@@ -641,27 +719,14 @@ export function PracticeSession() {
         {contract ? (
           <PracticeCompass
             contract={contract}
-            onAsk={(label, value) =>
-              askAbout(label, value, bundle.practice.id, "compass_field")
-            }
+            onAsk={(label, value) => {
+              if (activeThread.attempt) {
+                askAbout(label, value, bundle.practice.id, "compass_field");
+              }
+            }}
           />
         ) : null}
       </Grid>
-
-      {!ended ? (
-        <PracticeComposer
-          value={question}
-          onChange={setQuestion}
-          anchor={anchor}
-          onClearAnchor={() => setAnchor(null)}
-          onSend={sendQuestion}
-          onDifferent={differentExercise}
-          onFreeSing={freeSing}
-          streaming={streaming}
-          disabled={processing}
-          onStop={() => abortRef.current?.abort()}
-        />
-      ) : null}
 
       <Dialog.Root open={endOpen} onOpenChange={(event) => setEndOpen(event.open)}>
         <Dialog.Backdrop />
