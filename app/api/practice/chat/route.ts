@@ -1,7 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { groupExerciseThreads } from "@/lib/exerciseThreads";
-import { buildExerciseChatHistory, practiceChatRequestSchema } from "@/lib/practiceChat";
+import {
+  buildExerciseChatHistory,
+  exerciseChatHistoryQueryContract,
+  practiceChatRequestSchema,
+} from "@/lib/practiceChat";
 import { coachingResponseSchema, measurementsSchema } from "@/lib/schema";
 import { authenticateRequest } from "@/lib/serverAuth";
 import { describeError, isTimeout, truncate } from "@/lib/openrouter";
@@ -89,13 +93,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const historyQuery = exerciseChatHistoryQueryContract(parsed.data.user_message_id);
   const messagesResult = await client
     .from("practice_messages")
     .select("id, attempt_id, role, content_json, status, created_at")
     .eq("practice_session_id", practice.id)
     .in("attempt_id", exercise.attemptIds)
     .eq("status", "complete")
-    .order("created_at", { ascending: false });
+    .neq("id", historyQuery.excludedMessageId)
+    .order(historyQuery.order[0].column, {
+      ascending: historyQuery.order[0].ascending,
+    })
+    .order(historyQuery.order[1].column, {
+      ascending: historyQuery.order[1].ascending,
+    })
+    .limit(historyQuery.limit);
   if (messagesResult.error) {
     return NextResponse.json(
       { error: "could not load practice context" },

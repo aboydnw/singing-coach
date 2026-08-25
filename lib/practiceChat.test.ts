@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildExerciseChatHistory, practiceChatRequestSchema } from "@/lib/practiceChat";
+import {
+  buildExerciseChatHistory,
+  exerciseChatHistoryQueryContract,
+  practiceChatRequestSchema,
+} from "@/lib/practiceChat";
 import type { PracticeMessageRow } from "@/lib/practice";
 
 function message(args: {
@@ -104,5 +108,41 @@ describe("buildExerciseChatHistory", () => {
       { role: "assistant", content: "Answer on the first take" },
       { role: "user", content: "Question after the retry" },
     ]);
+  });
+
+  it("queries a bounded deterministic candidate window without the current message", () => {
+    expect(exerciseChatHistoryQueryContract("current-user")).toEqual({
+      excludedMessageId: "current-user",
+      order: [
+        { column: "created_at", ascending: false },
+        { column: "id", ascending: false },
+      ],
+      limit: 48,
+    });
+  });
+
+  it("returns the latest twelve bounded candidates in chronological order", () => {
+    const attemptId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const messages = Array.from({ length: 15 }, (_, index) =>
+      message({
+        id: `message-${String(index).padStart(2, "0")}`,
+        attemptId,
+        role: index % 2 === 0 ? "user" : "assistant",
+        text: `Message ${index}`,
+        createdAt: `2026-08-24T10:00:${String(index).padStart(2, "0")}.000Z`,
+      }),
+    ).reverse();
+
+    expect(
+      buildExerciseChatHistory(messages, new Set([attemptId]), "current-user"),
+    ).toEqual(
+      Array.from({ length: 12 }, (_, offset) => {
+        const index = offset + 3;
+        return {
+          role: index % 2 === 0 ? "user" : "assistant",
+          content: `Message ${index}`,
+        };
+      }),
+    );
   });
 });

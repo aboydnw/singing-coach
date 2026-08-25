@@ -4,6 +4,7 @@ import {
   attemptOutcome,
   type PracticeMessageRow,
 } from "@/lib/practice";
+import type { ContextAnchor } from "@/lib/schema";
 
 export type ExerciseThread = {
   id: string;
@@ -108,6 +109,14 @@ export function exerciseTimeline(
 
 export function latestAttempt(thread: ExerciseThread): SessionRow {
   return thread.attempts[thread.attempts.length - 1];
+}
+
+export function attemptIdForExerciseMessage(
+  thread: ExerciseThread,
+  anchor: ContextAnchor | null,
+): string | null {
+  if (!anchor) return latestAttempt(thread).id;
+  return thread.attemptIds.includes(anchor.sourceId) ? anchor.sourceId : null;
 }
 
 export function exerciseNavigationSummary(thread: ExerciseThread, index: number) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attemptIdForExerciseMessage,
   cancelExerciseDraft,
   exerciseNavigationSummary,
   exerciseTimeline,
@@ -14,6 +15,7 @@ import {
   type ExerciseTimelineItem,
 } from "@/lib/exerciseThreads";
 import type { PracticeMessageRow } from "@/lib/practice";
+import type { ContextAnchor } from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
 
 function attempt({
@@ -203,6 +205,23 @@ describe("exercise thread helpers", () => {
 
   it("returns the chronologically latest attempt in a thread", () => {
     expect(latestAttempt(threadA).id).toBe("retry-a2");
+  });
+
+  it("uses only persisted anchors in the selected exercise and defaults unanchored chat to latest", () => {
+    const persistedAnchor: ContextAnchor = {
+      kind: "coaching_text",
+      sourceId: "retry-a1",
+      label: "Coach’s correction",
+      value: "Keep the landing easy.",
+    };
+    const ephemeralAnchor: ContextAnchor = {
+      ...persistedAnchor,
+      sourceId: "practice-1",
+    };
+
+    expect(attemptIdForExerciseMessage(threadA, persistedAnchor)).toBe("retry-a1");
+    expect(attemptIdForExerciseMessage(threadA, ephemeralAnchor)).toBeNull();
+    expect(attemptIdForExerciseMessage(threadA, null)).toBe("retry-a2");
   });
 
   it("summarizes a multi-attempt exercise from its root and latest attempt", () => {

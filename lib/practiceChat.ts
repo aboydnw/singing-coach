@@ -16,6 +16,21 @@ type AttemptChatMessage = Pick<
   "id" | "attempt_id" | "role" | "content_json" | "status" | "created_at"
 >;
 
+export const EXERCISE_CHAT_HISTORY_CANDIDATE_LIMIT = 48;
+
+export function exerciseChatHistoryQueryContract(userMessageId: string) {
+  // Complete rows are filtered in SQL. Four times the 12-message prompt window
+  // leaves room for legacy complete rows whose text is empty without unbounded reads.
+  return {
+    excludedMessageId: userMessageId,
+    order: [
+      { column: "created_at", ascending: false },
+      { column: "id", ascending: false },
+    ] as const,
+    limit: EXERCISE_CHAT_HISTORY_CANDIDATE_LIMIT,
+  };
+}
+
 export function buildExerciseChatHistory(
   messages: AttemptChatMessage[],
   attemptIds: ReadonlySet<string>,
@@ -30,7 +45,9 @@ export function buildExerciseChatHistory(
         message.id !== userMessageId &&
         Boolean(message.content_json.text),
     )
-    .toSorted((a, b) => a.created_at.localeCompare(b.created_at))
+    .toSorted(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+    )
     .slice(-12)
     .map((message) => ({
       role: message.role,

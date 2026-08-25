@@ -31,7 +31,6 @@ const meta = {
     onDifferent: () => undefined,
     onFreeSing: () => undefined,
     onMoveOn: () => undefined,
-    onAsk: () => undefined,
     onCancel: () => undefined,
     onRecorderStateChange: () => undefined,
   },

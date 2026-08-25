@@ -23,14 +23,20 @@ composition stay local.
 | `PracticeCompass`      | Provisional | Current learning contract and contextual questions                        |
 | `ExerciseProposal`     | Provisional | Proposed, accepted, processing, retry, and free-sing states               |
 | `AttemptResult`        | Provisional | Immutable assessment and progressive analysis disclosure                  |
-| `PracticeConversation` | Provisional | Persisted and streaming contextual messages                               |
-| `PracticeComposer`     | Provisional | Global/contextual question entry and session shortcuts                    |
+| `PracticeMessage`      | Provisional | One persisted message rendered inline in an exercise timeline             |
+| `StreamingPracticeMessage` | Provisional | The live assistant message and streaming cursor rendered inline       |
+| `PracticeComposer`     | Provisional | Exercise-scoped question entry, retry, and new-exercise shortcuts          |
 | `ExerciseNavigator`    | Established | Exercise-thread selection, summaries, draft state, and new exercise entry |
 | `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
 | `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
 
-`PracticeComposer` is inline and attempt-scoped. It owns the question input plus the Try again and
-Try a different exercise footer actions; it does not float over the page.
+`PracticeMessage` and `StreamingPracticeMessage` are inline timeline renderers rather than a
+conversation wrapper. `PracticeSession` interleaves them with attempt cards inside the selected
+exercise's live-region stack.
+
+`PracticeComposer` is inline and exercise-scoped. It owns the question input plus the Try again and
+Try a different exercise footer actions; it does not float over the page. Contextual questions are
+available only for persisted sources whose source attempt belongs to the selected exercise.
 
 `ExerciseNavigator` groups retries under their root exercise. Recorded exercises show the root
 exercise name, total attempt count, and latest outcome; a pending proposal appears once as a Draft

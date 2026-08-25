@@ -1,7 +1,6 @@
 import { Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { Recorder } from "@/components/Recorder";
 import type { RecorderState } from "@/components/Recorder";
-import { ContextAction } from "@/components/ui/ContextAction";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
 import type { ExerciseSpec } from "@/lib/schema";
@@ -26,7 +25,6 @@ export function ExerciseProposal(props: {
   onDifferent: () => void;
   onFreeSing: () => void;
   onMoveOn: () => void;
-  onAsk: () => void;
   onCancel: () => void;
   onRecorderStateChange: (state: RecorderState) => void;
 }) {
@@ -85,7 +83,6 @@ export function ExerciseProposal(props: {
             ) : null}
           </Flex>
           <Flex gap={4} wrap="wrap">
-            <ContextAction onClick={props.onAsk}>Ask about this</ContextAction>
             <Button
               variant="plain"
               color="fg.muted"

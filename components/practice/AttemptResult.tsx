@@ -23,7 +23,7 @@ type AttemptResultProps = {
   parent: SessionRow | null;
   expanded: boolean;
   onToggle: () => void;
-  onAsk: (label: string, value: string) => void;
+  onAsk?: (label: string, value: string) => void;
 };
 
 export const AttemptResult = memo(function AttemptResult(props: AttemptResultProps) {
@@ -97,14 +97,16 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
               <Text mt={2} color="fg.default" lineHeight="1.7">
                 {coaching.why}
               </Text>
-              <ContextAction
-                onClick={() =>
-                  props.onAsk(
-                    "Coach’s correction",
-                    `${coaching.top_issue}. ${coaching.why}`,
-                  )
-                }
-              />
+              {props.onAsk ? (
+                <ContextAction
+                  onClick={() =>
+                    props.onAsk?.(
+                      "Coach’s correction",
+                      `${coaching.top_issue}. ${coaching.why}`,
+                    )
+                  }
+                />
+              ) : null}
             </Box>
             <Box>
               <Eyebrow tone="agency">Strength</Eyebrow>
@@ -153,7 +155,8 @@ function sameAttemptResultProps(
     previous.attempt === next.attempt &&
     previous.parent === next.parent &&
     previous.fallbackIndex === next.fallbackIndex &&
-    previous.expanded === next.expanded
+    previous.expanded === next.expanded &&
+    Boolean(previous.onAsk) === Boolean(next.onAsk)
   );
 }
 

@@ -33,6 +33,7 @@ import { analyze, coach, streamPracticeCoach } from "@/lib/api";
 import { exerciseForDrill, nextExercise, skipExercise } from "@/lib/exercises";
 import {
   cancelExerciseDraft,
+  attemptIdForExerciseMessage,
   exerciseTimeline,
   groupExerciseThreads,
   latestAttempt,
@@ -226,10 +227,9 @@ export function PracticeSession() {
   const sendQuestion = async () => {
     const text = question.trim();
     if (!bundle || !text || streaming || ended) return;
-    const attemptId =
-      anchor && activeExercise?.attemptIds.includes(anchor.sourceId)
-        ? anchor.sourceId
-        : activeAttempt?.id;
+    const attemptId = activeExercise
+      ? attemptIdForExerciseMessage(activeExercise, anchor)
+      : null;
     if (!attemptId) return;
     const clientRequestId = crypto.randomUUID();
     const assistantRequestId = crypto.randomUUID();
@@ -575,6 +575,7 @@ export function PracticeSession() {
   const freeSing = () => {
     if (recorderBusy || proposalLoading) return;
     selectDraft();
+    setAnchor(null);
     setNeedsCalibration(false);
     setAccepted(false);
     const nextProposal = {
@@ -895,7 +896,6 @@ export function PracticeSession() {
                     [unsavedAttempt.id]: !current[unsavedAttempt.id],
                   }))
                 }
-                onAsk={(label, value) => askAbout(label, value, bundle.practice.id)}
               />
             </Box>
           ) : null}
@@ -937,14 +937,6 @@ export function PracticeSession() {
               onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
               onCancel={cancelSetup}
               onRecorderStateChange={setRecorderState}
-              onAsk={() =>
-                askAbout(
-                  "Exercise",
-                  proposal.spec?.display_name ?? "Free sing",
-                  activeAttempt?.id ?? bundle.practice.id,
-                  "exercise_instruction",
-                )
-              }
             />
           ) : null}
           {ended ? (
