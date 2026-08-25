@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  activePracticeThread,
   attemptNavigationLabel,
   contractFromAttempt,
   currentExerciseForChange,
   initialContract,
   messagesForAttempt,
   nextAttemptSequence,
-  selectedAttemptAfterRefresh,
   type PracticeMessageRow,
 } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
@@ -116,32 +114,6 @@ describe("messagesForAttempt", () => {
   });
 });
 
-describe("selectedAttemptAfterRefresh", () => {
-  const attempts = [attempt(null), { ...attempt(null), id: "attempt-2" }];
-
-  it("selects the latest attempt on first load", () => {
-    expect(selectedAttemptAfterRefresh(null, attempts)).toBe("attempt-2");
-  });
-
-  it("preserves a selected attempt that still exists", () => {
-    expect(selectedAttemptAfterRefresh("attempt-1", attempts)).toBe("attempt-1");
-  });
-
-  it("falls back to the latest attempt when selection is stale", () => {
-    expect(selectedAttemptAfterRefresh("missing", attempts)).toBe("attempt-2");
-  });
-
-  it("prefers a newly created attempt", () => {
-    expect(selectedAttemptAfterRefresh("attempt-1", attempts, "attempt-2")).toBe(
-      "attempt-2",
-    );
-  });
-
-  it("returns no selection before the first recording", () => {
-    expect(selectedAttemptAfterRefresh(null, [])).toBeNull();
-  });
-});
-
 describe("attemptNavigationLabel", () => {
   it("keeps persisted sequence numbers stable when the list has gaps", () => {
     expect(attemptNavigationLabel({ ...attempt(null), sequence_number: 4 }, 1)).toBe(
@@ -209,29 +181,5 @@ describe("currentExerciseForChange", () => {
   it("uses the visible setup proposal, including free sing", () => {
     expect(currentExerciseForChange(true, proposed, selected)).toBe(proposed);
     expect(currentExerciseForChange(true, null, selected)).toBeNull();
-  });
-});
-
-describe("activePracticeThread", () => {
-  it("returns one selected attempt with only its conversation", () => {
-    const first = attempt(null);
-    const second = { ...attempt(null), id: "attempt-2" };
-    const firstQuestion = message("first-question", first.id);
-    const secondQuestion = message("second-question", second.id);
-
-    expect(
-      activePracticeThread(
-        [first, second],
-        [firstQuestion, secondQuestion, message("legacy", null)],
-        second.id,
-      ),
-    ).toEqual({ attempt: second, messages: [secondQuestion] });
-  });
-
-  it("returns an empty thread before the first recording", () => {
-    expect(activePracticeThread([], [message("legacy", null)], null)).toEqual({
-      attempt: null,
-      messages: [],
-    });
   });
 });
