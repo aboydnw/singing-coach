@@ -15,6 +15,14 @@ export type ExerciseTimelineItem =
   | { type: "attempt"; at: string; attempt: SessionRow }
   | { type: "message"; at: string; message: PracticeMessageRow };
 
+export type ExerciseDraftState = {
+  draftId: string | null;
+  selectedExerciseId: string | null;
+  previousRecordedExerciseId: string | null;
+};
+
+export type OpenExerciseDraftResult = ExerciseDraftState & { created: boolean };
+
 function compareAttempts(left: SessionRow, right: SessionRow): number {
   const leftSequence = left.sequence_number ?? Number.MAX_SAFE_INTEGER;
   const rightSequence = right.sequence_number ?? Number.MAX_SAFE_INTEGER;
@@ -125,4 +133,48 @@ export function selectedExerciseAfterRefresh(
   }
   if (currentId && threads.some((thread) => thread.id === currentId)) return currentId;
   return threads.at(-1)?.id ?? null;
+}
+
+export function openExerciseDraft(
+  state: ExerciseDraftState,
+  newDraftId: string,
+): OpenExerciseDraftResult {
+  if (state.draftId) {
+    return {
+      ...state,
+      selectedExerciseId: state.draftId,
+      previousRecordedExerciseId:
+        state.selectedExerciseId && state.selectedExerciseId !== state.draftId
+          ? state.selectedExerciseId
+          : state.previousRecordedExerciseId,
+      created: false,
+    };
+  }
+
+  return {
+    draftId: newDraftId,
+    selectedExerciseId: newDraftId,
+    previousRecordedExerciseId: state.selectedExerciseId,
+    created: true,
+  };
+}
+
+export function cancelExerciseDraft(
+  previousRecordedExerciseId: string | null,
+  threads: ExerciseThread[],
+): string | null {
+  if (
+    previousRecordedExerciseId &&
+    threads.some((thread) => thread.id === previousRecordedExerciseId)
+  ) {
+    return previousRecordedExerciseId;
+  }
+  return threads.at(-1)?.id ?? null;
+}
+
+export function recordedExerciseIdForAttempt(
+  threads: ExerciseThread[],
+  attemptId: string,
+): string | null {
+  return threads.find((thread) => thread.attemptIds.includes(attemptId))?.id ?? null;
 }

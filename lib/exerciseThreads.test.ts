@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  cancelExerciseDraft,
   exerciseNavigationSummary,
   exerciseTimeline,
   groupExerciseThreads,
   latestAttempt,
   messagesForExercise,
+  openExerciseDraft,
+  recordedExerciseIdForAttempt,
   selectedExerciseAfterRefresh,
   type ExerciseTimelineItem,
 } from "@/lib/exerciseThreads";
@@ -272,5 +275,75 @@ describe("selectedExerciseAfterRefresh", () => {
 
   it("returns no selection when there are no exercises", () => {
     expect(selectedExerciseAfterRefresh(null, [])).toBeNull();
+  });
+});
+
+describe("exercise draft transitions", () => {
+  const threads = groupExerciseThreads([
+    attempt({ id: "root-a", parentId: null, kind: "initial", sequence: 1 }),
+    attempt({ id: "retry-a1", parentId: "root-a", kind: "retry", sequence: 2 }),
+    attempt({ id: "root-b", parentId: null, kind: "initial", sequence: 3 }),
+  ]);
+
+  it("creates one draft and remembers the recorded exercise for cancel", () => {
+    expect(
+      openExerciseDraft(
+        {
+          draftId: null,
+          selectedExerciseId: "root-a",
+          previousRecordedExerciseId: null,
+        },
+        "draft",
+      ),
+    ).toEqual({
+      draftId: "draft",
+      selectedExerciseId: "draft",
+      previousRecordedExerciseId: "root-a",
+      created: true,
+    });
+  });
+
+  it("reselects the existing draft without replacing it", () => {
+    expect(
+      openExerciseDraft(
+        {
+          draftId: "draft",
+          selectedExerciseId: "root-a",
+          previousRecordedExerciseId: "root-a",
+        },
+        "unused-new-id",
+      ),
+    ).toMatchObject({ selectedExerciseId: "draft", created: false });
+  });
+
+  it("returns an existing draft to the most recently selected recorded exercise", () => {
+    expect(
+      openExerciseDraft(
+        {
+          draftId: "draft",
+          selectedExerciseId: "root-b",
+          previousRecordedExerciseId: "root-a",
+        },
+        "unused-new-id",
+      ),
+    ).toMatchObject({
+      selectedExerciseId: "draft",
+      previousRecordedExerciseId: "root-b",
+      created: false,
+    });
+  });
+
+  it("cancels to the prior recorded exercise when it still exists", () => {
+    expect(cancelExerciseDraft("root-a", threads)).toBe("root-a");
+  });
+
+  it("falls back to the latest recorded exercise when the prior one is gone", () => {
+    expect(cancelExerciseDraft("missing", threads)).toBe("root-b");
+  });
+
+  it("maps a saved retry to its current root and a new root to itself", () => {
+    expect(recordedExerciseIdForAttempt(threads, "retry-a1")).toBe("root-a");
+    expect(recordedExerciseIdForAttempt(threads, "root-b")).toBe("root-b");
+    expect(recordedExerciseIdForAttempt(threads, "missing")).toBeNull();
   });
 });

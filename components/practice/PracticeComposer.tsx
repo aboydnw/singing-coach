@@ -42,7 +42,7 @@ export function PracticeComposer(props: {
             placeholder={
               props.disabled
                 ? "Finish this attempt before asking the coach"
-                : "Ask about this attempt or the coach’s feedback"
+                : "Ask about this exercise or the coach’s feedback"
             }
             value={props.value}
             onChange={(event) => props.onChange(event.target.value)}

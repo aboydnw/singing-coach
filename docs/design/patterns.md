@@ -31,16 +31,17 @@ Questions may be anchored to coaching text, an exercise instruction, a measureme
 field. The visible context label and server payload must refer to the same immutable source. Removing
 the chip removes context from the request; it does not delete earlier messages.
 
-## Attempt-owned conversation
+## Exercise-owned conversation
 
-Each recorded attempt owns one immutable analysis and one chronological coach conversation. The
-attempt navigator changes the active analysis and messages together; messages from another attempt
-never appear in the selected thread. The inline composer follows the conversation, and Try again
-and Try a different exercise follow the composer.
+Each exercise thread owns one chronological coach conversation and contains every recorded retry
+of that exercise inline. Messages retain the concrete attempt that supplied their context, while
+unanchored questions attach to the latest attempt in the selected exercise. Try again appends to the
+current exercise; Try a different exercise starts or returns to the one temporary draft.
 
-Exercise setup is preparation, not an attempt. Opening setup from New attempt or a thread action
-does not create a sidebar item or database row. A successful recording creates the next numbered
-attempt and selects it.
+Exercise setup is preparation, not a recorded attempt. One client-only draft may appear in the
+navigator until its first recording is saved. Reopening New exercise selects that draft without
+regenerating its proposal, Cancel returns to the prior recorded exercise, and a successful first
+recording replaces the draft with its recorded exercise thread.
 
 ## Proposal and confirmation
 
