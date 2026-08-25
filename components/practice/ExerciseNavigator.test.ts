@@ -36,25 +36,18 @@ const recordedThread: ExerciseThread = {
 describe("ExerciseNavigator", () => {
   it("renders no navigation when an ended practice has only a supplied draft", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(ExerciseNavigator, {
-          threads: [],
-          selectedExerciseId: "draft-exercise",
-          draft: { id: "draft-exercise", name: "Draft exercise" },
-          onSelect: () => undefined,
-          onNewExercise: () => undefined,
-          disabled: false,
-          ended: true,
-        }),
-      ),
+      React.createElement(ExerciseNavigator, {
+        threads: [],
+        selectedExerciseId: "draft-exercise",
+        draft: { id: "draft-exercise", name: "Draft exercise" },
+        onSelect: () => undefined,
+        onNewExercise: () => undefined,
+        disabled: false,
+        ended: true,
+      }),
     );
 
-    expect(markup).not.toContain('aria-label="Practice exercises"');
-    expect(markup).not.toContain("<select");
-    expect(markup).not.toContain("Draft exercise");
-    expect(markup).not.toContain("+ New exercise");
+    expect(markup).toBe("");
   });
 
   it("shows only recorded exercise navigation when an ended practice receives a draft", () => {
