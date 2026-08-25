@@ -8,6 +8,7 @@ import {
   messagesForExercise,
   openExerciseDraft,
   recordedExerciseIdForAttempt,
+  selectedExerciseFromNavigator,
   selectedExerciseAfterRefresh,
   unsavedAttemptAfterDraftCancel,
   type ExerciseTimelineItem,
@@ -332,6 +333,23 @@ describe("exercise draft transitions", () => {
       previousRecordedExerciseId: "root-b",
       created: false,
     });
+  });
+
+  it("cancels to B after selecting draft from A, then B, then the draft sidebar item", () => {
+    const draftFromA = openExerciseDraft(
+      {
+        draftId: null,
+        selectedExerciseId: "root-a",
+        previousRecordedExerciseId: null,
+      },
+      "draft",
+    );
+    const selectedB = selectedExerciseFromNavigator(draftFromA, "root-b", threads);
+    const returnedToDraft = selectedExerciseFromNavigator(selectedB, "draft", threads);
+
+    expect(cancelExerciseDraft(returnedToDraft.previousRecordedExerciseId, threads)).toBe(
+      "root-b",
+    );
   });
 
   it("cancels to the prior recorded exercise when it still exists", () => {

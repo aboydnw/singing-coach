@@ -39,6 +39,7 @@ import {
   openExerciseDraft,
   recordedExerciseIdForAttempt,
   selectedExerciseAfterRefresh,
+  selectedExerciseFromNavigator,
   unsavedAttemptAfterDraftCancel,
 } from "@/lib/exerciseThreads";
 import {
@@ -629,11 +630,24 @@ export function PracticeSession() {
     )
       return;
 
+    setExerciseSelection((current) => {
+      const next = selectedExerciseFromNavigator(
+        {
+          draftId: current.draftExerciseId,
+          selectedExerciseId: current.selectedExerciseId,
+          previousRecordedExerciseId: current.previousRecordedExerciseId,
+        },
+        exerciseId,
+        exerciseThreads,
+      );
+      return {
+        selectedExerciseId: next.selectedExerciseId,
+        draftExerciseId: next.draftId,
+        previousRecordedExerciseId: next.previousRecordedExerciseId,
+      };
+    });
+
     if (exerciseId === draftExerciseId) {
-      setExerciseSelection((current) => ({
-        ...current,
-        selectedExerciseId: exerciseId,
-      }));
       setProposal(draftProposal);
       setAccepted(false);
       setAnchor(null);
@@ -644,10 +658,6 @@ export function PracticeSession() {
       return;
     }
 
-    setExerciseSelection((current) => ({
-      ...current,
-      selectedExerciseId: exerciseId,
-    }));
     setSetupOpen(false);
     setProposal(null);
     setAccepted(false);

@@ -172,6 +172,25 @@ export function cancelExerciseDraft(
   return threads.at(-1)?.id ?? null;
 }
 
+export function selectedExerciseFromNavigator(
+  state: ExerciseDraftState,
+  exerciseId: string,
+  threads: ExerciseThread[],
+): ExerciseDraftState {
+  if (state.draftId && exerciseId === state.draftId) {
+    const next = openExerciseDraft(state, state.draftId);
+    return {
+      draftId: next.draftId,
+      selectedExerciseId: next.selectedExerciseId,
+      previousRecordedExerciseId: next.previousRecordedExerciseId,
+    };
+  }
+  if (threads.some((thread) => thread.id === exerciseId)) {
+    return { ...state, selectedExerciseId: exerciseId };
+  }
+  return state;
+}
+
 export function recordedExerciseIdForAttempt(
   threads: ExerciseThread[],
   attemptId: string,
