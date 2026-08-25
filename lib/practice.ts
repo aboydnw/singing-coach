@@ -194,6 +194,34 @@ export function messagesForAttempt(
   return messages.filter((message) => message.attempt_id === attemptId);
 }
 
+export function selectedAttemptAfterRefresh(
+  currentId: string | null,
+  attempts: SessionRow[],
+  newlyCreatedId?: string | null,
+): string | null {
+  if (newlyCreatedId && attempts.some((attempt) => attempt.id === newlyCreatedId)) {
+    return newlyCreatedId;
+  }
+  if (currentId && attempts.some((attempt) => attempt.id === currentId)) {
+    return currentId;
+  }
+  return attempts.at(-1)?.id ?? null;
+}
+
+export function activePracticeThread(
+  attempts: SessionRow[],
+  messages: PracticeMessageRow[],
+  selectedAttemptId: string | null,
+): { attempt: SessionRow | null; messages: PracticeMessageRow[] } {
+  if (!selectedAttemptId) return { attempt: null, messages: [] };
+  const attempt = attempts.find((row) => row.id === selectedAttemptId) ?? null;
+  if (!attempt) return { attempt: null, messages: [] };
+  return {
+    attempt,
+    messages: messagesForAttempt(messages, attempt.id),
+  };
+}
+
 export function attemptNavigationLabel(attempt: SessionRow, index: number): string {
   const number =
     typeof attempt.sequence_number === "number" && attempt.sequence_number > 0
