@@ -225,8 +225,6 @@ git commit -m "feat: share coach chat across exercise retries"
 **Files:**
 - Create: `components/practice/ExerciseNavigator.tsx`
 - Create: `components/practice/ExerciseNavigator.stories.tsx`
-- Delete: `components/practice/AttemptNavigator.tsx`
-- Delete: `components/practice/AttemptNavigator.stories.tsx`
 - Modify: `lib/exerciseThreads.ts`
 - Modify: `lib/exerciseThreads.test.ts`
 - Modify: `docs/design/components.md`
@@ -268,12 +266,12 @@ Add stories for recorded exercises, selected draft, mobile-compatible long names
 
 Run: `yarn vitest run lib/exerciseThreads.test.ts && yarn format:check && yarn storybook:build`
 
-Expected: PASS and Storybook contains no reference to the deleted AttemptNavigator story.
+Expected: PASS and Storybook includes the new ExerciseNavigator states. Keep the existing AttemptNavigator files temporarily so the branch remains buildable until `PracticeSession` moves to the new component in Task 4.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add components/practice/ExerciseNavigator.tsx components/practice/ExerciseNavigator.stories.tsx components/practice/AttemptNavigator.tsx components/practice/AttemptNavigator.stories.tsx lib/exerciseThreads.ts lib/exerciseThreads.test.ts docs/design/components.md
+git add components/practice/ExerciseNavigator.tsx components/practice/ExerciseNavigator.stories.tsx lib/exerciseThreads.ts lib/exerciseThreads.test.ts docs/design/components.md
 git commit -m "feat: navigate practice by exercise"
 ```
 
@@ -283,6 +281,8 @@ git commit -m "feat: navigate practice by exercise"
 - Modify: `components/practice/PracticeSession.tsx`
 - Modify: `components/practice/PracticeConversation.tsx`
 - Modify: `components/practice/PracticeComposer.tsx`
+- Delete: `components/practice/AttemptNavigator.tsx`
+- Delete: `components/practice/AttemptNavigator.stories.tsx`
 - Modify: `lib/exerciseThreads.ts`
 - Modify: `lib/exerciseThreads.test.ts`
 - Modify: `docs/design/patterns.md`
@@ -356,6 +356,7 @@ In `PracticeSession`:
 - On Cancel, clear the draft and select `cancelExerciseDraft(previousRecordedExerciseId, exerciseThreads)`.
 - Keep the draft selected after an unsaved first result.
 - Hide composer and mutations for ended practices.
+- After `PracticeSession` imports `ExerciseNavigator`, delete the superseded AttemptNavigator component and story.
 
 - [ ] **Step 6: Update exercise-level copy and design pattern**
 
@@ -379,7 +380,7 @@ Expected: all frontend, backend, build, Storybook, migration, and database check
 - [ ] **Step 8: Commit the workspace slice**
 
 ```bash
-git add components/practice/PracticeSession.tsx components/practice/PracticeConversation.tsx components/practice/PracticeComposer.tsx lib/exerciseThreads.ts lib/exerciseThreads.test.ts docs/design/patterns.md
+git add components/practice/PracticeSession.tsx components/practice/PracticeConversation.tsx components/practice/PracticeComposer.tsx components/practice/AttemptNavigator.tsx components/practice/AttemptNavigator.stories.tsx lib/exerciseThreads.ts lib/exerciseThreads.test.ts docs/design/patterns.md
 git commit -m "feat: organize practice conversations by exercise"
 ```
 
