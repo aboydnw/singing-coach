@@ -178,3 +178,13 @@ export function recordedExerciseIdForAttempt(
 ): string | null {
   return threads.find((thread) => thread.attemptIds.includes(attemptId))?.id ?? null;
 }
+
+export function unsavedAttemptAfterDraftCancel(
+  unsavedAttempt: SessionRow | null,
+  threads: ExerciseThread[],
+): SessionRow | null {
+  if (!unsavedAttempt?.parent_attempt_id) return null;
+  return recordedExerciseIdForAttempt(threads, unsavedAttempt.parent_attempt_id)
+    ? unsavedAttempt
+    : null;
+}

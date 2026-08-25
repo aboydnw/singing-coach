@@ -39,6 +39,7 @@ import {
   openExerciseDraft,
   recordedExerciseIdForAttempt,
   selectedExerciseAfterRefresh,
+  unsavedAttemptAfterDraftCancel,
 } from "@/lib/exerciseThreads";
 import {
   contractFromAttempt,
@@ -695,7 +696,9 @@ export function PracticeSession() {
         previousRecordedExerciseId: null,
       });
       setDraftProposal(null);
-      setUnsavedAttempt(null);
+      setUnsavedAttempt((current) =>
+        unsavedAttemptAfterDraftCancel(current, exerciseThreads),
+      );
       setAnchor(null);
     }
 

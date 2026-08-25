@@ -9,6 +9,7 @@ import {
   openExerciseDraft,
   recordedExerciseIdForAttempt,
   selectedExerciseAfterRefresh,
+  unsavedAttemptAfterDraftCancel,
   type ExerciseTimelineItem,
 } from "@/lib/exerciseThreads";
 import type { PracticeMessageRow } from "@/lib/practice";
@@ -345,5 +346,27 @@ describe("exercise draft transitions", () => {
     expect(recordedExerciseIdForAttempt(threads, "retry-a1")).toBe("root-a");
     expect(recordedExerciseIdForAttempt(threads, "root-b")).toBe("root-b");
     expect(recordedExerciseIdForAttempt(threads, "missing")).toBeNull();
+  });
+
+  it("preserves an unsaved retry when canceling a later exercise draft", () => {
+    const unsavedRetry = attempt({
+      id: "unsaved-retry",
+      parentId: "retry-a1",
+      kind: "retry",
+      sequence: 4,
+    });
+
+    expect(unsavedAttemptAfterDraftCancel(unsavedRetry, threads)).toBe(unsavedRetry);
+  });
+
+  it("clears an unsaved first attempt owned by the canceled draft", () => {
+    const unsavedFirstAttempt = attempt({
+      id: "unsaved-first",
+      parentId: null,
+      kind: "initial",
+      sequence: 4,
+    });
+
+    expect(unsavedAttemptAfterDraftCancel(unsavedFirstAttempt, threads)).toBeNull();
   });
 });
