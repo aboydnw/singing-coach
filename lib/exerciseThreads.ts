@@ -45,7 +45,7 @@ export function groupExerciseThreads(attempts: SessionRow[]): ExerciseThread[] {
       if (visited.has(current.id)) return attempt.id;
       visited.add(current.id);
       const parent = attemptById.get(current.parent_attempt_id);
-      if (!parent) return attempt.id;
+      if (!parent) return current.id;
       current = parent;
     }
 

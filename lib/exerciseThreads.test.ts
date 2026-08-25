@@ -105,6 +105,17 @@ describe("groupExerciseThreads", () => {
     ]);
   });
 
+  it("keeps retries of an orphaned attempt in the orphan thread", () => {
+    const threads = groupExerciseThreads([
+      attempt({ id: "orphan", parentId: "missing", kind: "retry", sequence: 1 }),
+      attempt({ id: "orphan-retry", parentId: "orphan", kind: "retry", sequence: 2 }),
+    ]);
+
+    expect(threads.map((thread) => [thread.id, thread.attemptIds])).toEqual([
+      ["orphan", ["orphan", "orphan-retry"]],
+    ]);
+  });
+
   it("keeps both attempts in a parent cycle as separate threads", () => {
     const threads = groupExerciseThreads([
       attempt({ id: "cycle-a", parentId: "cycle-b", kind: "retry", sequence: 1 }),
