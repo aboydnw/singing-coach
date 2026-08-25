@@ -16,15 +16,16 @@ type AttemptChatMessage = Pick<
   "id" | "attempt_id" | "role" | "content_json" | "status" | "created_at"
 >;
 
-export function buildAttemptChatHistory(
+export function buildExerciseChatHistory(
   messages: AttemptChatMessage[],
-  attemptId: string,
+  attemptIds: ReadonlySet<string>,
   userMessageId: string,
 ): Array<{ role: "user" | "assistant"; content: string }> {
   return messages
     .filter(
       (message) =>
-        message.attempt_id === attemptId &&
+        message.attempt_id !== null &&
+        attemptIds.has(message.attempt_id) &&
         message.status === "complete" &&
         message.id !== userMessageId &&
         Boolean(message.content_json.text),

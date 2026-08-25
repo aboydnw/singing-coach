@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAttemptChatHistory, practiceChatRequestSchema } from "@/lib/practiceChat";
+import { buildExerciseChatHistory, practiceChatRequestSchema } from "@/lib/practiceChat";
 import type { PracticeMessageRow } from "@/lib/practice";
 
 function message(args: {
@@ -39,52 +39,70 @@ describe("practiceChatRequestSchema", () => {
   });
 });
 
-describe("buildAttemptChatHistory", () => {
-  it("keeps history chronological and inside the selected attempt", () => {
-    const attemptA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-    const attemptB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+describe("buildExerciseChatHistory", () => {
+  it("keeps complete history across retries in the selected exercise", () => {
+    const rootId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const retryId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const otherId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
     const messages = [
       message({
-        id: "a-answer",
-        attemptId: attemptA,
+        id: "retry-question",
+        attemptId: retryId,
+        role: "user",
+        text: "Question after the retry",
+        createdAt: "2026-08-24T10:00:03.000Z",
+      }),
+      message({
+        id: "root-answer",
+        attemptId: rootId,
         role: "assistant",
-        text: "Earlier answer",
+        text: "Answer on the first take",
         createdAt: "2026-08-24T10:00:02.000Z",
       }),
       message({
-        id: "other-attempt",
-        attemptId: attemptB,
+        id: "other-exercise",
+        attemptId: otherId,
         role: "assistant",
         text: "Do not include me",
         createdAt: "2026-08-24T10:00:01.500Z",
       }),
       message({
-        id: "a-question",
-        attemptId: attemptA,
+        id: "root-question",
+        attemptId: rootId,
         role: "user",
-        text: "Earlier question",
+        text: "Question on the first take",
         createdAt: "2026-08-24T10:00:01.000Z",
       }),
       message({
         id: "current-user",
-        attemptId: attemptA,
+        attemptId: retryId,
         role: "user",
         text: "Current question",
-        createdAt: "2026-08-24T10:00:03.000Z",
+        createdAt: "2026-08-24T10:00:04.000Z",
+      }),
+      message({
+        id: "empty-answer",
+        attemptId: rootId,
+        role: "assistant",
+        text: "",
+        createdAt: "2026-08-24T10:00:05.000Z",
       }),
       message({
         id: "failed-answer",
-        attemptId: attemptA,
+        attemptId: retryId,
         role: "assistant",
         text: "Incomplete",
-        createdAt: "2026-08-24T10:00:04.000Z",
+        createdAt: "2026-08-24T10:00:06.000Z",
         status: "failed",
       }),
     ];
 
-    expect(buildAttemptChatHistory(messages, attemptA, "current-user")).toEqual([
-      { role: "user", content: "Earlier question" },
-      { role: "assistant", content: "Earlier answer" },
+    expect(
+      buildExerciseChatHistory(messages, new Set([rootId, retryId]), "current-user"),
+    ).toEqual([
+      { role: "user", content: "Question on the first take" },
+      { role: "assistant", content: "Answer on the first take" },
+      { role: "user", content: "Question after the retry" },
     ]);
   });
 });
