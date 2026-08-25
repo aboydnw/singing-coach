@@ -19,7 +19,7 @@ type ExerciseNavigatorProps = {
 };
 
 export function ExerciseNavigator(props: ExerciseNavigatorProps) {
-  const draft = props.draft;
+  const draft = props.ended ? undefined : props.draft;
   if (props.threads.length === 0 && !draft && props.ended) return null;
 
   return (

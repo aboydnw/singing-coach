@@ -94,6 +94,9 @@ export const SelectedDraft: Story = {
 };
 
 export const MobileCompatibleLongNames: Story = {
+  globals: {
+    viewport: { value: "mobile1", isRotated: false },
+  },
   args: {
     threads: groupExerciseThreads([
       attempt({
@@ -114,5 +117,8 @@ export const MobileCompatibleLongNames: Story = {
 };
 
 export const EndedPractice: Story = {
-  args: { ended: true },
+  args: {
+    draft: { id: "draft-exercise", name: "This draft must not appear" },
+    ended: true,
+  },
 };
