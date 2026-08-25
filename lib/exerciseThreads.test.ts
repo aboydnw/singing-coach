@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  exerciseNavigationSummary,
   exerciseTimeline,
   groupExerciseThreads,
   latestAttempt,
@@ -197,6 +198,52 @@ describe("exercise thread helpers", () => {
 
   it("returns the chronologically latest attempt in a thread", () => {
     expect(latestAttempt(threadA).id).toBe("retry-a2");
+  });
+
+  it("summarizes a multi-attempt exercise from its root and latest attempt", () => {
+    const thread = groupExerciseThreads([
+      {
+        ...attempt({ id: "root-summary", parentId: null, kind: "initial", sequence: 1 }),
+        exercise_spec_json:
+          '{"type":"sustained","target_notes_midi":[53],"duration_per_note_s":3,"vowel":"ah","display_name":"Sustain ‘ah’ on F3"}',
+        coaching_json: '{"top_issue":"Keep the pitch centered."}',
+      },
+      {
+        ...attempt({
+          id: "retry-summary",
+          parentId: "root-summary",
+          kind: "retry",
+          sequence: 2,
+        }),
+        exercise_spec_json:
+          '{"type":"sustained","target_notes_midi":[53],"duration_per_note_s":3,"vowel":"ah","display_name":"A renamed retry"}',
+        coaching_json: '{"top_issue":"Keep the release easy."}',
+      },
+    ])[0];
+
+    expect(exerciseNavigationSummary(thread, 0)).toEqual({
+      label: "Exercise 1",
+      name: "Sustain ‘ah’ on F3",
+      attemptCount: "2 attempts",
+      outcome: "Keep the release easy.",
+    });
+  });
+
+  it("summarizes a one-attempt free sing exercise", () => {
+    const thread = groupExerciseThreads([
+      {
+        ...attempt({ id: "free-sing", parentId: null, kind: "initial", sequence: 1 }),
+        exercise_type: "free_sing",
+        exercise_spec_json: null,
+      },
+    ])[0];
+
+    expect(exerciseNavigationSummary(thread, 1)).toEqual({
+      label: "Exercise 2",
+      name: "Free sing",
+      attemptCount: "1 attempt",
+      outcome: "Analysis saved",
+    });
   });
 });
 

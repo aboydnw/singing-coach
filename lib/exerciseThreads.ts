@@ -1,5 +1,9 @@
 import type { SessionRow } from "@/lib/sessions";
-import type { PracticeMessageRow } from "@/lib/practice";
+import {
+  attemptExerciseName,
+  attemptOutcome,
+  type PracticeMessageRow,
+} from "@/lib/practice";
 
 export type ExerciseThread = {
   id: string;
@@ -96,6 +100,16 @@ export function exerciseTimeline(
 
 export function latestAttempt(thread: ExerciseThread): SessionRow {
   return thread.attempts[thread.attempts.length - 1];
+}
+
+export function exerciseNavigationSummary(thread: ExerciseThread, index: number) {
+  const attemptCount = thread.attempts.length;
+  return {
+    label: `Exercise ${index + 1}`,
+    name: attemptExerciseName(thread.attempts[0]),
+    attemptCount: `${attemptCount} ${attemptCount === 1 ? "attempt" : "attempts"}`,
+    outcome: attemptOutcome(latestAttempt(thread)),
+  };
 }
 
 export function selectedExerciseAfterRefresh(

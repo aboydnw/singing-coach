@@ -17,20 +17,26 @@ composition stay local.
 
 ## Practice components
 
-| Component              | Status      | Supported responsibility                                            |
-| ---------------------- | ----------- | ------------------------------------------------------------------- |
-| `PracticeHome`         | Provisional | Start/resume composition and recent practice                        |
-| `PracticeCompass`      | Provisional | Current learning contract and contextual questions                  |
-| `ExerciseProposal`     | Provisional | Proposed, accepted, processing, retry, and free-sing states         |
-| `AttemptResult`        | Provisional | Immutable assessment and progressive analysis disclosure            |
-| `PracticeConversation` | Provisional | Persisted and streaming contextual messages                         |
-| `PracticeComposer`     | Provisional | Global/contextual question entry and session shortcuts              |
-| `AttemptNavigator`     | Established | Attempt selection, active state, and new-attempt entry point         |
-| `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata |
-| `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle            |
+| Component              | Status      | Supported responsibility                                                  |
+| ---------------------- | ----------- | ------------------------------------------------------------------------- |
+| `PracticeHome`         | Provisional | Start/resume composition and recent practice                              |
+| `PracticeCompass`      | Provisional | Current learning contract and contextual questions                        |
+| `ExerciseProposal`     | Provisional | Proposed, accepted, processing, retry, and free-sing states               |
+| `AttemptResult`        | Provisional | Immutable assessment and progressive analysis disclosure                  |
+| `PracticeConversation` | Provisional | Persisted and streaming contextual messages                               |
+| `PracticeComposer`     | Provisional | Global/contextual question entry and session shortcuts                    |
+| `ExerciseNavigator`    | Established | Exercise-thread selection, summaries, draft state, and new exercise entry |
+| `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
+| `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
 
 `PracticeComposer` is inline and attempt-scoped. It owns the question input plus the Try again and
 Try a different exercise footer actions; it does not float over the page.
+
+`ExerciseNavigator` groups retries under their root exercise. Recorded exercises show the root
+exercise name, total attempt count, and latest outcome; a pending proposal appears once as a Draft
+exercise with its stable draft ID. Desktop uses direct exercise controls and narrow layouts use a
+labeled Exercise selector. Selection controls are disabled while work is in progress, and ended
+practice hides the new-exercise action without removing recorded navigation.
 
 ## Abstraction rule
 
