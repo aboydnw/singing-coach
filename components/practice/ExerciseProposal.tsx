@@ -1,6 +1,6 @@
 import { Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { Recorder } from "@/components/Recorder";
-import { ContextAction } from "@/components/ui/ContextAction";
+import type { RecorderState } from "@/components/Recorder";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
 import type { ExerciseSpec } from "@/lib/schema";
@@ -17,18 +17,23 @@ export function ExerciseProposal(props: {
   accepted: boolean;
   processing: boolean;
   playing: boolean;
+  recorderBusy: boolean;
+  proposalLoading: boolean;
   onAccept: () => void;
   onUploaded: (key: string) => void;
   onHear: () => void;
   onDifferent: () => void;
   onFreeSing: () => void;
   onMoveOn: () => void;
-  onAsk: () => void;
+  onCancel: () => void;
+  onRecorderStateChange: (state: RecorderState) => void;
 }) {
   const { proposal, accepted } = props;
   return (
     <Surface
       as="article"
+      id="exercise-setup"
+      tabIndex={-1}
       variant={accepted ? "raised" : "base"}
       borderColor={accepted ? "coral.300" : "border.default"}
       borderLeftWidth="4px"
@@ -58,7 +63,11 @@ export function ExerciseProposal(props: {
       {!accepted ? (
         <Stack mt={5} gap={3}>
           <Flex gap={3} wrap="wrap">
-            <Button colorPalette="coral" onClick={props.onAccept}>
+            <Button
+              colorPalette="coral"
+              onClick={props.onAccept}
+              disabled={props.proposalLoading}
+            >
               {proposal.retry ? "Try it now" : "Start this exercise"}
             </Button>
             {proposal.spec ? (
@@ -67,22 +76,40 @@ export function ExerciseProposal(props: {
                 colorPalette="teal"
                 onClick={props.onHear}
                 loading={props.playing}
+                disabled={props.proposalLoading}
               >
                 Hear it
               </Button>
             ) : null}
           </Flex>
           <Flex gap={4} wrap="wrap">
-            <ContextAction onClick={props.onAsk}>Ask about this</ContextAction>
-            <Button variant="plain" color="fg.muted" px={0} onClick={props.onDifferent}>
+            <Button
+              variant="plain"
+              color="fg.muted"
+              px={0}
+              onClick={props.onDifferent}
+              loading={props.proposalLoading}
+            >
               Different exercise
             </Button>
             {proposal.spec ? (
-              <Button variant="plain" color="fg.muted" px={0} onClick={props.onFreeSing}>
+              <Button
+                variant="plain"
+                color="fg.muted"
+                px={0}
+                onClick={props.onFreeSing}
+                disabled={props.proposalLoading}
+              >
                 Free sing instead
               </Button>
             ) : (
-              <Button variant="plain" color="fg.muted" px={0} onClick={props.onMoveOn}>
+              <Button
+                variant="plain"
+                color="fg.muted"
+                px={0}
+                onClick={props.onMoveOn}
+                disabled={props.proposalLoading}
+              >
                 Coach’s exercise instead
               </Button>
             )}
@@ -92,10 +119,14 @@ export function ExerciseProposal(props: {
                 color="action.primary"
                 px={0}
                 onClick={props.onMoveOn}
+                disabled={props.proposalLoading}
               >
                 Move on
               </Button>
             ) : null}
+            <Button variant="plain" color="fg.muted" px={0} onClick={props.onCancel}>
+              Cancel
+            </Button>
           </Flex>
         </Stack>
       ) : (
@@ -111,11 +142,26 @@ export function ExerciseProposal(props: {
                 colorPalette="teal"
                 onClick={props.onHear}
                 loading={props.playing}
+                disabled={props.recorderBusy}
               >
                 Hear the reference
               </Button>
             ) : null}
-            <Recorder onUploaded={props.onUploaded} disabled={props.processing} />
+            <Recorder
+              onUploaded={props.onUploaded}
+              onStateChange={props.onRecorderStateChange}
+              disabled={props.processing}
+            />
+            <Button
+              alignSelf="start"
+              variant="plain"
+              color="fg.muted"
+              px={0}
+              onClick={props.onCancel}
+              disabled={props.processing || props.recorderBusy}
+            >
+              Cancel
+            </Button>
             {props.processing ? (
               <Text color="singer.agency" role="status">
                 Listening for the pattern and preparing one useful correction…

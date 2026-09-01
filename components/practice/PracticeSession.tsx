@@ -12,30 +12,50 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isRecorderBusy, type RecorderState } from "@/components/Recorder";
 import { AttemptResult } from "@/components/practice/AttemptResult";
+import { ExerciseNavigator } from "@/components/practice/ExerciseNavigator";
 import {
   ExerciseProposal,
   type PracticeProposal,
 } from "@/components/practice/ExerciseProposal";
 import { PracticeCompass } from "@/components/practice/PracticeCompass";
 import { PracticeComposer } from "@/components/practice/PracticeComposer";
-import { PracticeConversation } from "@/components/practice/PracticeConversation";
+import {
+  PracticeMessage,
+  StreamingPracticeMessage,
+} from "@/components/practice/PracticeConversation";
 import { AppNotice } from "@/components/ui/AppNotice";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
 import { analyze, coach, streamPracticeCoach } from "@/lib/api";
 import { exerciseForDrill, nextExercise, skipExercise } from "@/lib/exercises";
 import {
+  cancelExerciseDraft,
+  attemptIdForExerciseMessage,
+  exerciseTimeline,
+  groupExerciseThreads,
+  latestAttempt,
+  openExerciseDraft,
+  recordedExerciseIdForAttempt,
+  selectedExerciseAfterRefresh,
+  selectedExerciseFromNavigator,
+  unsavedAttemptAfterDraftCancel,
+} from "@/lib/exerciseThreads";
+import {
   contractFromAttempt,
+  currentExerciseForChange,
   endPractice,
   loadPractice,
+  nextAttemptSequence,
   savePracticeMessage,
   updateLearningContract,
   type PracticeBundle,
 } from "@/lib/practice";
 import {
   coachingResponseSchema,
+  exerciseSpecSchema,
   type ContextAnchor,
   type CoachingResponse,
   type ExerciseSpec,
@@ -75,26 +95,76 @@ export function PracticeSession() {
   } | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [details, setDetails] = useState<Record<string, boolean>>({});
+  const [exerciseSelection, setExerciseSelection] = useState<{
+    selectedExerciseId: string | null;
+    draftExerciseId: string | null;
+    previousRecordedExerciseId: string | null;
+  }>({
+    selectedExerciseId: null,
+    draftExerciseId: null,
+    previousRecordedExerciseId: null,
+  });
+  const { selectedExerciseId, draftExerciseId, previousRecordedExerciseId } =
+    exerciseSelection;
+  const [draftProposal, setDraftProposal] = useState<PracticeProposal | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [recorderState, setRecorderState] = useState<RecorderState>({ phase: "idle" });
+  const [proposalLoading, setProposalLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const proposalRequestRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const loaded = await loadPractice(params.id);
-    setBundle(loaded);
-    return loaded;
-  }, [params.id]);
+  const refresh = useCallback(
+    async (newlyCreatedId?: string | null) => {
+      const loaded = await loadPractice(params.id);
+      const threads = groupExerciseThreads(loaded.attempts);
+      setBundle(loaded);
+      setExerciseSelection((current) => ({
+        ...current,
+        selectedExerciseId:
+          (newlyCreatedId
+            ? recordedExerciseIdForAttempt(threads, newlyCreatedId)
+            : null) ?? selectedExerciseAfterRefresh(current.selectedExerciseId, threads),
+      }));
+      return loaded;
+    },
+    [params.id],
+  );
 
   useEffect(() => {
     refresh()
       .then(async (loaded) => {
         if (loaded.practice.status === "ended") return;
+        if (loaded.attempts.length === 0) {
+          const draftId = `draft-${crypto.randomUUID()}`;
+          setExerciseSelection((current) => {
+            const next = openExerciseDraft(
+              {
+                draftId: current.draftExerciseId,
+                selectedExerciseId: current.selectedExerciseId,
+                previousRecordedExerciseId: current.previousRecordedExerciseId,
+              },
+              draftId,
+            );
+            return {
+              selectedExerciseId: next.selectedExerciseId,
+              draftExerciseId: next.draftId,
+              previousRecordedExerciseId: next.previousRecordedExerciseId,
+            };
+          });
+        }
         if (loaded.practice.starting_direction === "free_sing") {
-          setProposal({
+          const initialProposal = {
             spec: null,
             reason:
               "Sing something familiar and notice what your voice naturally does today.",
             parentAttemptId: null,
             retry: false,
-          });
+          } satisfies PracticeProposal;
+          if (loaded.attempts.length === 0) {
+            setProposal(initialProposal);
+            setDraftProposal(initialProposal);
+            setSetupOpen(true);
+          }
           return;
         }
         const calibration = await latestCalibration();
@@ -104,14 +174,19 @@ export function PracticeSession() {
         }
         const latest = loaded.attempts.at(-1);
         const spec = chooseProposalSpec(loaded, calibration);
-        setProposal({
+        const initialProposal = {
           spec,
           reason: latest
             ? "Use the last attempt while it is still easy to remember, or take the next step when you are ready."
             : "This gives us a clear first pattern to listen for without asking you to do too much at once.",
           parentAttemptId: null,
           retry: false,
-        });
+        } satisfies PracticeProposal;
+        if (loaded.attempts.length === 0) {
+          setProposal(initialProposal);
+          setDraftProposal(initialProposal);
+          setSetupOpen(true);
+        }
       })
       .catch((reason) =>
         setError(
@@ -122,6 +197,21 @@ export function PracticeSession() {
 
   const contract = bundle?.practice.learning_contract_json;
   const ended = bundle?.practice.status === "ended";
+  const exerciseThreads = useMemo(
+    () => groupExerciseThreads(bundle?.attempts ?? []),
+    [bundle?.attempts],
+  );
+  const activeExercise =
+    exerciseThreads.find((thread) => thread.id === selectedExerciseId) ?? null;
+  const activeAttempt = activeExercise ? latestAttempt(activeExercise) : null;
+  const recorderBusy = isRecorderBusy(recorderState);
+  const activeTimeline =
+    bundle && activeExercise ? exerciseTimeline(activeExercise, bundle.messages) : [];
+  const unsavedExerciseId = unsavedAttempt?.parent_attempt_id
+    ? recordedExerciseIdForAttempt(exerciseThreads, unsavedAttempt.parent_attempt_id)
+    : draftExerciseId;
+  const showUnsavedAttempt =
+    Boolean(unsavedAttempt) && unsavedExerciseId === selectedExerciseId;
 
   const askAbout = (
     label: string,
@@ -137,6 +227,10 @@ export function PracticeSession() {
   const sendQuestion = async () => {
     const text = question.trim();
     if (!bundle || !text || streaming || ended) return;
+    const attemptId = activeExercise
+      ? attemptIdForExerciseMessage(activeExercise, anchor)
+      : null;
+    if (!attemptId) return;
     const clientRequestId = crypto.randomUUID();
     const assistantRequestId = crypto.randomUUID();
     setStreaming(true);
@@ -145,6 +239,7 @@ export function PracticeSession() {
     try {
       const userMessage = await savePracticeMessage({
         practiceSessionId: bundle.practice.id,
+        attemptId,
         role: "user",
         text,
         contextAnchor: anchor,
@@ -157,6 +252,7 @@ export function PracticeSession() {
       abortRef.current = controller;
       const answer = await streamPracticeCoach(
         bundle.practice.id,
+        attemptId,
         text,
         anchor,
         assistantRequestId,
@@ -193,6 +289,7 @@ export function PracticeSession() {
       const analysis = await analyze(audioKey, proposal.spec, "full");
       if (!analysis.measurements) throw new Error("Analysis returned no measurements.");
       const allSessions = await listSessions(30);
+      const sequenceNumber = nextAttemptSequence(bundle.attempts);
       let attemptId: string | null = null;
       let saveError: string | null = null;
       try {
@@ -203,7 +300,7 @@ export function PracticeSession() {
           audioKey,
           contour: analysis.contour,
           practiceSessionId: bundle.practice.id,
-          sequenceNumber: bundle.attempts.length + 1,
+          sequenceNumber,
           parentAttemptId: proposal.parentAttemptId,
           attemptKind: proposal.retry ? "retry" : "initial",
         });
@@ -219,7 +316,8 @@ export function PracticeSession() {
         coaching = await coach(
           analysis.measurements,
           proposal.spec,
-          toHistory(allSessions),
+          toHistory(allSessions, 30),
+          bundle.practice.id,
         );
       } catch (reason) {
         coachingError = reason instanceof Error ? reason.message : "Coaching failed.";
@@ -246,7 +344,7 @@ export function PracticeSession() {
           audio_key: audioKey,
           contour_json: JSON.stringify(analysis.contour),
           practice_session_id: bundle.practice.id,
-          sequence_number: bundle.attempts.length + 1,
+          sequence_number: sequenceNumber,
           parent_attempt_id: proposal.parentAttemptId,
           attempt_kind: proposal.retry ? "retry" : "initial",
         });
@@ -255,7 +353,7 @@ export function PracticeSession() {
         );
       }
 
-      let loaded = attemptId ? await refresh() : bundle;
+      let loaded = attemptId ? await refresh(attemptId) : bundle;
       if (attemptId && coaching && coachingSaveError) {
         loaded = {
           ...loaded,
@@ -295,13 +393,24 @@ export function PracticeSession() {
         });
       }
       setAccepted(false);
-      setProposal({
-        spec: proposal.spec,
-        reason:
-          "Try the same sound once more while the correction is fresh, or move on when you can hear the pattern yourself.",
-        parentAttemptId: attemptId,
-        retry: true,
-      });
+      if (attemptId) {
+        if (!proposal.retry) {
+          const recordedExerciseId = recordedExerciseIdForAttempt(
+            groupExerciseThreads(loaded.attempts),
+            attemptId,
+          );
+          setExerciseSelection({
+            selectedExerciseId: recordedExerciseId,
+            draftExerciseId: null,
+            previousRecordedExerciseId: null,
+          });
+          setDraftProposal(null);
+        }
+        setProposal(null);
+        setSetupOpen(false);
+      } else {
+        setSetupOpen(true);
+      }
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "This attempt could not be completed.",
@@ -312,7 +421,7 @@ export function PracticeSession() {
   };
 
   const retryCoaching = async () => {
-    if (!coachingRetry) return;
+    if (!coachingRetry || !bundle) return;
     setProcessing(true);
     setError(null);
     try {
@@ -320,7 +429,11 @@ export function PracticeSession() {
       const coaching = await coach(
         coachingRetry.measurements,
         coachingRetry.spec,
-        toHistory(sessions.filter((row) => row.id !== coachingRetry.attemptId)),
+        toHistory(
+          sessions.filter((row) => row.id !== coachingRetry.attemptId),
+          30,
+        ),
+        bundle.practice.id,
       );
       await updateSessionCoaching(coachingRetry.attemptId, coaching);
       setCoachingRetry(null);
@@ -348,57 +461,86 @@ export function PracticeSession() {
     }
   };
 
-  const differentExercise = async () => {
-    if (!bundle) return;
-    let calibration;
-    try {
-      calibration = await latestCalibration();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
-      return;
-    }
-    if (!calibration || calibration.tessitura_low_midi === null) {
-      setNeedsCalibration(true);
-      return;
-    }
-    const current = proposal?.spec;
-    const spec = current
-      ? skipExercise(calibration, bundle.attempts.length, current).spec
-      : nextExercise(calibration, bundle.attempts.length, null);
-    setNeedsCalibration(false);
-    setAccepted(false);
-    setProposal({
-      spec,
-      reason: "A different shape, while keeping today’s listening focus in view.",
-      parentAttemptId: null,
-      retry: false,
+  const selectDraft = () => {
+    const next = openExerciseDraft(
+      {
+        draftId: draftExerciseId,
+        selectedExerciseId,
+        previousRecordedExerciseId,
+      },
+      `draft-${crypto.randomUUID()}`,
+    );
+    setExerciseSelection({
+      selectedExerciseId: next.selectedExerciseId,
+      draftExerciseId: next.draftId,
+      previousRecordedExerciseId: next.previousRecordedExerciseId,
     });
+    return next;
+  };
+
+  const differentExercise = async () => {
+    if (!bundle || recorderBusy || proposalLoading) return;
+    const requestId = ++proposalRequestRef.current;
+    setProposalLoading(true);
+    try {
+      const calibration = await latestCalibration();
+      if (requestId !== proposalRequestRef.current) return;
+      if (!calibration || calibration.tessitura_low_midi === null) {
+        setNeedsCalibration(true);
+        return;
+      }
+      const current = currentExerciseForChange(
+        setupOpen,
+        proposal?.spec,
+        parseStoredJson(activeAttempt?.exercise_spec_json ?? null, exerciseSpecSchema),
+      );
+      const spec = current
+        ? skipExercise(calibration, bundle.attempts.length, current).spec
+        : nextExercise(calibration, bundle.attempts.length, null);
+      setNeedsCalibration(false);
+      setAccepted(false);
+      const nextProposal = {
+        spec,
+        reason: "A different shape, while keeping today’s listening focus in view.",
+        parentAttemptId: null,
+        retry: false,
+      } satisfies PracticeProposal;
+      setProposal(nextProposal);
+      setDraftProposal(nextProposal);
+      setSetupOpen(true);
+      requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+    } catch (reason) {
+      if (requestId === proposalRequestRef.current) {
+        setError(
+          reason instanceof Error ? reason.message : "Could not load calibration.",
+        );
+      }
+    } finally {
+      if (requestId === proposalRequestRef.current) setProposalLoading(false);
+    }
   };
 
   const nextFromCoach = async () => {
-    if (!bundle) return;
-    let calibration;
+    if (!bundle || recorderBusy || proposalLoading) return;
+    const requestId = ++proposalRequestRef.current;
+    setProposalLoading(true);
     try {
-      calibration = await latestCalibration();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load calibration.");
-      return;
-    }
-    if (!calibration || calibration.tessitura_low_midi === null) {
-      setNeedsCalibration(true);
-      return;
-    }
-    const latest = bundle.attempts.at(-1);
-    let spec = nextExercise(
-      calibration,
-      bundle.attempts.length,
-      contract?.focusArea ?? null,
-    );
-    setNeedsCalibration(false);
-    if (latest?.coaching_json) {
-      const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
-      if (coaching) {
-        if (coaching.resolved?.drill?.exercise_type) {
+      const calibration = await latestCalibration();
+      if (requestId !== proposalRequestRef.current) return;
+      if (!calibration || calibration.tessitura_low_midi === null) {
+        setNeedsCalibration(true);
+        return;
+      }
+      const latest = bundle.attempts.at(-1);
+      let spec = nextExercise(
+        calibration,
+        bundle.attempts.length,
+        contract?.focusArea ?? null,
+      );
+      setNeedsCalibration(false);
+      if (latest?.coaching_json) {
+        const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
+        if (coaching?.resolved?.drill?.exercise_type) {
           spec = exerciseForDrill(
             calibration,
             bundle.attempts.length,
@@ -407,27 +549,127 @@ export function PracticeSession() {
           );
         }
       }
+      setAccepted(false);
+      const nextProposal = {
+        spec,
+        reason:
+          "The next exercise keeps the same focus but changes what your voice has to coordinate.",
+        parentAttemptId: null,
+        retry: false,
+      } satisfies PracticeProposal;
+      setProposal(nextProposal);
+      setDraftProposal(nextProposal);
+      setSetupOpen(true);
+      requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+    } catch (reason) {
+      if (requestId === proposalRequestRef.current) {
+        setError(
+          reason instanceof Error ? reason.message : "Could not load calibration.",
+        );
+      }
+    } finally {
+      if (requestId === proposalRequestRef.current) setProposalLoading(false);
     }
-    setAccepted(false);
-    setProposal({
-      spec,
-      reason:
-        "The next exercise keeps the same focus but changes what your voice has to coordinate.",
-      parentAttemptId: null,
-      retry: false,
-    });
   };
 
   const freeSing = () => {
+    if (recorderBusy || proposalLoading) return;
+    selectDraft();
+    setAnchor(null);
     setNeedsCalibration(false);
     setAccepted(false);
-    setProposal({
+    const nextProposal = {
       spec: null,
       reason:
         "Sing something familiar. We will listen for the current pattern without scoring target notes.",
       parentAttemptId: null,
       retry: false,
+    } satisfies PracticeProposal;
+    setProposal(nextProposal);
+    setDraftProposal(nextProposal);
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+  };
+
+  const retrySelected = () => {
+    if (!activeAttempt || recorderBusy || proposalLoading) return;
+    setAccepted(false);
+    setProposal({
+      spec: parseStoredJson(activeAttempt.exercise_spec_json, exerciseSpecSchema),
+      reason:
+        "Repeat the same sound while the feedback is fresh, then compare it with this attempt.",
+      parentAttemptId: activeAttempt.id,
+      retry: true,
     });
+    setSetupOpen(true);
+    requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+  };
+
+  const openNewExercise = async () => {
+    if (!bundle || recorderBusy || proposalLoading || ended) return;
+    const next = selectDraft();
+    setAnchor(null);
+    setAccepted(false);
+    if (!next.created) {
+      setProposal(draftProposal);
+      setSetupOpen(Boolean(draftProposal));
+      if (draftProposal) {
+        requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+      }
+      return;
+    }
+    await nextFromCoach();
+  };
+
+  const selectExercise = (exerciseId: string) => {
+    if (
+      streaming ||
+      recorderBusy ||
+      proposalLoading ||
+      (!exerciseThreads.some((thread) => thread.id === exerciseId) &&
+        exerciseId !== draftExerciseId)
+    )
+      return;
+
+    setExerciseSelection((current) => {
+      const next = selectedExerciseFromNavigator(
+        {
+          draftId: current.draftExerciseId,
+          selectedExerciseId: current.selectedExerciseId,
+          previousRecordedExerciseId: current.previousRecordedExerciseId,
+        },
+        exerciseId,
+        exerciseThreads,
+      );
+      return {
+        selectedExerciseId: next.selectedExerciseId,
+        draftExerciseId: next.draftId,
+        previousRecordedExerciseId: next.previousRecordedExerciseId,
+      };
+    });
+
+    if (exerciseId === draftExerciseId) {
+      setProposal(draftProposal);
+      setAccepted(false);
+      setAnchor(null);
+      setSetupOpen(Boolean(draftProposal));
+      if (draftProposal) {
+        requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+      }
+      return;
+    }
+
+    setSetupOpen(false);
+    setProposal(null);
+    setAccepted(false);
+    setAnchor(null);
+    const firstAttemptId = exerciseThreads.find((thread) => thread.id === exerciseId)
+      ?.attempts[0]?.id;
+    if (firstAttemptId) {
+      requestAnimationFrame(() =>
+        document.getElementById(`attempt-${firstAttemptId}`)?.focus(),
+      );
+    }
   };
 
   const finish = async () => {
@@ -448,6 +690,39 @@ export function PracticeSession() {
     }
   };
 
+  const cancelSetup = () => {
+    if (recorderBusy) return;
+    proposalRequestRef.current += 1;
+    setProposalLoading(false);
+    setSetupOpen(false);
+    setProposal(null);
+    setAccepted(false);
+
+    let returnExerciseId = selectedExerciseId;
+    if (selectedExerciseId === draftExerciseId) {
+      returnExerciseId = cancelExerciseDraft(previousRecordedExerciseId, exerciseThreads);
+      setExerciseSelection({
+        selectedExerciseId: returnExerciseId,
+        draftExerciseId: null,
+        previousRecordedExerciseId: null,
+      });
+      setDraftProposal(null);
+      setUnsavedAttempt((current) =>
+        unsavedAttemptAfterDraftCancel(current, exerciseThreads),
+      );
+      setAnchor(null);
+    }
+
+    const firstAttemptId = exerciseThreads.find(
+      (thread) => thread.id === returnExerciseId,
+    )?.attempts[0]?.id;
+    if (firstAttemptId) {
+      requestAnimationFrame(() =>
+        document.getElementById(`attempt-${firstAttemptId}`)?.focus(),
+      );
+    }
+  };
+
   if (!bundle) {
     return (
       <Stack gap={4}>
@@ -461,7 +736,7 @@ export function PracticeSession() {
   }
 
   return (
-    <Stack gap={6} pb={ended ? 0 : "8rem"}>
+    <Stack gap={6}>
       <Flex
         justify="space-between"
         align={{ base: "start", md: "center" }}
@@ -499,7 +774,7 @@ export function PracticeSession() {
           <Button
             variant="ghost"
             colorPalette="coral"
-            disabled={processing}
+            disabled={processing || streaming || recorderBusy || proposalLoading}
             onClick={() => setEndOpen(true)}
           >
             End practice
@@ -539,43 +814,81 @@ export function PracticeSession() {
       <Grid
         templateColumns={{
           base: "minmax(0, 1fr)",
-          lg: "minmax(0, 1.85fr) minmax(17rem, .75fr)",
+          lg: "15rem minmax(0, 1fr) 18rem",
         }}
         gap={6}
         alignItems="start"
       >
+        <ExerciseNavigator
+          threads={exerciseThreads}
+          selectedExerciseId={selectedExerciseId}
+          draft={
+            draftExerciseId
+              ? {
+                  id: draftExerciseId,
+                  name: draftProposal?.spec?.display_name ?? "Free sing",
+                }
+              : undefined
+          }
+          onSelect={selectExercise}
+          onNewExercise={openNewExercise}
+          disabled={processing || streaming || recorderBusy || proposalLoading}
+          ended={ended}
+        />
+
         <Stack gap={5}>
           <SessionOrigin direction={bundle.practice.starting_direction} />
-          {bundle.attempts.map((attempt, index) => {
-            const parent = attempt.parent_attempt_id
-              ? bundle.attempts.find((row) => row.id === attempt.parent_attempt_id)
-              : null;
-            return (
-              <AttemptResult
-                key={attempt.id}
-                attempt={attempt}
-                number={index + 1}
-                parent={parent ?? null}
-                expanded={Boolean(details[attempt.id])}
-                onToggle={() =>
-                  setDetails((current) => ({
-                    ...current,
-                    [attempt.id]: !current[attempt.id],
-                  }))
-                }
-                onAsk={(label, value) => askAbout(label, value, attempt.id)}
-              />
-            );
-          })}
-          {unsavedAttempt ? (
+          {activeExercise ? (
+            <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
+              {activeTimeline.map((item) =>
+                item.type === "attempt" ? (
+                  <AttemptResult
+                    key={`attempt-${item.attempt.id}`}
+                    attempt={item.attempt}
+                    fallbackIndex={bundle.attempts.findIndex(
+                      (attempt) => attempt.id === item.attempt.id,
+                    )}
+                    parent={
+                      item.attempt.parent_attempt_id
+                        ? (bundle.attempts.find(
+                            (attempt) => attempt.id === item.attempt.parent_attempt_id,
+                          ) ?? null)
+                        : null
+                    }
+                    expanded={Boolean(details[item.attempt.id])}
+                    onToggle={() =>
+                      setDetails((current) => ({
+                        ...current,
+                        [item.attempt.id]: !current[item.attempt.id],
+                      }))
+                    }
+                    onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
+                  />
+                ) : (
+                  <PracticeMessage
+                    key={`message-${item.message.id}`}
+                    message={item.message}
+                  />
+                ),
+              )}
+              <StreamingPracticeMessage text={streamingText} anchor={anchor} />
+            </Stack>
+          ) : null}
+          {showUnsavedAttempt && unsavedAttempt ? (
             <Box borderWidth="2px" borderColor="coral.400" rounded="surface" p={1}>
               <Badge m={3} mb={1} colorPalette="coral" variant="subtle">
                 Not saved to history
               </Badge>
               <AttemptResult
                 attempt={unsavedAttempt}
-                number={bundle.attempts.length + 1}
-                parent={null}
+                fallbackIndex={bundle.attempts.length}
+                parent={
+                  unsavedAttempt.parent_attempt_id
+                    ? (bundle.attempts.find(
+                        (attempt) => attempt.id === unsavedAttempt.parent_attempt_id,
+                      ) ?? null)
+                    : null
+                }
                 expanded={Boolean(details[unsavedAttempt.id])}
                 onToggle={() =>
                   setDetails((current) => ({
@@ -583,21 +896,31 @@ export function PracticeSession() {
                     [unsavedAttempt.id]: !current[unsavedAttempt.id],
                   }))
                 }
-                onAsk={(label, value) => askAbout(label, value, bundle.practice.id)}
               />
             </Box>
           ) : null}
-          <PracticeConversation
-            messages={bundle.messages}
-            streamingText={streamingText}
-            anchor={anchor}
-          />
-          {!ended && proposal ? (
+          {!ended && activeAttempt ? (
+            <PracticeComposer
+              value={question}
+              onChange={setQuestion}
+              anchor={anchor}
+              onClearAnchor={() => setAnchor(null)}
+              onSend={sendQuestion}
+              onRetry={retrySelected}
+              onDifferent={openNewExercise}
+              streaming={streaming}
+              disabled={processing || recorderBusy || proposalLoading}
+              onStop={() => abortRef.current?.abort()}
+            />
+          ) : null}
+          {!ended && setupOpen && proposal ? (
             <ExerciseProposal
               proposal={proposal}
               accepted={accepted}
               processing={processing}
               playing={playing}
+              recorderBusy={recorderBusy}
+              proposalLoading={proposalLoading}
               onAccept={() => setAccepted(true)}
               onUploaded={onUploaded}
               onHear={async () => {
@@ -609,17 +932,11 @@ export function PracticeSession() {
                 ).done;
                 setPlaying(false);
               }}
-              onDifferent={differentExercise}
+              onDifferent={proposal.retry ? openNewExercise : differentExercise}
               onFreeSing={freeSing}
-              onMoveOn={nextFromCoach}
-              onAsk={() =>
-                askAbout(
-                  "Exercise",
-                  proposal.spec?.display_name ?? "Free sing",
-                  bundle.practice.id,
-                  "exercise_instruction",
-                )
-              }
+              onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
+              onCancel={cancelSetup}
+              onRecorderStateChange={setRecorderState}
             />
           ) : null}
           {ended ? (
@@ -635,27 +952,15 @@ export function PracticeSession() {
         {contract ? (
           <PracticeCompass
             contract={contract}
-            onAsk={(label, value) =>
-              askAbout(label, value, bundle.practice.id, "compass_field")
-            }
+            canAsk={Boolean(activeAttempt) && !ended}
+            onAsk={(label, value) => {
+              if (activeAttempt) {
+                askAbout(label, value, activeAttempt.id, "compass_field");
+              }
+            }}
           />
         ) : null}
       </Grid>
-
-      {!ended ? (
-        <PracticeComposer
-          value={question}
-          onChange={setQuestion}
-          anchor={anchor}
-          onClearAnchor={() => setAnchor(null)}
-          onSend={sendQuestion}
-          onDifferent={differentExercise}
-          onFreeSing={freeSing}
-          streaming={streaming}
-          disabled={processing}
-          onStop={() => abortRef.current?.abort()}
-        />
-      ) : null}
 
       <Dialog.Root open={endOpen} onOpenChange={(event) => setEndOpen(event.open)}>
         <Dialog.Backdrop />

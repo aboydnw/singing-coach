@@ -10,14 +10,18 @@ import { accessToken, supabase, userId } from "@/lib/supabase";
 export async function uploadRecording(
   wav: Blob,
   onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
 ): Promise<string> {
+  throwIfAborted(signal);
   const uid = await userId();
+  throwIfAborted(signal);
   if (!uid) throw new Error("not signed in");
   const key = `${uid}/${crypto.randomUUID()}.wav`;
 
   const { data, error } = await supabase()
     .storage.from("recordings")
     .createSignedUploadUrl(key);
+  throwIfAborted(signal);
   if (error || !data) throw new Error(error?.message ?? "could not sign upload");
 
   await new Promise<void>((resolve, reject) => {
@@ -26,20 +30,42 @@ export async function uploadRecording(
     xhr.setRequestHeader("Content-Type", "audio/wav");
     xhr.timeout = 120_000;
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
+      if (!signal?.aborted && event.lengthComputable && onProgress) {
         onProgress(event.loaded / event.total);
       }
     };
-    xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300
-        ? resolve()
-        : reject(new Error(`upload failed with status ${xhr.status}`));
-    xhr.onerror = () => reject(new Error("upload failed"));
-    xhr.ontimeout = () => reject(new Error("upload timed out"));
+    const cleanup = () => signal?.removeEventListener("abort", abort);
+    const abort = () => xhr.abort();
+    xhr.onload = () => {
+      cleanup();
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`upload failed with status ${xhr.status}`));
+    };
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error("upload failed"));
+    };
+    xhr.ontimeout = () => {
+      cleanup();
+      reject(new Error("upload timed out"));
+    };
+    xhr.onabort = () => {
+      cleanup();
+      reject(new DOMException("Upload aborted", "AbortError"));
+    };
+    if (signal?.aborted) {
+      reject(new DOMException("Upload aborted", "AbortError"));
+      return;
+    }
+    signal?.addEventListener("abort", abort, { once: true });
     xhr.send(wav);
   });
 
   return key;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException("Upload aborted", "AbortError");
 }
 
 export async function analyze(
@@ -99,6 +125,7 @@ export async function resynthesize(
 
 export type HistoryEntry = {
   ts: string | null;
+  practice_session_id: string | null;
   exercise_type: string | null;
   measurements: Record<string, unknown> | null;
   advice_given?: {
@@ -114,6 +141,7 @@ export async function coach(
   measurements: Measurements,
   exerciseSpec: ExerciseSpec | null,
   history: HistoryEntry[],
+  currentPracticeSessionId: string | null = null,
 ): Promise<CoachingResponse> {
   const token = await accessToken();
   if (!token) throw new Error("not signed in");
@@ -128,6 +156,7 @@ export async function coach(
       measurements,
       exercise_spec: exerciseSpec,
       history,
+      current_practice_session_id: currentPracticeSessionId,
     }),
   });
   if (!response.ok) {
@@ -139,6 +168,7 @@ export async function coach(
 
 export async function streamPracticeCoach(
   practiceSessionId: string,
+  attemptId: string,
   message: string,
   contextAnchor: ContextAnchor | null,
   clientRequestId: string,
@@ -157,6 +187,7 @@ export async function streamPracticeCoach(
     signal,
     body: JSON.stringify({
       practice_session_id: practiceSessionId,
+      attempt_id: attemptId,
       message,
       context_anchor: contextAnchor,
       client_request_id: clientRequestId,

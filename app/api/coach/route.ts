@@ -34,9 +34,11 @@ const MIN_ATTEMPT_MS = 20_000;
 const requestSchema = z.object({
   exercise_spec: exerciseSpecSchema.nullable(),
   measurements: measurementsSchema,
+  current_practice_session_id: z.string().uuid().nullable().default(null),
   history: z.array(
     z.object({
       ts: z.string().nullable(),
+      practice_session_id: z.string().uuid().nullable(),
       exercise_type: z.string().nullable(),
       measurements: z.record(z.string(), z.unknown()).nullable(),
       advice_given: z
@@ -107,7 +109,9 @@ function formatUserMessage(body: CoachRequest, calibrating: boolean): string {
   blocks.push(
     "<task>Coach me. Lead with the most important thing to work on. " +
       "Specific, actionable. Follow up on your prior advice if history shows any. " +
-      "Choose a state_id and a drill_id from the pedagogy block." +
+      "Choose a state_id and a drill_id from the pedagogy block. " +
+      `The current practice session id is ${body.current_practice_session_id ?? "not available"}; ` +
+      "use it to separate this session from the longer-term trend." +
       (calibrating
         ? " calibrating: true - this singer does not have enough history for a" +
           " baseline yet, so describe what you measured without diagnosing a" +

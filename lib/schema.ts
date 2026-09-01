@@ -38,6 +38,18 @@ export const measurementsSchema = z.object({
   accuracy: pitchAccuracySchema.nullable().default(null),
 });
 
+export const compassModelSchema = z.object({
+  overall_trend: z.string().min(1).max(180),
+  current_session: z.string().min(1).max(180),
+  next_direction: z.string().min(1).max(180),
+});
+
+export const compassSummarySchema = z.object({
+  overallTrend: z.string().min(1).max(180),
+  currentSession: z.string().min(1).max(180),
+  nextDirection: z.string().min(1).max(180),
+});
+
 export const coachingResultSchema = z.object({
   focus_area: focusAreaSchema,
   state_id: z.string(),
@@ -46,6 +58,7 @@ export const coachingResultSchema = z.object({
   why: z.string(),
   drill: z.string(),
   encouragement: z.string(),
+  compass: compassModelSchema,
 });
 
 /** What the model is allowed to hand back.
@@ -84,6 +97,7 @@ export const resolvedCoachingSchema = z.object({
 });
 
 export const coachingResponseSchema = coachingResultSchema.extend({
+  compass: compassModelSchema.optional(),
   resolved: resolvedCoachingSchema,
   calibrating: z.boolean().default(false),
 });
@@ -125,6 +139,7 @@ export const learningContractSchema = z.object({
   readyWhen: z.string(),
   updatedAfterAttemptId: z.string().nullable(),
   confidence: z.enum(["early", "developing", "supported"]),
+  compass: compassSummarySchema.optional(),
 });
 
 export const contextAnchorSchema = z.object({
@@ -146,3 +161,4 @@ export type AnalyzeResponse = z.infer<typeof analyzeResponseSchema>;
 export type StartingDirection = z.infer<typeof startingDirectionSchema>;
 export type LearningContract = z.infer<typeof learningContractSchema>;
 export type ContextAnchor = z.infer<typeof contextAnchorSchema>;
+export type CompassSummary = z.infer<typeof compassSummarySchema>;

@@ -13,7 +13,9 @@ node_modules/
 .yarn/
 next-env.d.ts
 .vercel/
+supabase/.temp/
 .feedback/
+.superpowers/
 storybook-static/
 *.tsbuildinfo
 

@@ -14,3 +14,10 @@ Describe the user need and whether this is additive, breaking, or an intentional
 ## Validation
 
 List the relevant tests, build, Storybook, and manual workflow checks.
+
+## Database impact
+
+- [ ] This change does not require a database change, or it includes a new timestamped forward migration created with `supabase migration new`.
+- [ ] Existing migration files were not edited, renamed, or deleted.
+- [ ] The full migration chain and schema contract pass from a clean local database.
+- [ ] The migration is backward-compatible with the currently deployed application.

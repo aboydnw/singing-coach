@@ -1,24 +1,18 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { groupExerciseThreads } from "@/lib/exerciseThreads";
 import {
-  coachingResponseSchema,
-  contextAnchorSchema,
-  measurementsSchema,
-} from "@/lib/schema";
+  buildExerciseChatHistory,
+  exerciseChatHistoryQueryContract,
+  practiceChatRequestSchema,
+} from "@/lib/practiceChat";
+import { coachingResponseSchema, measurementsSchema } from "@/lib/schema";
 import { authenticateRequest } from "@/lib/serverAuth";
 import { describeError, isTimeout, truncate } from "@/lib/openrouter";
+import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
 export const maxDuration = 120;
-
-const requestSchema = z.object({
-  practice_session_id: z.string().uuid(),
-  message: z.string().trim().min(1).max(2000),
-  context_anchor: contextAnchorSchema.nullable().default(null),
-  client_request_id: z.string().uuid(),
-  user_message_id: z.string().uuid(),
-});
 
 export async function POST(request: Request) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
@@ -28,7 +22,9 @@ export async function POST(request: Request) {
   if (!auth)
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
-  const parsed = requestSchema.safeParse(await request.json().catch(() => null));
+  const parsed = practiceChatRequestSchema.safeParse(
+    await request.json().catch(() => null),
+  );
   if (!parsed.success)
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
 
@@ -47,35 +43,72 @@ export async function POST(request: Request) {
   if (practice.status !== "in_progress")
     return NextResponse.json({ error: "this practice has ended" }, { status: 409 });
 
+  const { data: attempt, error: attemptError } = await client
+    .from("sessions")
+    .select("id")
+    .eq("id", parsed.data.attempt_id)
+    .eq("practice_session_id", practice.id)
+    .maybeSingle();
+  if (attemptError || !attempt) {
+    return NextResponse.json(
+      { error: "attempt does not belong to this practice" },
+      { status: 400 },
+    );
+  }
+
   const { data: userMessage, error: userMessageError } = await client
     .from("practice_messages")
     .select("id")
     .eq("id", parsed.data.user_message_id)
     .eq("practice_session_id", practice.id)
+    .eq("attempt_id", attempt.id)
     .eq("role", "user")
     .maybeSingle();
   if (userMessageError || !userMessage) {
     return NextResponse.json({ error: "user message not found" }, { status: 400 });
   }
 
-  const [attemptsResult, messagesResult] = await Promise.all([
-    client
-      .from("sessions")
-      .select("exercise_type, measurements_json, coaching_json, sequence_number, ts")
-      .eq("practice_session_id", practice.id)
-      .order("sequence_number", { ascending: true })
-      .order("ts", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(30),
-    client
-      .from("practice_messages")
-      .select("id, role, content_json")
-      .eq("practice_session_id", practice.id)
-      .eq("status", "complete")
-      .order("created_at", { ascending: false })
-      .limit(12),
-  ]);
-  if (attemptsResult.error || messagesResult.error) {
+  const attemptsResult = await client
+    .from("sessions")
+    .select(
+      "id, parent_attempt_id, attempt_kind, sequence_number, ts, exercise_type, measurements_json, coaching_json",
+    )
+    .eq("practice_session_id", practice.id)
+    .order("sequence_number", { ascending: true })
+    .order("ts", { ascending: true })
+    .order("id", { ascending: true });
+  if (attemptsResult.error) {
+    return NextResponse.json(
+      { error: "could not load practice context" },
+      { status: 500 },
+    );
+  }
+  const exercise = groupExerciseThreads((attemptsResult.data ?? []) as SessionRow[]).find(
+    (thread) => thread.attemptIds.includes(attempt.id),
+  );
+  if (!exercise) {
+    return NextResponse.json(
+      { error: "attempt does not belong to an exercise" },
+      { status: 400 },
+    );
+  }
+
+  const historyQuery = exerciseChatHistoryQueryContract(parsed.data.user_message_id);
+  const messagesResult = await client
+    .from("practice_messages")
+    .select("id, attempt_id, role, content_json, status, created_at")
+    .eq("practice_session_id", practice.id)
+    .in("attempt_id", exercise.attemptIds)
+    .eq("status", "complete")
+    .neq("id", historyQuery.excludedMessageId)
+    .order(historyQuery.order[0].column, {
+      ascending: historyQuery.order[0].ascending,
+    })
+    .order(historyQuery.order[1].column, {
+      ascending: historyQuery.order[1].ascending,
+    })
+    .limit(historyQuery.limit);
+  if (messagesResult.error) {
     return NextResponse.json(
       { error: "could not load practice context" },
       { status: 500 },
@@ -86,6 +119,7 @@ export async function POST(request: Request) {
   const { error: messageError } = await client.from("practice_messages").insert({
     id: assistantId,
     practice_session_id: practice.id,
+    attempt_id: attempt.id,
     user_id: auth.userId,
     role: "assistant",
     content_json: { text: "" },
@@ -101,17 +135,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const recent = (messagesResult.data ?? []).reverse();
-  const history = recent
-    .filter((message) => message.id !== parsed.data.user_message_id)
-    .map((message) => ({
-      role: message.role,
-      content: String(message.content_json?.text ?? ""),
-    }));
+  const history = buildExerciseChatHistory(
+    messagesResult.data ?? [],
+    new Set(exercise.attemptIds),
+    parsed.data.user_message_id,
+  );
   const context = {
     starting_direction: practice.starting_direction,
     practice_compass: practice.learning_contract_json,
-    attempts: (attemptsResult.data ?? []).map((attempt) => ({
+    attempts: exercise.attempts.map((attempt) => ({
       sequence_number: attempt.sequence_number,
       exercise_type: attempt.exercise_type,
       measurements: parseStoredJson(attempt.measurements_json, measurementsSchema),
@@ -147,7 +179,12 @@ export async function POST(request: Request) {
       }),
     });
   } catch (error) {
-    await markMessageFailed(client, practice.id, parsed.data.client_request_id);
+    await markMessageFailed(
+      client,
+      practice.id,
+      attempt.id,
+      parsed.data.client_request_id,
+    );
     return NextResponse.json(
       { error: isTimeout(error) ? "the coach timed out" : "could not reach the coach" },
       { status: isTimeout(error) ? 504 : 502 },
@@ -156,7 +193,12 @@ export async function POST(request: Request) {
 
   if (!upstream.ok || !upstream.body) {
     const detail = describeError(await upstream.text().catch(() => ""));
-    await markMessageFailed(client, practice.id, parsed.data.client_request_id);
+    await markMessageFailed(
+      client,
+      practice.id,
+      attempt.id,
+      parsed.data.client_request_id,
+    );
     return NextResponse.json(
       {
         error: truncate(
@@ -178,6 +220,7 @@ export async function POST(request: Request) {
       .from("practice_messages")
       .update({ content_json: { text: complete } })
       .eq("practice_session_id", practice.id)
+      .eq("attempt_id", attempt.id)
       .eq("client_request_id", parsed.data.client_request_id)
       .eq("status", "streaming");
   };
@@ -190,6 +233,7 @@ export async function POST(request: Request) {
         completed_at: new Date().toISOString(),
       })
       .eq("practice_session_id", practice.id)
+      .eq("attempt_id", attempt.id)
       .eq("client_request_id", parsed.data.client_request_id);
   };
   const stream = new ReadableStream({
@@ -253,11 +297,13 @@ export async function POST(request: Request) {
 async function markMessageFailed(
   client: SupabaseClient,
   practiceId: string,
+  attemptId: string,
   clientRequestId: string,
 ) {
   await client
     .from("practice_messages")
     .update({ status: "failed", completed_at: new Date().toISOString() })
     .eq("practice_session_id", practiceId)
+    .eq("attempt_id", attemptId)
     .eq("client_request_id", clientRequestId);
 }

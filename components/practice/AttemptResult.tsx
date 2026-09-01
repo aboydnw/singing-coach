@@ -13,16 +13,17 @@ import {
   exerciseSpecSchema,
   measurementsSchema,
 } from "@/lib/schema";
+import { attemptNavigationLabel } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
 type AttemptResultProps = {
   attempt: SessionRow;
-  number: number;
+  fallbackIndex: number;
   parent: SessionRow | null;
   expanded: boolean;
   onToggle: () => void;
-  onAsk: (label: string, value: string) => void;
+  onAsk?: (label: string, value: string) => void;
 };
 
 export const AttemptResult = memo(function AttemptResult(props: AttemptResultProps) {
@@ -55,6 +56,7 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
     <Surface
       as="article"
       id={`attempt-${props.attempt.id}`}
+      tabIndex={-1}
       overflow="hidden"
       style={{ contentVisibility: "auto" }}
     >
@@ -62,7 +64,7 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
         <Flex justify="space-between" gap={3} wrap="wrap">
           <Box>
             <Text color="fg.muted" fontSize="sm">
-              {props.parent ? "Focused retry" : `Attempt ${props.number}`}
+              {attemptNavigationLabel(props.attempt, props.fallbackIndex)}
             </Text>
             <Heading mt={1} size="md">
               {spec?.display_name ?? "Free sing"}
@@ -95,14 +97,16 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
               <Text mt={2} color="fg.default" lineHeight="1.7">
                 {coaching.why}
               </Text>
-              <ContextAction
-                onClick={() =>
-                  props.onAsk(
-                    "Coach’s correction",
-                    `${coaching.top_issue}. ${coaching.why}`,
-                  )
-                }
-              />
+              {props.onAsk ? (
+                <ContextAction
+                  onClick={() =>
+                    props.onAsk?.(
+                      "Coach’s correction",
+                      `${coaching.top_issue}. ${coaching.why}`,
+                    )
+                  }
+                />
+              ) : null}
             </Box>
             <Box>
               <Eyebrow tone="agency">Strength</Eyebrow>
@@ -150,8 +154,9 @@ function sameAttemptResultProps(
   return (
     previous.attempt === next.attempt &&
     previous.parent === next.parent &&
-    previous.number === next.number &&
-    previous.expanded === next.expanded
+    previous.fallbackIndex === next.fallbackIndex &&
+    previous.expanded === next.expanded &&
+    Boolean(previous.onAsk) === Boolean(next.onAsk)
   );
 }
 

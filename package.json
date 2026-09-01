@@ -10,6 +10,7 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build --output-dir storybook-static",
     "design:check": "node scripts/check-design-values.mjs",
+    "migrations:check": "node scripts/check-migrations.mjs",
     "verify": "yarn format:check && yarn design:check && yarn test && yarn build && yarn storybook:build",
     "format": "prettier --write \"{app,components,lib,evals}/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"{app,components,lib,evals}/**/*.{ts,tsx}\""

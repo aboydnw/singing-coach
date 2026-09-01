@@ -23,13 +23,16 @@ const meta = {
     accepted: false,
     processing: false,
     playing: false,
+    recorderBusy: false,
+    proposalLoading: false,
     onAccept: () => undefined,
     onUploaded: () => undefined,
     onHear: () => undefined,
     onDifferent: () => undefined,
     onFreeSing: () => undefined,
     onMoveOn: () => undefined,
-    onAsk: () => undefined,
+    onCancel: () => undefined,
+    onRecorderStateChange: () => undefined,
   },
   decorators: [
     (Story) => (

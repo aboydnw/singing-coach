@@ -1,0 +1,81 @@
+name: Deploy database
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/deploy-database.yml"
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Ancestor Git ref or SHA to compare with HEAD"
+        required: true
+        type: string
+
+concurrency:
+  group: production-database
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.90.0
+      - name: Validate forward-only migration range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BASE_REF: ${{ github.event.before }}
+          MANUAL_BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            BASE_REF="$MANUAL_BASE_REF"
+          else
+            BASE_REF="$PUSH_BASE_REF"
+          fi
+
+          if [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+            BASE_REF="$(git rev-list --max-parents=0 HEAD)"
+          fi
+
+          BASE_COMMIT="$(git rev-parse --verify "${BASE_REF}^{commit}")" || {
+            echo "Invalid migration comparison ref: $BASE_REF"
+            exit 1
+          }
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          if [ "$BASE_COMMIT" = "$HEAD_COMMIT" ] ||
+            ! git merge-base --is-ancestor "$BASE_COMMIT" "$HEAD_COMMIT"; then
+            echo "Migration comparison ref must be a strict ancestor of HEAD"
+            exit 1
+          fi
+
+          node scripts/check-migrations.mjs "$BASE_COMMIT"
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      - run: supabase db push --linked --dry-run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - run: supabase db push --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      - run: supabase test db supabase/tests/database --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}

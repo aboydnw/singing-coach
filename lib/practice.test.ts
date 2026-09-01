@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { contractFromAttempt, initialContract } from "@/lib/practice";
+import {
+  activePracticeThread,
+  attemptNavigationLabel,
+  contractFromAttempt,
+  currentExerciseForChange,
+  initialContract,
+  messagesForAttempt,
+  nextAttemptSequence,
+  selectedAttemptAfterRefresh,
+  type PracticeMessageRow,
+} from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 
 function attempt(coaching: Record<string, unknown> | null): SessionRow {
@@ -17,6 +27,22 @@ function attempt(coaching: Record<string, unknown> | null): SessionRow {
     sequence_number: 1,
     parent_attempt_id: null,
     attempt_kind: "initial",
+  };
+}
+
+function message(id: string, attemptId: string | null): PracticeMessageRow {
+  return {
+    id,
+    practice_session_id: "practice-1",
+    attempt_id: attemptId,
+    user_id: "user-1",
+    role: "user",
+    content_json: { text: id },
+    context_anchor_json: null,
+    status: "complete",
+    client_request_id: null,
+    created_at: "2026-08-06T10:00:00.000Z",
+    completed_at: "2026-08-06T10:00:01.000Z",
   };
 }
 
@@ -46,6 +72,11 @@ describe("contractFromAttempt", () => {
         why: "The beginning started below the target.",
         drill: "Repeat the landing.",
         encouragement: "The held portion stayed centered.",
+        compass: {
+          overall_trend: "Pitch starts are becoming more consistent.",
+          current_session: "Today's second landing moved closer to the target.",
+          next_direction: "Carry the cleaner onset into the next exercise.",
+        },
         resolved: { cues: ["Place the note on the far wall"], caution: null },
       }),
     );
@@ -53,6 +84,11 @@ describe("contractFromAttempt", () => {
     expect(next.tryCue).toBe("Place the note on the far wall");
     expect(next.strength).toBe("The held portion stayed centered.");
     expect(next.updatedAfterAttemptId).toBe("attempt-1");
+    expect(next.compass).toEqual({
+      overallTrend: "Pitch starts are becoming more consistent.",
+      currentSession: "Today's second landing moved closer to the target.",
+      nextDirection: "Carry the cleaner onset into the next exercise.",
+    });
   });
 
   it("leaves the Compass untouched when coaching is absent", () => {
@@ -63,5 +99,139 @@ describe("contractFromAttempt", () => {
   it("rejects stored coaching with no recognized fields", () => {
     const prior = initialContract("tone");
     expect(contractFromAttempt(prior, attempt({ unrelated: true }))).toBe(prior);
+  });
+});
+
+describe("messagesForAttempt", () => {
+  it("keeps each conversation inside its owning attempt", () => {
+    const messages = [
+      message("first-question", "attempt-1"),
+      message("second-question", "attempt-2"),
+      message("legacy-session-message", null),
+    ];
+
+    expect(messagesForAttempt(messages, "attempt-2").map((row) => row.id)).toEqual([
+      "second-question",
+    ]);
+  });
+});
+
+describe("selectedAttemptAfterRefresh", () => {
+  const attempts = [attempt(null), { ...attempt(null), id: "attempt-2" }];
+
+  it("selects the latest attempt on first load", () => {
+    expect(selectedAttemptAfterRefresh(null, attempts)).toBe("attempt-2");
+  });
+
+  it("preserves a selected attempt that still exists", () => {
+    expect(selectedAttemptAfterRefresh("attempt-1", attempts)).toBe("attempt-1");
+  });
+
+  it("falls back to the latest attempt when selection is stale", () => {
+    expect(selectedAttemptAfterRefresh("missing", attempts)).toBe("attempt-2");
+  });
+
+  it("prefers a newly created attempt", () => {
+    expect(selectedAttemptAfterRefresh("attempt-1", attempts, "attempt-2")).toBe(
+      "attempt-2",
+    );
+  });
+
+  it("returns no selection before the first recording", () => {
+    expect(selectedAttemptAfterRefresh(null, [])).toBeNull();
+  });
+});
+
+describe("attemptNavigationLabel", () => {
+  it("keeps persisted sequence numbers stable when the list has gaps", () => {
+    expect(attemptNavigationLabel({ ...attempt(null), sequence_number: 4 }, 1)).toBe(
+      "Attempt 4",
+    );
+  });
+
+  it("uses attempt kind when a legacy retry has lost its parent link", () => {
+    expect(
+      attemptNavigationLabel(
+        {
+          ...attempt(null),
+          sequence_number: 5,
+          attempt_kind: "retry",
+          parent_attempt_id: null,
+        },
+        1,
+      ),
+    ).toBe("Focused retry 5");
+  });
+
+  it("falls back to list position for legacy attempts", () => {
+    expect(attemptNavigationLabel({ ...attempt(null), sequence_number: null }, 2)).toBe(
+      "Attempt 3",
+    );
+  });
+});
+
+describe("nextAttemptSequence", () => {
+  it("continues after the highest persisted sequence when attempts have gaps", () => {
+    expect(
+      nextAttemptSequence([
+        { ...attempt(null), sequence_number: 1 },
+        { ...attempt(null), id: "attempt-3", sequence_number: 3 },
+        { ...attempt(null), id: "attempt-4", sequence_number: 4 },
+      ]),
+    ).toBe(5);
+  });
+
+  it("falls back to list length for legacy attempts", () => {
+    expect(nextAttemptSequence([{ ...attempt(null), sequence_number: null }])).toBe(2);
+  });
+});
+
+describe("currentExerciseForChange", () => {
+  const selected = {
+    type: "sustained_note",
+    target_notes_midi: [60],
+    duration_per_note_s: 2,
+    vowel: "ah",
+    display_name: "Selected exercise",
+  } as const;
+  const proposed = {
+    type: "scale",
+    target_notes_midi: [60, 62, 64],
+    duration_per_note_s: 0.5,
+    vowel: "ah",
+    display_name: "Proposed exercise",
+  } as const;
+
+  it("ignores a hidden stale proposal after selecting an attempt", () => {
+    expect(currentExerciseForChange(false, proposed, selected)).toBe(selected);
+  });
+
+  it("uses the visible setup proposal, including free sing", () => {
+    expect(currentExerciseForChange(true, proposed, selected)).toBe(proposed);
+    expect(currentExerciseForChange(true, null, selected)).toBeNull();
+  });
+});
+
+describe("activePracticeThread", () => {
+  it("returns one selected attempt with only its conversation", () => {
+    const first = attempt(null);
+    const second = { ...attempt(null), id: "attempt-2" };
+    const firstQuestion = message("first-question", first.id);
+    const secondQuestion = message("second-question", second.id);
+
+    expect(
+      activePracticeThread(
+        [first, second],
+        [firstQuestion, secondQuestion, message("legacy", null)],
+        second.id,
+      ),
+    ).toEqual({ attempt: second, messages: [secondQuestion] });
+  });
+
+  it("returns an empty thread before the first recording", () => {
+    expect(activePracticeThread([], [message("legacy", null)], null)).toEqual({
+      attempt: null,
+      messages: [],
+    });
   });
 });

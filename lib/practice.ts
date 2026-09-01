@@ -1,7 +1,10 @@
 import { z } from "zod";
 import {
+  compassModelSchema,
+  exerciseSpecSchema,
   measurementsSchema,
   type ContextAnchor,
+  type ExerciseSpec,
   type LearningContract,
   type StartingDirection,
 } from "@/lib/schema";
@@ -15,6 +18,7 @@ const contractCoachingSchema = z
     why: z.string().optional(),
     drill: z.string().optional(),
     encouragement: z.string().optional(),
+    compass: compassModelSchema.optional(),
     resolved: z
       .object({
         cues: z.array(z.string()).optional(),
@@ -53,6 +57,7 @@ export type PracticeSummary = {
 export type PracticeMessageRow = {
   id: string;
   practice_session_id: string;
+  attempt_id: string | null;
   user_id: string;
   role: "user" | "assistant";
   content_json: { text: string };
@@ -153,6 +158,7 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
 
 export async function savePracticeMessage(args: {
   practiceSessionId: string;
+  attemptId: string;
   role: "user" | "assistant";
   text: string;
   contextAnchor?: ContextAnchor | null;
@@ -166,6 +172,7 @@ export async function savePracticeMessage(args: {
     .insert({
       id: crypto.randomUUID(),
       practice_session_id: args.practiceSessionId,
+      attempt_id: args.attemptId,
       user_id: uid,
       role: args.role,
       content_json: { text: args.text },
@@ -178,6 +185,93 @@ export async function savePracticeMessage(args: {
     .single();
   if (error) throw new Error(error.message);
   return data as PracticeMessageRow;
+}
+
+export function messagesForAttempt(
+  messages: PracticeMessageRow[],
+  attemptId: string,
+): PracticeMessageRow[] {
+  return messages.filter((message) => message.attempt_id === attemptId);
+}
+
+export function selectedAttemptAfterRefresh(
+  currentId: string | null,
+  attempts: SessionRow[],
+  newlyCreatedId?: string | null,
+): string | null {
+  if (newlyCreatedId && attempts.some((attempt) => attempt.id === newlyCreatedId)) {
+    return newlyCreatedId;
+  }
+  if (currentId && attempts.some((attempt) => attempt.id === currentId)) {
+    return currentId;
+  }
+  return attempts.at(-1)?.id ?? null;
+}
+
+export function activePracticeThread(
+  attempts: SessionRow[],
+  messages: PracticeMessageRow[],
+  selectedAttemptId: string | null,
+): { attempt: SessionRow | null; messages: PracticeMessageRow[] } {
+  if (!selectedAttemptId) return { attempt: null, messages: [] };
+  const attempt = attempts.find((row) => row.id === selectedAttemptId) ?? null;
+  if (!attempt) return { attempt: null, messages: [] };
+  return {
+    attempt,
+    messages: messagesForAttempt(messages, attempt.id),
+  };
+}
+
+export function attemptNavigationLabel(attempt: SessionRow, index: number): string {
+  const number =
+    typeof attempt.sequence_number === "number" && attempt.sequence_number > 0
+      ? attempt.sequence_number
+      : index + 1;
+  const retry = attempt.attempt_kind === "retry" || Boolean(attempt.parent_attempt_id);
+  return retry ? `Focused retry ${number}` : `Attempt ${number}`;
+}
+
+export function nextAttemptSequence(attempts: SessionRow[]): number {
+  const highestPersisted = attempts.reduce(
+    (highest, attempt) =>
+      typeof attempt.sequence_number === "number" && attempt.sequence_number > highest
+        ? attempt.sequence_number
+        : highest,
+    0,
+  );
+  return Math.max(attempts.length, highestPersisted) + 1;
+}
+
+export function currentExerciseForChange(
+  setupOpen: boolean,
+  proposalSpec: ExerciseSpec | null | undefined,
+  selectedAttemptSpec: ExerciseSpec | null,
+): ExerciseSpec | null {
+  return setupOpen && proposalSpec !== undefined ? proposalSpec : selectedAttemptSpec;
+}
+
+export function attemptExerciseName(attempt: SessionRow): string {
+  return (
+    parseStoredJson(attempt.exercise_spec_json, exerciseSpecSchema)?.display_name ??
+    "Free sing"
+  );
+}
+
+export function attemptOutcome(attempt: SessionRow): string {
+  const coaching = parseStoredJson(attempt.coaching_json, contractCoachingSchema);
+  if (coaching?.top_issue) return shortenNavigationText(coaching.top_issue);
+  const accuracy = parseStoredJson(attempt.measurements_json, measurementsSchema)
+    ?.accuracy?.mean_abs_cents_off;
+  if (typeof accuracy === "number") {
+    return `${Math.round(accuracy)} cents off average`;
+  }
+  return attempt.coaching_json ? "Feedback available" : "Analysis saved";
+}
+
+function shortenNavigationText(value: string): string {
+  const text = value.trim();
+  if (text.length <= 88) return text;
+  return `${text.slice(0, 85).trimEnd()}…`;
 }
 
 export async function updateLearningContract(
@@ -288,9 +382,36 @@ export function contractFromAttempt(
       readyWhen: readinessFor(coaching.focus_area),
       updatedAfterAttemptId: attempt.id,
       confidence: "developing",
+      compass: coaching.compass
+        ? {
+            overallTrend: coaching.compass.overall_trend,
+            currentSession: coaching.compass.current_session,
+            nextDirection: coaching.compass.next_direction,
+          }
+        : prior.compass,
     };
   }
   return prior;
+}
+
+export function compassForContract(contract: LearningContract) {
+  if (contract.compass) return contract.compass;
+  return {
+    overallTrend:
+      contract.confidence === "early"
+        ? "I’m still learning your usual pattern across practices."
+        : "Your longer-term trend will become clearer with more practice evidence.",
+    currentSession: contract.strength
+      ? shortenCompassSentence(contract.strength)
+      : shortenCompassSentence(`This practice is focusing on ${contract.focus}.`),
+    nextDirection: shortenCompassSentence(contract.tryCue),
+  };
+}
+
+function shortenCompassSentence(value: string): string {
+  const sentence = value.trim();
+  if (sentence.length <= 180) return sentence;
+  return `${sentence.slice(0, 177).trimEnd()}…`;
 }
 
 function readinessFor(focus: string | undefined): string {
