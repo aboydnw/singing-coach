@@ -94,6 +94,23 @@ export function skipExercise(
   return candidate;
 }
 
+/** One step of the "try a different exercise" walk.
+ *
+ * `cursor` is the rotation position the last proposal landed on, not the
+ * attempt count. Walking from the attempt count instead leaves the cursor
+ * frozen while the singer skips, so the walk only ever reaches the next two
+ * positions and bounces between the same pair of drills. Feeding the returned
+ * index back in as the next `cursor` is what keeps the rotation moving. */
+export function skipFromCursor(
+  calibration: Calibration,
+  cursor: number,
+  current: ExerciseSpec | null,
+): { spec: ExerciseSpec; index: number } {
+  return current
+    ? skipExercise(calibration, cursor, current)
+    : { spec: nextExercise(calibration, cursor, null), index: cursor };
+}
+
 /** The note grid for one exercise type at one point in the rotation walk.
  * Extracted so a drill can request a type directly; the arithmetic is pinned by
  * the parity fixture, so it must stay identical for both callers. */

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import cases from "../tests/fixtures/exercise_parity.json";
-import { isSameExercise, midiToName, nextExercise, skipExercise } from "./exercises";
-import type { Calibration, FocusArea } from "./schema";
+import {
+  isSameExercise,
+  midiToName,
+  nextExercise,
+  skipExercise,
+  skipFromCursor,
+} from "./exercises";
+import type { Calibration, ExerciseSpec, FocusArea } from "./schema";
 
 describe("nextExercise parity with exercises.py", () => {
   it.each(cases.map((c, i) => [i, c] as const))("case %i", (_i, c) => {
@@ -55,6 +61,39 @@ describe("skipExercise", () => {
     const current = nextExercise(CALIBRATION, 7, null);
     const { index } = skipExercise(CALIBRATION, 7, current);
     expect(index).toBeGreaterThan(7);
+  });
+});
+
+describe("skipFromCursor", () => {
+  it("walks forward across six skips instead of bouncing between two drills", () => {
+    let cursor = 3;
+    let current: ExerciseSpec | null = nextExercise(CALIBRATION, cursor, null);
+    const seen = [current.display_name];
+    for (let i = 0; i < 6; i++) {
+      const result = skipFromCursor(CALIBRATION, cursor, current);
+      expect(isSameExercise(result.spec, current!)).toBe(false);
+      current = result.spec;
+      cursor = result.index;
+      seen.push(current.display_name);
+    }
+    expect(new Set(seen).size).toBeGreaterThan(2);
+  });
+
+  it("oscillates between two drills when the cursor is not carried forward", () => {
+    const frozen = 3;
+    let current = nextExercise(CALIBRATION, frozen, null);
+    const seen = new Set<string>();
+    for (let i = 0; i < 6; i++) {
+      current = skipFromCursor(CALIBRATION, frozen, current).spec;
+      seen.add(current.display_name);
+    }
+    expect(seen.size).toBe(2);
+  });
+
+  it("starts the walk at the cursor when there is no current exercise", () => {
+    const result = skipFromCursor(CALIBRATION, 4, null);
+    expect(result.index).toBe(4);
+    expect(result.spec).toEqual(nextExercise(CALIBRATION, 4, null));
   });
 });
 
