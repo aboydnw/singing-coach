@@ -30,11 +30,13 @@ export function AttemptProgress() {
   );
 
   return (
-    <Flex gap={3} align="center" role="status" aria-live="polite">
+    <Flex gap={3} align="center">
       <Spinner size="sm" color="singer.agency" flex="0 0 auto" />
       <Stack gap={0} minW="0">
-        <Text color="singer.agency">{stage.label}</Text>
-        <Text color="fg.muted" fontSize="sm">
+        <Text color="singer.agency" role="status" aria-live="polite">
+          {stage.label}
+        </Text>
+        <Text color="fg.muted" fontSize="sm" aria-hidden="true">
           {elapsed}s elapsed · stay on this page so the coach can finish
         </Text>
       </Stack>
