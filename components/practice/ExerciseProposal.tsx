@@ -1,5 +1,6 @@
 import { Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { Recorder } from "@/components/Recorder";
+import { AttemptProgress } from "@/components/practice/AttemptProgress";
 import type { RecorderState } from "@/components/Recorder";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
@@ -162,11 +163,7 @@ export function ExerciseProposal(props: {
             >
               Cancel
             </Button>
-            {props.processing ? (
-              <Text color="singer.agency" role="status">
-                Listening for the pattern and preparing one useful correction…
-              </Text>
-            ) : null}
+            {props.processing ? <AttemptProgress /> : null}
           </Stack>
         </Surface>
       )}

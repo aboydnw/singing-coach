@@ -242,40 +242,49 @@ export function PracticeHome() {
             </EmptyState>
           </Box>
         ) : (
-          <Stack mt={4} gap={0} borderTopWidth="1px" borderColor="grid">
-            {practices.map((practice) => (
-              <Button
-                key={practice.id}
-                variant="ghost"
-                height="auto"
-                px={0}
-                py={5}
-                rounded="none"
-                justifyContent="space-between"
-                borderBottomWidth="1px"
-                borderColor="grid"
-                onClick={() => router.push(`/practice/${practice.id}`)}
-              >
-                <Box textAlign="left">
-                  <FlexLine>
-                    <Text fontWeight="semibold">{formatDate(practice.started_at)}</Text>
-                    <Text color="cream.500">Ended</Text>
-                  </FlexLine>
-                  <Text mt={1} color="cream.700" fontWeight="normal" whiteSpace="normal">
-                    {practice.summary_json?.focus ??
-                      practice.learning_contract_json?.focus ??
-                      "Practice session"}
-                    {practice.summary_json
-                      ? ` · ${practice.summary_json.attemptCount} attempt${practice.summary_json.attemptCount === 1 ? "" : "s"}`
-                      : ""}
+          <Surface mt={4} overflow="hidden">
+            <Stack gap={0}>
+              {practices.map((practice, index) => (
+                <Button
+                  key={practice.id}
+                  variant="ghost"
+                  height="auto"
+                  px={5}
+                  py={4}
+                  rounded="none"
+                  justifyContent="space-between"
+                  borderTopWidth={index === 0 ? "0" : "1px"}
+                  borderColor="grid"
+                  onClick={() => router.push(`/practice/${practice.id}`)}
+                >
+                  <Box textAlign="left" minW="0">
+                    <FlexLine>
+                      <Text fontWeight="semibold">{formatDate(practice.started_at)}</Text>
+                      <Text color="cream.500">
+                        {practice.summary_json
+                          ? `${practice.summary_json.attemptCount} attempt${practice.summary_json.attemptCount === 1 ? "" : "s"}`
+                          : "Ended"}
+                      </Text>
+                    </FlexLine>
+                    <Text
+                      mt={1}
+                      color="cream.700"
+                      fontWeight="normal"
+                      whiteSpace="normal"
+                      lineClamp={2}
+                    >
+                      {practice.summary_json?.focus ??
+                        practice.learning_contract_json?.focus ??
+                        "Practice session"}
+                    </Text>
+                  </Box>
+                  <Text color="coral.600" ml={4} flex="0 0 auto">
+                    Review →
                   </Text>
-                </Box>
-                <Text color="coral.600" ml={4}>
-                  Review →
-                </Text>
-              </Button>
-            ))}
-          </Stack>
+                </Button>
+              ))}
+            </Stack>
+          </Surface>
         )}
       </Box>
     </Stack>

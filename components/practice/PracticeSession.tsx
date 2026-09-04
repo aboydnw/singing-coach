@@ -27,10 +27,11 @@ import {
   StreamingPracticeMessage,
 } from "@/components/practice/PracticeConversation";
 import { AppNotice } from "@/components/ui/AppNotice";
+import { toaster } from "@/components/ui/AppToaster";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
 import { analyze, coach, streamPracticeCoach } from "@/lib/api";
-import { exerciseForDrill, nextExercise, skipExercise } from "@/lib/exercises";
+import { exerciseForDrill, nextExercise, skipFromCursor } from "@/lib/exercises";
 import {
   cancelExerciseDraft,
   attemptIdForExerciseMessage,
@@ -108,10 +109,25 @@ export function PracticeSession() {
     exerciseSelection;
   const [draftProposal, setDraftProposal] = useState<PracticeProposal | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [rotationIndex, setRotationIndex] = useState<number | null>(null);
   const [recorderState, setRecorderState] = useState<RecorderState>({ phase: "idle" });
   const [proposalLoading, setProposalLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const proposalRequestRef = useRef(0);
+
+  /** The inline notice lives above the exercise grid, which is off-screen once
+   * the singer has scrolled to the composer. Anything raised by an action they
+   * just took is mirrored into a toast so it is seen from any scroll position. */
+  const reportError = useCallback((message: string) => {
+    setError(message);
+    toaster.create({
+      type: "error",
+      title: "Practice needs attention",
+      description: message,
+      duration: 8000,
+      meta: { closable: true },
+    });
+  }, []);
 
   const refresh = useCallback(
     async (newlyCreatedId?: string | null) => {
@@ -268,7 +284,7 @@ export function PracticeSession() {
         await refresh();
       } else {
         await refresh().catch(() => undefined);
-        setError(
+        reportError(
           reason instanceof Error ? reason.message : "The coach could not respond.",
         );
       }
@@ -348,7 +364,7 @@ export function PracticeSession() {
           parent_attempt_id: proposal.parentAttemptId,
           attempt_kind: proposal.retry ? "retry" : "initial",
         });
-        setError(
+        reportError(
           `Your analysis${coaching ? " and coaching are" : " is"} shown below, but this attempt was not saved: ${saveError}`,
         );
       }
@@ -368,7 +384,7 @@ export function PracticeSession() {
           ),
         };
         setBundle(loaded);
-        setError(
+        reportError(
           `Your coaching is visible, but it was not saved to history: ${coachingSaveError}`,
         );
       }
@@ -378,7 +394,7 @@ export function PracticeSession() {
           measurements: analysis.measurements,
           spec: proposal.spec,
         });
-        setError(`Your attempt was saved, but coaching failed: ${coachingError}`);
+        reportError(`Your attempt was saved, but coaching failed: ${coachingError}`);
       }
       const completed = loaded.attempts.find((attempt) => attempt.id === attemptId);
       if (completed) {
@@ -412,7 +428,7 @@ export function PracticeSession() {
         setSetupOpen(true);
       }
     } catch (reason) {
-      setError(
+      reportError(
         reason instanceof Error ? reason.message : "This attempt could not be completed.",
       );
     } finally {
@@ -453,7 +469,7 @@ export function PracticeSession() {
         });
       }
     } catch (reason) {
-      setError(
+      reportError(
         reason instanceof Error ? reason.message : "Coaching could not be retried.",
       );
     } finally {
@@ -494,9 +510,13 @@ export function PracticeSession() {
         proposal?.spec,
         parseStoredJson(activeAttempt?.exercise_spec_json ?? null, exerciseSpecSchema),
       );
-      const spec = current
-        ? skipExercise(calibration, bundle.attempts.length, current).spec
-        : nextExercise(calibration, bundle.attempts.length, null);
+      const skipped = skipFromCursor(
+        calibration,
+        rotationIndex ?? bundle.attempts.length,
+        current,
+      );
+      const spec = skipped.spec;
+      setRotationIndex(skipped.index);
       setNeedsCalibration(false);
       setAccepted(false);
       const nextProposal = {
@@ -511,7 +531,7 @@ export function PracticeSession() {
       requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
     } catch (reason) {
       if (requestId === proposalRequestRef.current) {
-        setError(
+        reportError(
           reason instanceof Error ? reason.message : "Could not load calibration.",
         );
       }
@@ -550,6 +570,7 @@ export function PracticeSession() {
         }
       }
       setAccepted(false);
+      setRotationIndex(null);
       const nextProposal = {
         spec,
         reason:
@@ -563,7 +584,7 @@ export function PracticeSession() {
       requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
     } catch (reason) {
       if (requestId === proposalRequestRef.current) {
-        setError(
+        reportError(
           reason instanceof Error ? reason.message : "Could not load calibration.",
         );
       }
@@ -578,6 +599,7 @@ export function PracticeSession() {
     setAnchor(null);
     setNeedsCalibration(false);
     setAccepted(false);
+    setRotationIndex(null);
     const nextProposal = {
       spec: null,
       reason:
@@ -594,6 +616,7 @@ export function PracticeSession() {
   const retrySelected = () => {
     if (!activeAttempt || recorderBusy || proposalLoading) return;
     setAccepted(false);
+    setRotationIndex(null);
     setProposal({
       spec: parseStoredJson(activeAttempt.exercise_spec_json, exerciseSpecSchema),
       reason:
@@ -674,7 +697,9 @@ export function PracticeSession() {
 
   const finish = async () => {
     if (!bundle || !contract) {
-      setError("This practice is missing its coaching plan and cannot be ended safely.");
+      reportError(
+        "This practice is missing its coaching plan and cannot be ended safely.",
+      );
       return;
     }
     setProcessing(true);
@@ -684,7 +709,7 @@ export function PracticeSession() {
       setEndOpen(false);
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not end practice.");
+      reportError(reason instanceof Error ? reason.message : "Could not end practice.");
     } finally {
       setProcessing(false);
     }
@@ -946,7 +971,18 @@ export function PracticeSession() {
                 they happened.
               </Text>
             </Box>
-          ) : null}
+          ) : (
+            <Flex borderTopWidth="1px" borderColor="grid" pt={5} justify="flex-end">
+              <Button
+                variant="ghost"
+                colorPalette="coral"
+                disabled={processing || streaming || recorderBusy || proposalLoading}
+                onClick={() => setEndOpen(true)}
+              >
+                End practice
+              </Button>
+            </Flex>
+          )}
         </Stack>
 
         {contract ? (

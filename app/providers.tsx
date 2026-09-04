@@ -3,6 +3,7 @@
 import { ChakraProvider } from "@chakra-ui/react";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
+import { AppToaster } from "@/components/ui/AppToaster";
 import { supabase } from "@/lib/supabase";
 import { system } from "@/lib/theme";
 
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ChakraProvider value={system}>
       <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
+      <AppToaster />
     </ChakraProvider>
   );
 }
