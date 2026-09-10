@@ -60,6 +60,7 @@ export function resolveActivity(
     instructions: activity.instructions,
     primary_cue: stateForDrill(activity.drill_id)?.cues[0] ?? activity.instructions,
     variety: activity.variety,
+    transposition_semitones: semitones,
     reference_audio: activity.reference_audio ?? [],
   };
 }

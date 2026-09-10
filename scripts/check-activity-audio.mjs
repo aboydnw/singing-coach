@@ -9,14 +9,8 @@ export function checkActivityAudio(catalogue, projectRoot = process.cwd()) {
       if (reference.reviewed !== true) {
         errors.push(`${activity.id}: unreviewed ${reference.src}`);
       }
-      for (const field of [
-        "engine",
-        "model",
-        "voicebank",
-        "dataset",
-        "output_license",
-      ]) {
-        if (!reference[field]?.trim()) {
+      for (const field of ["engine", "model", "voicebank", "dataset", "output_license"]) {
+        if (typeof reference[field] !== "string" || !reference[field].trim()) {
           errors.push(`${activity.id}: ${reference.src} is missing ${field}`);
         }
       }
@@ -27,7 +21,15 @@ export function checkActivityAudio(catalogue, projectRoot = process.cwd()) {
         errors.push(`${activity.id}: invalid asset path ${reference.src ?? "(missing)"}`);
         continue;
       }
-      const filePath = path.join(projectRoot, "public", reference.src);
+      const assetRoot = path.resolve(projectRoot, "public", "audio", "activities");
+      const filePath = path.resolve(
+        assetRoot,
+        reference.src.slice("/audio/activities/".length),
+      );
+      if (!filePath.startsWith(`${assetRoot}${path.sep}`)) {
+        errors.push(`${activity.id}: invalid asset path ${reference.src}`);
+        continue;
+      }
       try {
         if (fs.statSync(filePath).size === 0) {
           errors.push(`${activity.id}: empty ${reference.src}`);

@@ -57,4 +57,52 @@ describe("activity audio verification", () => {
       expect(errors).toContain("unsafe: unreviewed /audio/activities/missing.wav");
     },
   );
+
+  it("reports non-string metadata instead of throwing", () => {
+    const errors = checkActivityAudio({
+      activities: [
+        {
+          id: "malformed",
+          reference_audio: [
+            {
+              semitones: 0,
+              src: "/audio/activities/missing.wav",
+              engine: "engine",
+              model: 1,
+              voicebank: "voice",
+              dataset: "dataset",
+              output_license: "license",
+              reviewed: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(errors).toContain("malformed: /audio/activities/missing.wav is missing model");
+  });
+
+  it("rejects paths that escape the activity audio directory", () => {
+    const errors = checkActivityAudio({
+      activities: [
+        {
+          id: "escape",
+          reference_audio: [
+            {
+              semitones: 0,
+              src: "/audio/activities/../outside.wav",
+              engine: "engine",
+              model: "model",
+              voicebank: "voice",
+              dataset: "dataset",
+              output_license: "license",
+              reviewed: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(errors).toContain(
+      "escape: invalid asset path /audio/activities/../outside.wav",
+    );
+  });
 });

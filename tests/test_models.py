@@ -1,4 +1,7 @@
-from singing_coach.models import ExerciseSpec
+import pytest
+from pydantic import ValidationError
+
+from singing_coach.models import ActivityNoteEvent, ExerciseSpec, ReferenceAudio
 
 
 def test_exercise_spec_accepts_timed_activity_metadata():
@@ -79,3 +82,32 @@ def test_exercise_spec_accepts_public_domain_song_provenance():
     assert spec.activity_kind == "song_passage"
     assert spec.source is not None
     assert spec.source.publication_year == 1779
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("phoneme_hint", ""), ("articulation", ""), ("dynamic", -0.1), ("dynamic", 1.1)],
+)
+def test_activity_note_event_rejects_invalid_optional_constraints(field, value):
+    with pytest.raises(ValidationError):
+        ActivityNoteEvent(
+            kind="note",
+            midi=60,
+            duration_s=1,
+            syllable="ah",
+            **{field: value},
+        )
+
+
+def test_reference_audio_rejects_empty_provenance():
+    with pytest.raises(ValidationError):
+        ReferenceAudio(
+            semitones=0,
+            src="/audio/activities/example.wav",
+            engine="",
+            model="model",
+            voicebank="voice",
+            dataset="dataset",
+            output_license="license",
+            reviewed=True,
+        )

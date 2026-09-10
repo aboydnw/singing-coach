@@ -180,6 +180,7 @@ export function PracticeSession() {
             retry: false,
           } satisfies PracticeProposal;
           if (loaded.attempts.length === 0) {
+            setReferenceFallback(false);
             setProposal(initialProposal);
             setDraftProposal(initialProposal);
             setSetupOpen(true);
@@ -203,6 +204,7 @@ export function PracticeSession() {
           retry: false,
         } satisfies PracticeProposal;
         if (loaded.attempts.length === 0) {
+          setReferenceFallback(false);
           setProposal(initialProposal);
           setDraftProposal(initialProposal);
           setSetupOpen(true);
@@ -539,6 +541,7 @@ export function PracticeSession() {
             keyOptions: selectedSong.options.map((option) => option.spec),
             selectedKeyIndex: selectedSong.selectedIndex,
           } satisfies PracticeProposal;
+          setReferenceFallback(false);
           setProposal(nextProposal);
           setDraftProposal(nextProposal);
           setSetupOpen(true);
@@ -564,6 +567,7 @@ export function PracticeSession() {
         parentAttemptId: null,
         retry: false,
       } satisfies PracticeProposal;
+      setReferenceFallback(false);
       setProposal(nextProposal);
       setDraftProposal(nextProposal);
       setSetupOpen(true);
@@ -610,6 +614,7 @@ export function PracticeSession() {
           } satisfies PracticeProposal;
           setNeedsCalibration(false);
           setRotationIndex(null);
+          setReferenceFallback(false);
           setProposal(nextProposal);
           setDraftProposal(nextProposal);
           setSetupOpen(true);
@@ -648,6 +653,7 @@ export function PracticeSession() {
         parentAttemptId: null,
         retry: false,
       } satisfies PracticeProposal;
+      setReferenceFallback(false);
       setProposal(nextProposal);
       setDraftProposal(nextProposal);
       setSetupOpen(true);
@@ -676,6 +682,7 @@ export function PracticeSession() {
       parentAttemptId: null,
       retry: false,
     } satisfies PracticeProposal;
+    setReferenceFallback(false);
     setProposal(nextProposal);
     setDraftProposal(nextProposal);
     setSetupOpen(true);
@@ -704,6 +711,7 @@ export function PracticeSession() {
   const retrySelected = () => {
     if (!activeAttempt || recorderBusy || proposalLoading) return;
     setRotationIndex(null);
+    setReferenceFallback(false);
     setProposal({
       spec: parseStoredJson(activeAttempt.exercise_spec_json, exerciseSpecSchema),
       reason:

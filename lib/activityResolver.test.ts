@@ -36,6 +36,11 @@ describe("activity resolution", () => {
     }
   });
 
+  it("preserves a nonzero selected transposition for reference matching", () => {
+    const spec = resolveActivity(findActivity("staccato_onsets.basic")!, CALIBRATION, 2);
+    expect(spec?.transposition_semitones).toBe(2);
+  });
+
   it("returns null for a guided unscored activity", () => {
     expect(
       resolveActivity(findActivity("voiced_fricative_ladder.basic")!, CALIBRATION, 0),

@@ -32,9 +32,24 @@ export const activityVarietySchema = z.object({
   dynamics: z.string().min(1),
 });
 
+export function isActivityAudioPath(value: string): boolean {
+  return (
+    value.startsWith("/audio/activities/") &&
+    !value
+      .slice("/audio/activities/".length)
+      .split("/")
+      .some((segment) => segment === "." || segment === "..")
+  );
+}
+
+export const activityAudioPathSchema = z
+  .string()
+  .startsWith("/audio/activities/")
+  .refine(isActivityAudioPath, "audio path must remain inside /audio/activities/");
+
 export const referenceAudioSchema = z.object({
   semitones: z.number().int(),
-  src: z.string().startsWith("/audio/activities/"),
+  src: activityAudioPathSchema,
   engine: z.string().min(1),
   model: z.string().min(1),
   voicebank: z.string().min(1),

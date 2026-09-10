@@ -1,6 +1,7 @@
 import { z } from "zod";
 import catalogue from "@/prompts/activities.json";
 import { DRILL_IDS, findDrill } from "@/lib/pedagogy";
+import { activityAudioPathSchema } from "@/lib/schema";
 
 const relativeEventSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -26,7 +27,7 @@ const activitySchema = z.object({
     .array(
       z.object({
         semitones: z.number().int(),
-        src: z.string().startsWith("/audio/activities/"),
+        src: activityAudioPathSchema,
         engine: z.string().min(1),
         model: z.string().min(1),
         voicebank: z.string().min(1),

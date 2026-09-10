@@ -5,4 +5,4 @@ alter table public.sessions
     check (
       proposal_metadata_json is null
       or proposal_metadata_json::jsonb is not null
-    );
+    ) not valid;

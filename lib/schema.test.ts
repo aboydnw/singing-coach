@@ -220,6 +220,29 @@ describe("timed vocal activity schema", () => {
     ).toThrow();
   });
 
+  it("rejects audio paths that escape with dot segments", () => {
+    const result = exerciseSpecSchema.safeParse({
+      type: "scale",
+      target_notes_midi: [60],
+      duration_per_note_s: 1,
+      vowel: "ah",
+      display_name: "test",
+      reference_audio: [
+        {
+          semitones: 0,
+          src: "/audio/activities/../unreviewed.wav",
+          engine: "DiffSinger",
+          model: "model",
+          voicebank: "voice",
+          dataset: "dataset",
+          output_license: "CC-BY-4.0",
+          reviewed: true,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("keeps legacy exercise specifications readable", () => {
     expect(
       exerciseSpecSchema.parse({

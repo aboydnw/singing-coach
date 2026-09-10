@@ -1,4 +1,4 @@
-import type { ExerciseSpec } from "@/lib/schema";
+import { isActivityAudioPath, type ExerciseSpec } from "@/lib/schema";
 import { playSequence, playTimedSequence } from "@/lib/toneGen";
 
 type Player = { done: Promise<void>; stop: () => void };
@@ -19,7 +19,7 @@ export function playReference(
     (reference) =>
       reference.reviewed &&
       reference.semitones === transposition &&
-      reference.src.startsWith("/audio/activities/"),
+      isActivityAudioPath(reference.src),
   );
 
   const done = (async () => {
