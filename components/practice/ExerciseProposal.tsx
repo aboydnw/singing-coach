@@ -15,12 +15,10 @@ export type PracticeProposal = {
 
 export function ExerciseProposal(props: {
   proposal: PracticeProposal;
-  accepted: boolean;
   processing: boolean;
   playing: boolean;
   recorderBusy: boolean;
   proposalLoading: boolean;
-  onAccept: () => void;
   onUploaded: (key: string) => void;
   onHear: () => void;
   onDifferent: () => void;
@@ -29,18 +27,18 @@ export function ExerciseProposal(props: {
   onCancel: () => void;
   onRecorderStateChange: (state: RecorderState) => void;
 }) {
-  const { proposal, accepted } = props;
+  const { proposal } = props;
   return (
     <Surface
       as="article"
       id="exercise-setup"
       tabIndex={-1}
-      variant={accepted ? "raised" : "base"}
-      borderColor={accepted ? "coral.300" : "border.default"}
+      variant="base"
+      borderColor="border.default"
       borderLeftWidth="4px"
       borderLeftColor="coaching.focus"
       p={{ base: 5, md: 6 }}
-      boxShadow={accepted ? "active" : "none"}
+      boxShadow="none"
     >
       <Eyebrow>{proposal.retry ? "Focused retry" : "Next exercise"}</Eyebrow>
       <Heading mt={2} size="lg">
@@ -61,28 +59,28 @@ export function ExerciseProposal(props: {
         </Text>
       )}
 
-      {!accepted ? (
-        <Stack mt={5} gap={3}>
-          <Flex gap={3} wrap="wrap">
+      <Surface variant="subtle" mt={5} p={4}>
+        <Stack gap={4}>
+          <Text fontWeight="semibold">
+            Keep one cue in mind, then record when you are ready.
+          </Text>
+          {proposal.spec ? (
             <Button
-              colorPalette="coral"
-              onClick={props.onAccept}
-              disabled={props.proposalLoading}
+              alignSelf="start"
+              variant="outline"
+              colorPalette="teal"
+              onClick={props.onHear}
+              loading={props.playing}
+              disabled={props.recorderBusy || props.proposalLoading}
             >
-              {proposal.retry ? "Try it now" : "Start this exercise"}
+              Hear example
             </Button>
-            {proposal.spec ? (
-              <Button
-                variant="outline"
-                colorPalette="teal"
-                onClick={props.onHear}
-                loading={props.playing}
-                disabled={props.proposalLoading}
-              >
-                Hear it
-              </Button>
-            ) : null}
-          </Flex>
+          ) : null}
+          <Recorder
+            onUploaded={props.onUploaded}
+            onStateChange={props.onRecorderStateChange}
+            disabled={props.processing || props.proposalLoading}
+          />
           <Flex gap={4} wrap="wrap">
             <Button
               variant="plain"
@@ -90,6 +88,7 @@ export function ExerciseProposal(props: {
               px={0}
               onClick={props.onDifferent}
               loading={props.proposalLoading}
+              disabled={props.processing || props.recorderBusy}
             >
               Different exercise
             </Button>
@@ -99,7 +98,7 @@ export function ExerciseProposal(props: {
                 color="fg.muted"
                 px={0}
                 onClick={props.onFreeSing}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Free sing instead
               </Button>
@@ -109,7 +108,7 @@ export function ExerciseProposal(props: {
                 color="fg.muted"
                 px={0}
                 onClick={props.onMoveOn}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Coach’s exercise instead
               </Button>
@@ -120,41 +119,12 @@ export function ExerciseProposal(props: {
                 color="action.primary"
                 px={0}
                 onClick={props.onMoveOn}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Move on
               </Button>
             ) : null}
-            <Button variant="plain" color="fg.muted" px={0} onClick={props.onCancel}>
-              Cancel
-            </Button>
-          </Flex>
-        </Stack>
-      ) : (
-        <Surface variant="subtle" mt={5} p={4}>
-          <Stack gap={4}>
-            <Text fontWeight="semibold">
-              Keep one cue in mind, then record when you are ready.
-            </Text>
-            {proposal.spec ? (
-              <Button
-                alignSelf="start"
-                variant="outline"
-                colorPalette="teal"
-                onClick={props.onHear}
-                loading={props.playing}
-                disabled={props.recorderBusy}
-              >
-                Hear the reference
-              </Button>
-            ) : null}
-            <Recorder
-              onUploaded={props.onUploaded}
-              onStateChange={props.onRecorderStateChange}
-              disabled={props.processing}
-            />
             <Button
-              alignSelf="start"
               variant="plain"
               color="fg.muted"
               px={0}
@@ -163,10 +133,10 @@ export function ExerciseProposal(props: {
             >
               Cancel
             </Button>
-            {props.processing ? <AttemptProgress /> : null}
-          </Stack>
-        </Surface>
-      )}
+          </Flex>
+          {props.processing ? <AttemptProgress /> : null}
+        </Stack>
+      </Surface>
     </Surface>
   );
 }

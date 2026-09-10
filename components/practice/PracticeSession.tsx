@@ -80,7 +80,6 @@ export function PracticeSession() {
   const router = useRouter();
   const [bundle, setBundle] = useState<PracticeBundle | null>(null);
   const [proposal, setProposal] = useState<PracticeProposal | null>(null);
-  const [accepted, setAccepted] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -410,7 +409,6 @@ export function PracticeSession() {
           practice: { ...loaded.practice, learning_contract_json: nextContract },
         });
       }
-      setAccepted(false);
       if (attemptId) {
         if (!proposal.retry) {
           const recordedExerciseId = recordedExerciseIdForAttempt(
@@ -520,7 +518,6 @@ export function PracticeSession() {
       const spec = skipped.spec;
       setRotationIndex(skipped.index);
       setNeedsCalibration(false);
-      setAccepted(false);
       const nextProposal = {
         spec,
         reason: "A different shape, while keeping today’s listening focus in view.",
@@ -575,7 +572,6 @@ export function PracticeSession() {
       });
       const spec = selected.spec;
       setNeedsCalibration(false);
-      setAccepted(false);
       setRotationIndex(null);
       const nextProposal = {
         spec,
@@ -604,7 +600,6 @@ export function PracticeSession() {
     selectDraft();
     setAnchor(null);
     setNeedsCalibration(false);
-    setAccepted(false);
     setRotationIndex(null);
     const nextProposal = {
       spec: null,
@@ -621,7 +616,6 @@ export function PracticeSession() {
 
   const retrySelected = () => {
     if (!activeAttempt || recorderBusy || proposalLoading) return;
-    setAccepted(false);
     setRotationIndex(null);
     setProposal({
       spec: parseStoredJson(activeAttempt.exercise_spec_json, exerciseSpecSchema),
@@ -638,7 +632,6 @@ export function PracticeSession() {
     if (!bundle || recorderBusy || proposalLoading || ended) return;
     const next = selectDraft();
     setAnchor(null);
-    setAccepted(false);
     if (!next.created) {
       setProposal(draftProposal);
       setSetupOpen(Boolean(draftProposal));
@@ -679,7 +672,6 @@ export function PracticeSession() {
 
     if (exerciseId === draftExerciseId) {
       setProposal(draftProposal);
-      setAccepted(false);
       setAnchor(null);
       setSetupOpen(Boolean(draftProposal));
       if (draftProposal) {
@@ -690,7 +682,6 @@ export function PracticeSession() {
 
     setSetupOpen(false);
     setProposal(null);
-    setAccepted(false);
     setAnchor(null);
     const firstAttemptId = exerciseThreads.find((thread) => thread.id === exerciseId)
       ?.attempts[0]?.id;
@@ -727,7 +718,6 @@ export function PracticeSession() {
     setProposalLoading(false);
     setSetupOpen(false);
     setProposal(null);
-    setAccepted(false);
 
     let returnExerciseId = selectedExerciseId;
     if (selectedExerciseId === draftExerciseId) {
@@ -947,12 +937,10 @@ export function PracticeSession() {
           {!ended && setupOpen && proposal ? (
             <ExerciseProposal
               proposal={proposal}
-              accepted={accepted}
               processing={processing}
               playing={playing}
               recorderBusy={recorderBusy}
               proposalLoading={proposalLoading}
-              onAccept={() => setAccepted(true)}
               onUploaded={onUploaded}
               onHear={async () => {
                 if (!proposal.spec) return;
