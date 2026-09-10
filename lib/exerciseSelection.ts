@@ -1,4 +1,6 @@
 import { exerciseForDrill, nextExercise } from "@/lib/exercises";
+import { activitiesForDrill } from "@/lib/activityCatalogue";
+import { safeActivityTranspositions } from "@/lib/activityResolver";
 import { exerciseSpecSchema } from "@/lib/schema";
 import type { Calibration, ExerciseSpec, FocusArea } from "@/lib/schema";
 
@@ -12,6 +14,7 @@ export type VariedExerciseArgs = {
   cursor: number;
   focusArea: FocusArea | null;
   preferredType?: ExerciseSpec["type"] | null;
+  preferredDrillId?: string | null;
   drillName?: string | null;
   history: ExerciseHistoryRow[];
 };
@@ -27,7 +30,7 @@ const RECENT_HISTORY_COUNT = 12;
 const HARD_EXCLUSION_COUNT = 2;
 
 export function exerciseSignature(spec: ExerciseSpec): string {
-  return `${spec.type}:${spec.target_notes_midi.join(",")}:${spec.vowel}`;
+  return `${spec.activity_id ?? spec.type}:${spec.target_notes_midi.join(",")}:${spec.vowel}`;
 }
 
 export function selectVariedExercise(args: VariedExerciseArgs): {
@@ -64,6 +67,13 @@ function parseRecentSpecs(history: ExerciseHistoryRow[]): ExerciseSpec[] {
 
 function buildCandidates(args: VariedExerciseArgs): Candidate[] {
   const candidates = new Map<string, Candidate>();
+  if (args.preferredDrillId) {
+    for (const activity of activitiesForDrill(args.preferredDrillId)) {
+      for (const resolved of safeActivityTranspositions(activity, args.calibration)) {
+        addCandidate(candidates, resolved.spec, args.cursor, 140);
+      }
+    }
+  }
   for (let step = 0; step < CANDIDATE_COUNT; step += 1) {
     const index = args.cursor + step;
     if (args.preferredType) {

@@ -553,12 +553,14 @@ export function PracticeSession() {
       const latest = bundle.attempts.at(-1);
       const recentSessions = await listSessions(30);
       let preferredType: ExerciseSpec["type"] | null = null;
+      let preferredDrillId: string | null = null;
       let drillName: string | null = null;
       if (latest?.coaching_json) {
         const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
         const requestedType = coaching?.resolved?.drill?.exercise_type;
         if (requestedType && isExerciseType(requestedType)) {
           preferredType = requestedType;
+          preferredDrillId = coaching.resolved.drill.id;
           drillName = coaching.resolved.drill.name;
         }
       }
@@ -567,6 +569,7 @@ export function PracticeSession() {
         cursor: bundle.attempts.length,
         focusArea: contract?.focusArea ?? null,
         preferredType,
+        preferredDrillId,
         drillName,
         history: recentSessions,
       });

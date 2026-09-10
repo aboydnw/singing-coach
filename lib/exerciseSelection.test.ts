@@ -80,6 +80,22 @@ describe("selectVariedExercise", () => {
     expect(exerciseSignature(selected.spec)).not.toBe(exerciseSignature(earlier));
   });
 
+  it("prefers the faithful catalog activity for a requested drill", () => {
+    const selected = selectVariedExercise({
+      calibration: CALIBRATION,
+      cursor: 0,
+      focusArea: null,
+      preferredDrillId: "staccato_onsets",
+      preferredType: "sustained",
+      drillName: "Staccato 'hey' onsets",
+      history: [],
+    });
+
+    expect(selected.spec.activity_id).toBe("staccato_onsets.basic");
+    expect(selected.spec.vowel).toBe("hey");
+    expect(selected.spec.events?.some((event) => event.kind === "rest")).toBe(true);
+  });
+
   it("ignores malformed and Free Sing history", () => {
     const selected = selectVariedExercise({
       calibration: CALIBRATION,
