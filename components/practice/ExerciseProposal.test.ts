@@ -10,7 +10,7 @@ afterAll(() => vi.unstubAllGlobals());
 
 const noOp = () => undefined;
 
-function renderProposal() {
+function renderProposal(referenceFallback = false) {
   return renderToStaticMarkup(
     React.createElement(
       ChakraProvider,
@@ -34,6 +34,7 @@ function renderProposal() {
           playing: false,
           recorderBusy: false,
           proposalLoading: false,
+          referenceFallback,
           onUploaded: noOp,
           onHear: noOp,
           onDifferent: noOp,
@@ -54,5 +55,11 @@ describe("ExerciseProposal", () => {
     expect(markup).toContain("Hear example");
     expect(markup).toContain("Record");
     expect(markup).not.toContain("Start this exercise");
+  });
+
+  it("labels the pitch guide when vocal playback falls back", () => {
+    expect(renderProposal(true)).toContain(
+      "Vocal example unavailable—playing pitch guide",
+    );
   });
 });

@@ -64,6 +64,7 @@ import {
   type Measurements,
 } from "@/lib/schema";
 import { parseStoredJson } from "@/lib/storedJson";
+import { playReference } from "@/lib/referencePlayback";
 import {
   insertSession,
   latestCalibration,
@@ -73,7 +74,6 @@ import {
   coachingToMarkdown,
   type SessionRow,
 } from "@/lib/sessions";
-import { playSequence } from "@/lib/toneGen";
 
 export function PracticeSession() {
   const params = useParams<{ id: string }>();
@@ -82,6 +82,7 @@ export function PracticeSession() {
   const [proposal, setProposal] = useState<PracticeProposal | null>(null);
   const [processing, setProcessing] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [referenceFallback, setReferenceFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [anchor, setAnchor] = useState<ContextAnchor | null>(null);
@@ -944,14 +945,13 @@ export function PracticeSession() {
               playing={playing}
               recorderBusy={recorderBusy}
               proposalLoading={proposalLoading}
+              referenceFallback={referenceFallback}
               onUploaded={onUploaded}
               onHear={async () => {
                 if (!proposal.spec) return;
                 setPlaying(true);
-                await playSequence(
-                  proposal.spec.target_notes_midi,
-                  proposal.spec.duration_per_note_s,
-                ).done;
+                const source = await playReference(proposal.spec).done;
+                setReferenceFallback(source === "pitch_fallback");
                 setPlaying(false);
               }}
               onDifferent={proposal.retry ? openNewExercise : differentExercise}

@@ -19,6 +19,7 @@ export function ExerciseProposal(props: {
   playing: boolean;
   recorderBusy: boolean;
   proposalLoading: boolean;
+  referenceFallback?: boolean;
   onUploaded: (key: string) => void;
   onHear: () => void;
   onDifferent: () => void;
@@ -75,6 +76,11 @@ export function ExerciseProposal(props: {
             >
               Hear example
             </Button>
+          ) : null}
+          {props.referenceFallback ? (
+            <Text fontSize="sm" color="fg.muted">
+              Vocal example unavailable—playing pitch guide
+            </Text>
           ) : null}
           <Recorder
             onUploaded={props.onUploaded}
