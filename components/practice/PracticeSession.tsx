@@ -31,7 +31,8 @@ import { toaster } from "@/components/ui/AppToaster";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
 import { analyze, coach, streamPracticeCoach } from "@/lib/api";
-import { exerciseForDrill, nextExercise, skipFromCursor } from "@/lib/exercises";
+import { skipFromCursor } from "@/lib/exercises";
+import { selectVariedExercise } from "@/lib/exerciseSelection";
 import {
   cancelExerciseDraft,
   attemptIdForExerciseMessage,
@@ -63,6 +64,9 @@ import {
   type Measurements,
 } from "@/lib/schema";
 import { parseStoredJson } from "@/lib/storedJson";
+import { playReference } from "@/lib/referencePlayback";
+import { nextLessonStage } from "@/lib/lessonStage";
+import { selectSongPassage } from "@/lib/repertoireResolver";
 import {
   insertSession,
   latestCalibration,
@@ -72,16 +76,15 @@ import {
   coachingToMarkdown,
   type SessionRow,
 } from "@/lib/sessions";
-import { playSequence } from "@/lib/toneGen";
 
 export function PracticeSession() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [bundle, setBundle] = useState<PracticeBundle | null>(null);
   const [proposal, setProposal] = useState<PracticeProposal | null>(null);
-  const [accepted, setAccepted] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [referenceFallback, setReferenceFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [anchor, setAnchor] = useState<ContextAnchor | null>(null);
@@ -177,6 +180,7 @@ export function PracticeSession() {
             retry: false,
           } satisfies PracticeProposal;
           if (loaded.attempts.length === 0) {
+            setReferenceFallback(false);
             setProposal(initialProposal);
             setDraftProposal(initialProposal);
             setSetupOpen(true);
@@ -189,7 +193,8 @@ export function PracticeSession() {
           return;
         }
         const latest = loaded.attempts.at(-1);
-        const spec = chooseProposalSpec(loaded, calibration);
+        const recentSessions = await listSessions(30);
+        const spec = chooseProposalSpec(loaded, calibration, recentSessions);
         const initialProposal = {
           spec,
           reason: latest
@@ -199,6 +204,7 @@ export function PracticeSession() {
           retry: false,
         } satisfies PracticeProposal;
         if (loaded.attempts.length === 0) {
+          setReferenceFallback(false);
           setProposal(initialProposal);
           setDraftProposal(initialProposal);
           setSetupOpen(true);
@@ -319,6 +325,13 @@ export function PracticeSession() {
           sequenceNumber,
           parentAttemptId: proposal.parentAttemptId,
           attemptKind: proposal.retry ? "retry" : "initial",
+          proposalMetadata: {
+            reason: proposal.reason,
+            activity_id: proposal.spec?.activity_id ?? null,
+            activity_version: proposal.spec?.activity_version ?? null,
+            transposition_semitones: proposal.spec?.transposition_semitones ?? null,
+            reference_fallback: referenceFallback,
+          },
         });
       } catch (reason) {
         saveError =
@@ -354,6 +367,13 @@ export function PracticeSession() {
           ts: new Date().toISOString(),
           exercise_type: proposal.spec?.type ?? "free_sing",
           exercise_spec_json: proposal.spec ? JSON.stringify(proposal.spec) : null,
+          proposal_metadata_json: JSON.stringify({
+            reason: proposal.reason,
+            activity_id: proposal.spec?.activity_id ?? null,
+            activity_version: proposal.spec?.activity_version ?? null,
+            transposition_semitones: proposal.spec?.transposition_semitones ?? null,
+            reference_fallback: referenceFallback,
+          }),
           measurements_json: JSON.stringify(analysis.measurements),
           coaching_md: coaching ? coachingToMarkdown(coaching) : "",
           coaching_json: coaching ? JSON.stringify(coaching) : null,
@@ -408,7 +428,6 @@ export function PracticeSession() {
           practice: { ...loaded.practice, learning_contract_json: nextContract },
         });
       }
-      setAccepted(false);
       if (attemptId) {
         if (!proposal.retry) {
           const recordedExerciseId = recordedExerciseIdForAttempt(
@@ -505,6 +524,30 @@ export function PracticeSession() {
         setNeedsCalibration(true);
         return;
       }
+      if (proposal?.spec?.activity_kind === "song_passage") {
+        const history = await listSessions(30);
+        if (requestId !== proposalRequestRef.current) return;
+        const selectedSong = selectSongPassage({
+          calibration,
+          focusArea: contract?.focusArea ?? null,
+          history: [{ exercise_spec_json: JSON.stringify(proposal.spec) }, ...history],
+        });
+        if (selectedSong) {
+          const nextProposal = {
+            spec: selectedSong.spec,
+            reason: "A different familiar phrase that applies the same coaching focus.",
+            parentAttemptId: null,
+            retry: false,
+            keyOptions: selectedSong.options.map((option) => option.spec),
+            selectedKeyIndex: selectedSong.selectedIndex,
+          } satisfies PracticeProposal;
+          setReferenceFallback(false);
+          setProposal(nextProposal);
+          setDraftProposal(nextProposal);
+          setSetupOpen(true);
+          return;
+        }
+      }
       const current = currentExerciseForChange(
         setupOpen,
         proposal?.spec,
@@ -518,13 +561,13 @@ export function PracticeSession() {
       const spec = skipped.spec;
       setRotationIndex(skipped.index);
       setNeedsCalibration(false);
-      setAccepted(false);
       const nextProposal = {
         spec,
         reason: "A different shape, while keeping today’s listening focus in view.",
         parentAttemptId: null,
         retry: false,
       } satisfies PracticeProposal;
+      setReferenceFallback(false);
       setProposal(nextProposal);
       setDraftProposal(nextProposal);
       setSetupOpen(true);
@@ -552,24 +595,56 @@ export function PracticeSession() {
         return;
       }
       const latest = bundle.attempts.at(-1);
-      let spec = nextExercise(
-        calibration,
-        bundle.attempts.length,
-        contract?.focusArea ?? null,
-      );
-      setNeedsCalibration(false);
-      if (latest?.coaching_json) {
-        const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
-        if (coaching?.resolved?.drill?.exercise_type) {
-          spec = exerciseForDrill(
-            calibration,
-            bundle.attempts.length,
-            coaching.resolved.drill.exercise_type,
-            coaching.resolved.drill.name,
-          );
+      const recentSessions = await listSessions(30);
+      if (requestId !== proposalRequestRef.current) return;
+      if (nextLessonStage(bundle.attempts) === "song_application") {
+        const selectedSong = selectSongPassage({
+          calibration,
+          focusArea: contract?.focusArea ?? null,
+          history: recentSessions,
+        });
+        if (selectedSong) {
+          const nextProposal = {
+            spec: selectedSong.spec,
+            reason: "Now apply the same coordination to a short, familiar song phrase.",
+            parentAttemptId: null,
+            retry: false,
+            keyOptions: selectedSong.options.map((option) => option.spec),
+            selectedKeyIndex: selectedSong.selectedIndex,
+          } satisfies PracticeProposal;
+          setNeedsCalibration(false);
+          setRotationIndex(null);
+          setReferenceFallback(false);
+          setProposal(nextProposal);
+          setDraftProposal(nextProposal);
+          setSetupOpen(true);
+          requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+          return;
         }
       }
-      setAccepted(false);
+      let preferredType: ExerciseSpec["type"] | null = null;
+      let preferredDrillId: string | null = null;
+      let drillName: string | null = null;
+      if (latest?.coaching_json) {
+        const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
+        const requestedType = coaching?.resolved?.drill?.exercise_type;
+        if (requestedType && isExerciseType(requestedType)) {
+          preferredType = requestedType;
+          preferredDrillId = coaching.resolved.drill.id;
+          drillName = coaching.resolved.drill.name;
+        }
+      }
+      const selected = selectVariedExercise({
+        calibration,
+        cursor: bundle.attempts.length,
+        focusArea: contract?.focusArea ?? null,
+        preferredType,
+        preferredDrillId,
+        drillName,
+        history: recentSessions,
+      });
+      const spec = selected.spec;
+      setNeedsCalibration(false);
       setRotationIndex(null);
       const nextProposal = {
         spec,
@@ -578,6 +653,7 @@ export function PracticeSession() {
         parentAttemptId: null,
         retry: false,
       } satisfies PracticeProposal;
+      setReferenceFallback(false);
       setProposal(nextProposal);
       setDraftProposal(nextProposal);
       setSetupOpen(true);
@@ -598,7 +674,6 @@ export function PracticeSession() {
     selectDraft();
     setAnchor(null);
     setNeedsCalibration(false);
-    setAccepted(false);
     setRotationIndex(null);
     const nextProposal = {
       spec: null,
@@ -607,16 +682,36 @@ export function PracticeSession() {
       parentAttemptId: null,
       retry: false,
     } satisfies PracticeProposal;
+    setReferenceFallback(false);
     setProposal(nextProposal);
     setDraftProposal(nextProposal);
     setSetupOpen(true);
     requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
   };
 
+  const shiftProposalKey = (direction: "lower" | "higher") => {
+    if (recorderBusy || proposalLoading) return;
+    const current = proposal;
+    if (
+      !current?.keyOptions ||
+      current.selectedKeyIndex === undefined ||
+      current.spec?.activity_kind !== "song_passage"
+    ) {
+      return;
+    }
+    const nextIndex = current.selectedKeyIndex + (direction === "higher" ? 1 : -1);
+    const spec = current.keyOptions[nextIndex];
+    if (!spec) return;
+    const adjusted = { ...current, spec, selectedKeyIndex: nextIndex };
+    setProposal(adjusted);
+    setDraftProposal(adjusted);
+    setReferenceFallback(false);
+  };
+
   const retrySelected = () => {
     if (!activeAttempt || recorderBusy || proposalLoading) return;
-    setAccepted(false);
     setRotationIndex(null);
+    setReferenceFallback(false);
     setProposal({
       spec: parseStoredJson(activeAttempt.exercise_spec_json, exerciseSpecSchema),
       reason:
@@ -632,7 +727,6 @@ export function PracticeSession() {
     if (!bundle || recorderBusy || proposalLoading || ended) return;
     const next = selectDraft();
     setAnchor(null);
-    setAccepted(false);
     if (!next.created) {
       setProposal(draftProposal);
       setSetupOpen(Boolean(draftProposal));
@@ -673,7 +767,6 @@ export function PracticeSession() {
 
     if (exerciseId === draftExerciseId) {
       setProposal(draftProposal);
-      setAccepted(false);
       setAnchor(null);
       setSetupOpen(Boolean(draftProposal));
       if (draftProposal) {
@@ -684,7 +777,6 @@ export function PracticeSession() {
 
     setSetupOpen(false);
     setProposal(null);
-    setAccepted(false);
     setAnchor(null);
     const firstAttemptId = exerciseThreads.find((thread) => thread.id === exerciseId)
       ?.attempts[0]?.id;
@@ -721,7 +813,6 @@ export function PracticeSession() {
     setProposalLoading(false);
     setSetupOpen(false);
     setProposal(null);
-    setAccepted(false);
 
     let returnExerciseId = selectedExerciseId;
     if (selectedExerciseId === draftExerciseId) {
@@ -941,25 +1032,26 @@ export function PracticeSession() {
           {!ended && setupOpen && proposal ? (
             <ExerciseProposal
               proposal={proposal}
-              accepted={accepted}
               processing={processing}
               playing={playing}
               recorderBusy={recorderBusy}
               proposalLoading={proposalLoading}
-              onAccept={() => setAccepted(true)}
+              referenceFallback={referenceFallback}
               onUploaded={onUploaded}
               onHear={async () => {
                 if (!proposal.spec) return;
                 setPlaying(true);
-                await playSequence(
-                  proposal.spec.target_notes_midi,
-                  proposal.spec.duration_per_note_s,
-                ).done;
-                setPlaying(false);
+                try {
+                  const source = await playReference(proposal.spec).done;
+                  setReferenceFallback(source === "pitch_fallback");
+                } finally {
+                  setPlaying(false);
+                }
               }}
               onDifferent={proposal.retry ? openNewExercise : differentExercise}
               onFreeSing={freeSing}
               onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
+              onShiftKey={shiftProposalKey}
               onCancel={cancelSetup}
               onRecorderStateChange={setRecorderState}
             />
@@ -1039,13 +1131,19 @@ function SessionOrigin({ direction }: { direction: string }) {
 function chooseProposalSpec(
   bundle: PracticeBundle,
   calibration: NonNullable<Awaited<ReturnType<typeof latestCalibration>>>,
+  history: SessionRow[],
 ): ExerciseSpec | null {
   if (bundle.practice.starting_direction === "free_sing") return null;
-  return nextExercise(
+  return selectVariedExercise({
     calibration,
-    bundle.attempts.length,
-    bundle.practice.learning_contract_json?.focusArea ?? null,
-  );
+    cursor: bundle.attempts.length,
+    focusArea: bundle.practice.learning_contract_json?.focusArea ?? null,
+    history,
+  }).spec;
+}
+
+function isExerciseType(value: string): value is ExerciseSpec["type"] {
+  return ["sustained", "scale", "arpeggio", "siren"].includes(value);
 }
 
 function formatDate(value: string): string {

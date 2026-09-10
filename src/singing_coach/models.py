@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Calibration(BaseModel):
@@ -15,6 +15,46 @@ class Calibration(BaseModel):
     tessitura_high_midi: int | None = None
 
 
+class ActivityNoteEvent(BaseModel):
+    kind: Literal["note"]
+    midi: int
+    duration_s: float
+    syllable: str
+    phoneme_hint: str | None = Field(default=None, min_length=1)
+    articulation: str | None = Field(default=None, min_length=1)
+    dynamic: float | None = Field(default=None, ge=0, le=1)
+
+
+class ActivityRestEvent(BaseModel):
+    kind: Literal["rest"]
+    duration_s: float
+
+
+class ActivityVariety(BaseModel):
+    shape: str
+    rhythm: str
+    direction: str
+    articulation: str
+    dynamics: str
+
+
+class ReferenceAudio(BaseModel):
+    semitones: int
+    src: str
+    engine: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    voicebank: str = Field(min_length=1)
+    dataset: str = Field(min_length=1)
+    output_license: str = Field(min_length=1)
+    reviewed: bool
+
+
+class ActivitySource(BaseModel):
+    work: str
+    publication_year: int
+    public_domain_basis: str
+
+
 class ExerciseSpec(BaseModel):
     """A generated vocal exercise: what to sing and how long each note lasts."""
 
@@ -23,6 +63,20 @@ class ExerciseSpec(BaseModel):
     duration_per_note_s: float
     vowel: str
     display_name: str
+    activity_kind: Literal["technical", "song_passage", "guided_free_sing"] | None = (
+        None
+    )
+    activity_id: str | None = None
+    activity_version: int | None = None
+    events: list[ActivityNoteEvent | ActivityRestEvent] | None = None
+    instructions: str | None = None
+    primary_cue: str | None = None
+    variety: ActivityVariety | None = None
+    reference_audio: list[ReferenceAudio] | None = None
+    excerpt: str | None = None
+    focus_areas: list[str] | None = None
+    transposition_semitones: int | None = None
+    source: ActivitySource | None = None
 
 
 class NoteAccuracy(BaseModel):

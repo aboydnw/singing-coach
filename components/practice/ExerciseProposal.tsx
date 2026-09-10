@@ -11,36 +11,38 @@ export type PracticeProposal = {
   reason: string;
   parentAttemptId: string | null;
   retry: boolean;
+  keyOptions?: ExerciseSpec[];
+  selectedKeyIndex?: number;
 };
 
 export function ExerciseProposal(props: {
   proposal: PracticeProposal;
-  accepted: boolean;
   processing: boolean;
   playing: boolean;
   recorderBusy: boolean;
   proposalLoading: boolean;
-  onAccept: () => void;
+  referenceFallback?: boolean;
   onUploaded: (key: string) => void;
   onHear: () => void;
   onDifferent: () => void;
   onFreeSing: () => void;
   onMoveOn: () => void;
+  onShiftKey?: (direction: "lower" | "higher") => void;
   onCancel: () => void;
   onRecorderStateChange: (state: RecorderState) => void;
 }) {
-  const { proposal, accepted } = props;
+  const { proposal } = props;
   return (
     <Surface
       as="article"
       id="exercise-setup"
       tabIndex={-1}
-      variant={accepted ? "raised" : "base"}
-      borderColor={accepted ? "coral.300" : "border.default"}
+      variant="base"
+      borderColor="border.default"
       borderLeftWidth="4px"
       borderLeftColor="coaching.focus"
       p={{ base: 5, md: 6 }}
-      boxShadow={accepted ? "active" : "none"}
+      boxShadow="none"
     >
       <Eyebrow>{proposal.retry ? "Focused retry" : "Next exercise"}</Eyebrow>
       <Heading mt={2} size="lg">
@@ -50,39 +52,87 @@ export function ExerciseProposal(props: {
         {proposal.reason}
       </Text>
       {proposal.spec ? (
-        <Text mt={3} fontSize="sm" color="fg.muted">
-          {proposal.spec.target_notes_midi.length} note
-          {proposal.spec.target_notes_midi.length === 1 ? "" : "s"} · “
-          {proposal.spec.vowel}” · {proposal.spec.duration_per_note_s}s each
-        </Text>
+        <Stack mt={3} gap={2}>
+          {proposal.spec.excerpt ? (
+            <Text fontWeight="semibold">“{proposal.spec.excerpt}”</Text>
+          ) : null}
+          {proposal.spec.instructions ? <Text>{proposal.spec.instructions}</Text> : null}
+          {proposal.spec.primary_cue ? (
+            <Text fontSize="sm" color="fg.muted">
+              Listen for: {proposal.spec.primary_cue}
+            </Text>
+          ) : null}
+          <Text fontSize="sm" color="fg.muted">
+            {proposal.spec.target_notes_midi.length} note
+            {proposal.spec.target_notes_midi.length === 1 ? "" : "s"} · “
+            {proposal.spec.vowel}”
+          </Text>
+        </Stack>
       ) : (
         <Text mt={3} fontSize="sm" color="fg.muted">
           No target notes. Pitch accuracy will not be scored.
         </Text>
       )}
 
-      {!accepted ? (
-        <Stack mt={5} gap={3}>
-          <Flex gap={3} wrap="wrap">
+      <Surface variant="subtle" mt={5} p={4}>
+        <Stack gap={4}>
+          <Text fontWeight="semibold">
+            Keep one cue in mind, then record when you are ready.
+          </Text>
+          {proposal.spec ? (
             <Button
-              colorPalette="coral"
-              onClick={props.onAccept}
-              disabled={props.proposalLoading}
+              alignSelf="start"
+              variant="outline"
+              colorPalette="teal"
+              onClick={props.onHear}
+              loading={props.playing}
+              disabled={props.recorderBusy || props.proposalLoading}
             >
-              {proposal.retry ? "Try it now" : "Start this exercise"}
+              Hear example
             </Button>
-            {proposal.spec ? (
+          ) : null}
+          {props.referenceFallback ? (
+            <Text fontSize="sm" color="fg.muted">
+              Vocal example unavailable—playing pitch guide
+            </Text>
+          ) : null}
+          {proposal.spec?.activity_kind === "song_passage" ? (
+            <Flex gap={3} wrap="wrap">
               <Button
+                size="sm"
                 variant="outline"
-                colorPalette="teal"
-                onClick={props.onHear}
-                loading={props.playing}
-                disabled={props.proposalLoading}
+                onClick={() => props.onShiftKey?.("lower")}
+                disabled={
+                  props.recorderBusy ||
+                  props.proposalLoading ||
+                  proposal.selectedKeyIndex === undefined ||
+                  !proposal.keyOptions?.length ||
+                  proposal.selectedKeyIndex === 0
+                }
               >
-                Hear it
+                Too high
               </Button>
-            ) : null}
-          </Flex>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => props.onShiftKey?.("higher")}
+                disabled={
+                  props.recorderBusy ||
+                  props.proposalLoading ||
+                  proposal.selectedKeyIndex === undefined ||
+                  !proposal.keyOptions?.length ||
+                  proposal.selectedKeyIndex === (proposal.keyOptions?.length ?? 1) - 1
+                }
+              >
+                Too low
+              </Button>
+            </Flex>
+          ) : null}
+          <Recorder
+            onUploaded={props.onUploaded}
+            onStateChange={props.onRecorderStateChange}
+            disabled={props.processing || props.proposalLoading}
+          />
           <Flex gap={4} wrap="wrap">
             <Button
               variant="plain"
@@ -90,6 +140,7 @@ export function ExerciseProposal(props: {
               px={0}
               onClick={props.onDifferent}
               loading={props.proposalLoading}
+              disabled={props.processing || props.recorderBusy}
             >
               Different exercise
             </Button>
@@ -99,7 +150,7 @@ export function ExerciseProposal(props: {
                 color="fg.muted"
                 px={0}
                 onClick={props.onFreeSing}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Free sing instead
               </Button>
@@ -109,7 +160,7 @@ export function ExerciseProposal(props: {
                 color="fg.muted"
                 px={0}
                 onClick={props.onMoveOn}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Coach’s exercise instead
               </Button>
@@ -120,41 +171,12 @@ export function ExerciseProposal(props: {
                 color="action.primary"
                 px={0}
                 onClick={props.onMoveOn}
-                disabled={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy || props.proposalLoading}
               >
                 Move on
               </Button>
             ) : null}
-            <Button variant="plain" color="fg.muted" px={0} onClick={props.onCancel}>
-              Cancel
-            </Button>
-          </Flex>
-        </Stack>
-      ) : (
-        <Surface variant="subtle" mt={5} p={4}>
-          <Stack gap={4}>
-            <Text fontWeight="semibold">
-              Keep one cue in mind, then record when you are ready.
-            </Text>
-            {proposal.spec ? (
-              <Button
-                alignSelf="start"
-                variant="outline"
-                colorPalette="teal"
-                onClick={props.onHear}
-                loading={props.playing}
-                disabled={props.recorderBusy}
-              >
-                Hear the reference
-              </Button>
-            ) : null}
-            <Recorder
-              onUploaded={props.onUploaded}
-              onStateChange={props.onRecorderStateChange}
-              disabled={props.processing}
-            />
             <Button
-              alignSelf="start"
               variant="plain"
               color="fg.muted"
               px={0}
@@ -163,10 +185,10 @@ export function ExerciseProposal(props: {
             >
               Cancel
             </Button>
-            {props.processing ? <AttemptProgress /> : null}
-          </Stack>
-        </Surface>
-      )}
+          </Flex>
+          {props.processing ? <AttemptProgress /> : null}
+        </Stack>
+      </Surface>
     </Surface>
   );
 }

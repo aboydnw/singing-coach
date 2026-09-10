@@ -8,12 +8,88 @@ export const FOCUS_AREAS = coaching.schema.properties.focus_area.enum as [
 
 export const focusAreaSchema = z.enum(FOCUS_AREAS);
 
+export const activityEventSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("note"),
+    midi: z.number().int(),
+    duration_s: z.number().positive(),
+    syllable: z.string().min(1),
+    phoneme_hint: z.string().min(1).optional(),
+    articulation: z.string().min(1).optional(),
+    dynamic: z.number().min(0).max(1).optional(),
+  }),
+  z.object({
+    kind: z.literal("rest"),
+    duration_s: z.number().positive(),
+  }),
+]);
+
+export const activityVarietySchema = z.object({
+  shape: z.string().min(1),
+  rhythm: z.string().min(1),
+  direction: z.string().min(1),
+  articulation: z.string().min(1),
+  dynamics: z.string().min(1),
+});
+
+export function isActivityAudioPath(value: string): boolean {
+  return (
+    value.startsWith("/audio/activities/") &&
+    !value
+      .slice("/audio/activities/".length)
+      .split("/")
+      .some((segment) => segment === "." || segment === "..")
+  );
+}
+
+export const activityAudioPathSchema = z
+  .string()
+  .startsWith("/audio/activities/")
+  .refine(isActivityAudioPath, "audio path must remain inside /audio/activities/");
+
+export const referenceAudioSchema = z.object({
+  semitones: z.number().int(),
+  src: activityAudioPathSchema,
+  engine: z.string().min(1),
+  model: z.string().min(1),
+  voicebank: z.string().min(1),
+  dataset: z.string().min(1),
+  output_license: z.string().min(1),
+  reviewed: z.boolean(),
+});
+
 export const exerciseSpecSchema = z.object({
   type: z.enum(["sustained", "scale", "arpeggio", "siren"]),
   target_notes_midi: z.array(z.number().int()),
   duration_per_note_s: z.number(),
   vowel: z.string(),
   display_name: z.string(),
+  activity_kind: z.enum(["technical", "song_passage", "guided_free_sing"]).optional(),
+  activity_id: z.string().min(1).optional(),
+  activity_version: z.number().int().positive().optional(),
+  events: z.array(activityEventSchema).min(1).optional(),
+  instructions: z.string().min(1).optional(),
+  primary_cue: z.string().min(1).optional(),
+  variety: activityVarietySchema.optional(),
+  reference_audio: z.array(referenceAudioSchema).optional(),
+  excerpt: z.string().min(1).optional(),
+  focus_areas: z.array(focusAreaSchema).optional(),
+  transposition_semitones: z.number().int().optional(),
+  source: z
+    .object({
+      work: z.string().min(1),
+      publication_year: z.number().int(),
+      public_domain_basis: z.string().min(1),
+    })
+    .optional(),
+});
+
+export const proposalMetadataSchema = z.object({
+  reason: z.string().min(1),
+  activity_id: z.string().min(1).nullable(),
+  activity_version: z.number().int().positive().nullable(),
+  transposition_semitones: z.number().int().nullable(),
+  reference_fallback: z.boolean(),
 });
 
 export const noteAccuracySchema = z.object({
@@ -151,6 +227,7 @@ export const contextAnchorSchema = z.object({
 
 export type FocusArea = z.infer<typeof focusAreaSchema>;
 export type ExerciseSpec = z.infer<typeof exerciseSpecSchema>;
+export type ProposalMetadata = z.infer<typeof proposalMetadataSchema>;
 export type Measurements = z.infer<typeof measurementsSchema>;
 export type CoachingResult = z.infer<typeof coachingResultSchema>;
 export type ResolvedCoachingPayload = z.infer<typeof resolvedCoachingSchema>;

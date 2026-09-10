@@ -123,13 +123,9 @@ function buildSpec(
   const shape = SHAPES[exerciseType];
   const span = Math.max(...shape);
 
-  const tessituraLow = calibration.tessitura_low_midi;
-  const tessituraHigh = calibration.tessitura_high_midi;
+  const tessituraLow = calibration.tessitura_low_midi ?? calibration.range_low_midi;
+  const tessituraHigh = calibration.tessitura_high_midi ?? calibration.range_high_midi;
   const rangeHigh = calibration.range_high_midi;
-
-  if (tessituraLow === null || tessituraHigh === null) {
-    throw new Error("calibration lacks a tessitura");
-  }
 
   const maxStarting = Math.min(tessituraHigh, rangeHigh - span);
   const minStarting = Math.min(tessituraLow, maxStarting);

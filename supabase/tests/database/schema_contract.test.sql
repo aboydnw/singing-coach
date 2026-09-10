@@ -194,11 +194,12 @@ select results_eq(
     where conname in (
       'calibration_range_midi_bounds',
       'sessions_exercise_spec_json_valid',
+      'sessions_proposal_metadata_json_valid',
       'sessions_measurements_json_valid',
       'sessions_coaching_json_valid'
     )
   $$,
-  array[4],
+  array[5],
   'data-integrity constraints exist'
 );
 

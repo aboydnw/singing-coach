@@ -20,12 +20,10 @@ const meta = {
   component: ExerciseProposal,
   args: {
     proposal,
-    accepted: false,
     processing: false,
     playing: false,
     recorderBusy: false,
     proposalLoading: false,
-    onAccept: () => undefined,
     onUploaded: () => undefined,
     onHear: () => undefined,
     onDifferent: () => undefined,
@@ -45,7 +43,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Proposed: Story = {};
-export const Accepted: Story = { args: { accepted: true } };
 export const FocusedRetry: Story = {
   args: { proposal: { ...proposal, retry: true, parentAttemptId: "attempt-1" } },
 };

@@ -3,6 +3,7 @@ import {
   GHOST_CONTOUR_POINTS,
   bestPriorTake,
   decimateContour,
+  storedProposal,
   type SessionRow,
 } from "@/lib/sessions";
 import type { Contour, ExerciseSpec } from "@/lib/schema";
@@ -61,6 +62,32 @@ describe("decimateContour", () => {
     const thinned = decimateContour(contour(5000));
     expect(thinned.times[0]).toBe(0);
     expect(thinned.times[thinned.times.length - 1]).toBeGreaterThan(49);
+  });
+});
+
+describe("storedProposal", () => {
+  it("round-trips resolved score and selection metadata", () => {
+    const metadata = {
+      reason: "Apply the breath cue to a familiar phrase.",
+      activity_id: "amazing_grace.opening",
+      activity_version: 1,
+      transposition_semitones: 2,
+      reference_fallback: true,
+    };
+    const attempt = row({
+      id: "song",
+      exercise_spec_json: JSON.stringify({
+        ...SPEC,
+        activity_id: metadata.activity_id,
+        activity_version: metadata.activity_version,
+        transposition_semitones: metadata.transposition_semitones,
+      }),
+      proposal_metadata_json: JSON.stringify(metadata),
+    });
+    expect(storedProposal(attempt)).toEqual({
+      spec: JSON.parse(attempt.exercise_spec_json!),
+      metadata,
+    });
   });
 });
 

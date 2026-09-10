@@ -5,6 +5,7 @@ import {
   coachingModelOutputSchema,
   coachingResponseSchema,
   coachingResultSchema,
+  exerciseSpecSchema,
   FOCUS_AREAS,
   measurementsSchema,
 } from "./schema";
@@ -150,5 +151,107 @@ describe("measurements schema", () => {
       },
     });
     expect(parsed.accuracy?.per_note[0].target_name).toBe("C4");
+  });
+});
+
+describe("timed vocal activity schema", () => {
+  it("accepts unequal note timing, rests, activity metadata, and reviewed audio", () => {
+    const parsed = exerciseSpecSchema.parse({
+      type: "scale",
+      target_notes_midi: [60, 62],
+      duration_per_note_s: 0.5,
+      vowel: "hey",
+      display_name: "Staccato hey",
+      activity_id: "staccato_onsets.basic",
+      activity_version: 1,
+      instructions: "Sing five clean, separated hey sounds.",
+      primary_cue: "Flick each sound toward the far wall.",
+      events: [
+        { kind: "note", midi: 60, duration_s: 0.25, syllable: "hey" },
+        { kind: "rest", duration_s: 0.25 },
+        { kind: "note", midi: 62, duration_s: 0.5, syllable: "hey" },
+      ],
+      variety: {
+        shape: "two-note",
+        rhythm: "separated",
+        direction: "ascending",
+        articulation: "staccato",
+        dynamics: "even",
+      },
+      reference_audio: [
+        {
+          semitones: 0,
+          src: "/audio/activities/staccato-onsets-0.wav",
+          engine: "DiffSinger",
+          model: "acoustic-v1",
+          voicebank: "licensed-demo",
+          dataset: "documented-dataset",
+          output_license: "CC-BY-4.0",
+          reviewed: true,
+        },
+      ],
+    });
+
+    expect(parsed.events?.[1].kind).toBe("rest");
+    expect(parsed.reference_audio?.[0].reviewed).toBe(true);
+  });
+
+  it("rejects scheme-relative reference audio", () => {
+    expect(() =>
+      exerciseSpecSchema.parse({
+        type: "scale",
+        target_notes_midi: [60],
+        duration_per_note_s: 1,
+        vowel: "ah",
+        display_name: "test",
+        reference_audio: [
+          {
+            semitones: 0,
+            src: "//example.invalid/audio.wav",
+            engine: "DiffSinger",
+            model: "model",
+            voicebank: "voice",
+            dataset: "dataset",
+            output_license: "CC-BY-4.0",
+            reviewed: true,
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects audio paths that escape with dot segments", () => {
+    const result = exerciseSpecSchema.safeParse({
+      type: "scale",
+      target_notes_midi: [60],
+      duration_per_note_s: 1,
+      vowel: "ah",
+      display_name: "test",
+      reference_audio: [
+        {
+          semitones: 0,
+          src: "/audio/activities/../unreviewed.wav",
+          engine: "DiffSinger",
+          model: "model",
+          voicebank: "voice",
+          dataset: "dataset",
+          output_license: "CC-BY-4.0",
+          reviewed: true,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("keeps legacy exercise specifications readable", () => {
+    expect(
+      exerciseSpecSchema.parse({
+        type: "sustained",
+        target_notes_midi: [60],
+        duration_per_note_s: 3,
+        vowel: "ah",
+        display_name: "Sustained ah",
+      }).activity_id,
+    ).toBeUndefined();
   });
 });

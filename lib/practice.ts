@@ -134,7 +134,7 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
     supabase()
       .from("sessions")
       .select(
-        "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
+        "id, ts, exercise_type, exercise_spec_json, proposal_metadata_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
       )
       .eq("practice_session_id", id)
       .order("sequence_number", { ascending: true })

@@ -10,7 +10,10 @@ import type {
   ExerciseSpec,
   Contour,
   Measurements,
+  ProposalMetadata,
 } from "@/lib/schema";
+import { exerciseSpecSchema, proposalMetadataSchema } from "@/lib/schema";
+import { parseStoredJson } from "@/lib/storedJson";
 import { supabase, userId } from "@/lib/supabase";
 
 export type SessionRow = {
@@ -18,6 +21,7 @@ export type SessionRow = {
   ts: string;
   exercise_type: string;
   exercise_spec_json: string | null;
+  proposal_metadata_json?: string | null;
   measurements_json: string;
   coaching_md: string;
   coaching_json: string | null;
@@ -100,6 +104,7 @@ export async function insertSession(args: {
   sequenceNumber?: number | null;
   parentAttemptId?: string | null;
   attemptKind?: "initial" | "retry";
+  proposalMetadata?: ProposalMetadata | null;
 }): Promise<string> {
   const uid = await userId();
   if (!uid) throw new Error("not signed in");
@@ -112,6 +117,9 @@ export async function insertSession(args: {
       ts: new Date().toISOString(),
       exercise_type: args.spec?.type ?? "free_sing",
       exercise_spec_json: args.spec ? JSON.stringify(args.spec) : null,
+      proposal_metadata_json: args.proposalMetadata
+        ? JSON.stringify(args.proposalMetadata)
+        : null,
       measurements_json: JSON.stringify(args.measurements),
       coaching_md: args.coaching ? coachingToMarkdown(args.coaching) : "",
       coaching_json: args.coaching ? JSON.stringify(args.coaching) : null,
@@ -144,7 +152,7 @@ export async function listSessions(limit?: number): Promise<SessionRow[]> {
   let query = supabase()
     .from("sessions")
     .select(
-      "id, ts, exercise_type, exercise_spec_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
+      "id, ts, exercise_type, exercise_spec_json, proposal_metadata_json, measurements_json, coaching_md, coaching_json, audio_key, contour_json, practice_session_id, sequence_number, parent_attempt_id, attempt_kind",
     )
     .order("ts", { ascending: false });
   if (limit !== undefined) {
@@ -156,6 +164,16 @@ export async function listSessions(limit?: number): Promise<SessionRow[]> {
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+export function storedProposal(row: SessionRow): {
+  spec: ExerciseSpec | null;
+  metadata: ProposalMetadata | null;
+} {
+  return {
+    spec: parseStoredJson(row.exercise_spec_json, exerciseSpecSchema),
+    metadata: parseStoredJson(row.proposal_metadata_json ?? null, proposalMetadataSchema),
+  };
 }
 
 export async function sessionCount(): Promise<number> {
