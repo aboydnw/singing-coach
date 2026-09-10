@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextExercise } from "@/lib/exercises";
-import {
-  exerciseSignature,
-  selectVariedExercise,
-} from "@/lib/exerciseSelection";
+import { exerciseSignature, selectVariedExercise } from "@/lib/exerciseSelection";
 import type { Calibration, ExerciseSpec } from "@/lib/schema";
 
 const CALIBRATION: Calibration = {

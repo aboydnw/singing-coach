@@ -30,9 +30,10 @@ export function exerciseSignature(spec: ExerciseSpec): string {
   return `${spec.type}:${spec.target_notes_midi.join(",")}:${spec.vowel}`;
 }
 
-export function selectVariedExercise(
-  args: VariedExerciseArgs,
-): { spec: ExerciseSpec; index: number } {
+export function selectVariedExercise(args: VariedExerciseArgs): {
+  spec: ExerciseSpec;
+  index: number;
+} {
   const recent = parseRecentSpecs(args.history).slice(0, RECENT_HISTORY_COUNT);
   const hardExcluded = new Set(
     recent.slice(0, HARD_EXCLUSION_COUNT).map(exerciseSignature),
