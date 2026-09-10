@@ -8,12 +8,49 @@ export const FOCUS_AREAS = coaching.schema.properties.focus_area.enum as [
 
 export const focusAreaSchema = z.enum(FOCUS_AREAS);
 
+export const activityEventSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("note"),
+    midi: z.number().int(),
+    duration_s: z.number().positive(),
+    syllable: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal("rest"),
+    duration_s: z.number().positive(),
+  }),
+]);
+
+export const activityVarietySchema = z.object({
+  shape: z.string().min(1),
+  rhythm: z.string().min(1),
+  direction: z.string().min(1),
+  articulation: z.string().min(1),
+  dynamics: z.string().min(1),
+});
+
+export const referenceAudioSchema = z.object({
+  semitones: z.number().int(),
+  src: z.string().startsWith("/"),
+  engine: z.string().min(1),
+  voice: z.string().min(1),
+  license: z.string().min(1),
+  reviewed: z.boolean(),
+});
+
 export const exerciseSpecSchema = z.object({
   type: z.enum(["sustained", "scale", "arpeggio", "siren"]),
   target_notes_midi: z.array(z.number().int()),
   duration_per_note_s: z.number(),
   vowel: z.string(),
   display_name: z.string(),
+  activity_id: z.string().min(1).optional(),
+  activity_version: z.number().int().positive().optional(),
+  events: z.array(activityEventSchema).min(1).optional(),
+  instructions: z.string().min(1).optional(),
+  primary_cue: z.string().min(1).optional(),
+  variety: activityVarietySchema.optional(),
+  reference_audio: z.array(referenceAudioSchema).optional(),
 });
 
 export const noteAccuracySchema = z.object({

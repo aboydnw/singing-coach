@@ -15,6 +15,35 @@ class Calibration(BaseModel):
     tessitura_high_midi: int | None = None
 
 
+class ActivityNoteEvent(BaseModel):
+    kind: Literal["note"]
+    midi: int
+    duration_s: float
+    syllable: str
+
+
+class ActivityRestEvent(BaseModel):
+    kind: Literal["rest"]
+    duration_s: float
+
+
+class ActivityVariety(BaseModel):
+    shape: str
+    rhythm: str
+    direction: str
+    articulation: str
+    dynamics: str
+
+
+class ReferenceAudio(BaseModel):
+    semitones: int
+    src: str
+    engine: str
+    voice: str
+    license: str
+    reviewed: bool
+
+
 class ExerciseSpec(BaseModel):
     """A generated vocal exercise: what to sing and how long each note lasts."""
 
@@ -23,6 +52,13 @@ class ExerciseSpec(BaseModel):
     duration_per_note_s: float
     vowel: str
     display_name: str
+    activity_id: str | None = None
+    activity_version: int | None = None
+    events: list[ActivityNoteEvent | ActivityRestEvent] | None = None
+    instructions: str | None = None
+    primary_cue: str | None = None
+    variety: ActivityVariety | None = None
+    reference_audio: list[ReferenceAudio] | None = None
 
 
 class NoteAccuracy(BaseModel):
