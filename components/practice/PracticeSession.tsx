@@ -31,7 +31,8 @@ import { toaster } from "@/components/ui/AppToaster";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
 import { analyze, coach, streamPracticeCoach } from "@/lib/api";
-import { exerciseForDrill, nextExercise, skipFromCursor } from "@/lib/exercises";
+import { skipFromCursor } from "@/lib/exercises";
+import { selectVariedExercise } from "@/lib/exerciseSelection";
 import {
   cancelExerciseDraft,
   attemptIdForExerciseMessage,
@@ -189,7 +190,8 @@ export function PracticeSession() {
           return;
         }
         const latest = loaded.attempts.at(-1);
-        const spec = chooseProposalSpec(loaded, calibration);
+        const recentSessions = await listSessions(30);
+        const spec = chooseProposalSpec(loaded, calibration, recentSessions);
         const initialProposal = {
           spec,
           reason: latest
@@ -552,23 +554,27 @@ export function PracticeSession() {
         return;
       }
       const latest = bundle.attempts.at(-1);
-      let spec = nextExercise(
-        calibration,
-        bundle.attempts.length,
-        contract?.focusArea ?? null,
-      );
-      setNeedsCalibration(false);
+      const recentSessions = await listSessions(30);
+      let preferredType: ExerciseSpec["type"] | null = null;
+      let drillName: string | null = null;
       if (latest?.coaching_json) {
         const coaching = parseStoredJson(latest.coaching_json, coachingResponseSchema);
-        if (coaching?.resolved?.drill?.exercise_type) {
-          spec = exerciseForDrill(
-            calibration,
-            bundle.attempts.length,
-            coaching.resolved.drill.exercise_type,
-            coaching.resolved.drill.name,
-          );
+        const requestedType = coaching?.resolved?.drill?.exercise_type;
+        if (requestedType && isExerciseType(requestedType)) {
+          preferredType = requestedType;
+          drillName = coaching.resolved.drill.name;
         }
       }
+      const selected = selectVariedExercise({
+        calibration,
+        cursor: bundle.attempts.length,
+        focusArea: contract?.focusArea ?? null,
+        preferredType,
+        drillName,
+        history: recentSessions,
+      });
+      const spec = selected.spec;
+      setNeedsCalibration(false);
       setAccepted(false);
       setRotationIndex(null);
       const nextProposal = {
@@ -1039,13 +1045,19 @@ function SessionOrigin({ direction }: { direction: string }) {
 function chooseProposalSpec(
   bundle: PracticeBundle,
   calibration: NonNullable<Awaited<ReturnType<typeof latestCalibration>>>,
+  history: SessionRow[],
 ): ExerciseSpec | null {
   if (bundle.practice.starting_direction === "free_sing") return null;
-  return nextExercise(
+  return selectVariedExercise({
     calibration,
-    bundle.attempts.length,
-    bundle.practice.learning_contract_json?.focusArea ?? null,
-  );
+    cursor: bundle.attempts.length,
+    focusArea: bundle.practice.learning_contract_json?.focusArea ?? null,
+    history,
+  }).spec;
+}
+
+function isExerciseType(value: string): value is ExerciseSpec["type"] {
+  return ["sustained", "scale", "arpeggio", "siren"].includes(value);
 }
 
 function formatDate(value: string): string {
