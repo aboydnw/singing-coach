@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findActivity } from "@/lib/activityCatalogue";
-import {
-  resolveActivity,
-  safeActivityTranspositions,
-} from "@/lib/activityResolver";
+import { resolveActivity, safeActivityTranspositions } from "@/lib/activityResolver";
 import type { Calibration } from "@/lib/schema";
 
 const CALIBRATION: Calibration = {
@@ -41,11 +38,7 @@ describe("activity resolution", () => {
 
   it("returns null for a guided unscored activity", () => {
     expect(
-      resolveActivity(
-        findActivity("voiced_fricative_ladder.basic")!,
-        CALIBRATION,
-        0,
-      ),
+      resolveActivity(findActivity("voiced_fricative_ladder.basic")!, CALIBRATION, 0),
     ).toBeNull();
   });
 });

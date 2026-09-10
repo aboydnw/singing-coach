@@ -53,6 +53,5 @@ const browserDependencies: PlaybackDependencies = {
     });
     return { done, stop: () => audio.pause() };
   },
-  playPitch: (spec) =>
-    playSequence(spec.target_notes_midi, spec.duration_per_note_s),
+  playPitch: (spec) => playSequence(spec.target_notes_midi, spec.duration_per_note_s),
 };

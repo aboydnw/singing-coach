@@ -18,9 +18,7 @@ export function resolveActivity(
   if (activity.mode !== "scored") return null;
   const root = CATALOGUE_BASE_MIDI + semitones;
   const events = activity.events.map((event) =>
-    event.kind === "rest"
-      ? event
-      : { ...event, midi: root + event.midi_offset },
+    event.kind === "rest" ? event : { ...event, midi: root + event.midi_offset },
   );
   const notes = events.flatMap((event) => (event.kind === "note" ? [event.midi] : []));
   if (
@@ -34,7 +32,8 @@ export function resolveActivity(
   const drill = findDrill(activity.drill_id);
   const requestedType = drill?.exercise_type;
   const type = isExerciseType(requestedType) ? requestedType : inferType(activity);
-  const firstNoteDuration = events.find((event) => event.kind === "note")?.duration_s ?? 0.5;
+  const firstNoteDuration =
+    events.find((event) => event.kind === "note")?.duration_s ?? 0.5;
 
   return {
     type,

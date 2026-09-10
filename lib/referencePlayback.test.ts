@@ -37,7 +37,10 @@ describe("playReference", () => {
   it("falls back when vocal playback fails", async () => {
     const playPitch = vi.fn(() => ({ done: Promise.resolve(), stop: vi.fn() }));
     const player = playReference(spec(), {
-      playAudio: () => ({ done: Promise.reject(new Error("load failed")), stop: vi.fn() }),
+      playAudio: () => ({
+        done: Promise.reject(new Error("load failed")),
+        stop: vi.fn(),
+      }),
       playPitch,
     });
 
@@ -49,9 +52,9 @@ describe("playReference", () => {
     const playAudio = vi.fn(() => ({ done: Promise.resolve(), stop: vi.fn() }));
     const playPitch = vi.fn(() => ({ done: Promise.resolve(), stop: vi.fn() }));
 
-    await expect(
-      playReference(spec(false), { playAudio, playPitch }).done,
-    ).resolves.toBe("pitch_fallback");
+    await expect(playReference(spec(false), { playAudio, playPitch }).done).resolves.toBe(
+      "pitch_fallback",
+    );
     expect(playAudio).not.toHaveBeenCalled();
   });
 });
