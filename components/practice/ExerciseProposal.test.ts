@@ -62,4 +62,49 @@ describe("ExerciseProposal", () => {
       "Vocal example unavailable—playing pitch guide",
     );
   });
+
+  it("shows lyrics and key comfort controls for a song passage", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        ChakraProvider,
+        { value: system },
+        React.createElement(
+          ExerciseProposal as React.ComponentType<Record<string, unknown>>,
+          {
+            proposal: {
+              spec: {
+                type: "scale",
+                target_notes_midi: [60, 64, 67],
+                duration_per_note_s: 0.5,
+                vowel: "lyrics",
+                display_name: "Amazing Grace",
+                activity_kind: "song_passage",
+                excerpt: "Amazing grace, how sweet the sound",
+              },
+              reason: "Apply the same breath idea to a song.",
+              parentAttemptId: null,
+              retry: false,
+              keyOptions: [{}, {}, {}],
+              selectedKeyIndex: 1,
+            },
+            processing: false,
+            playing: false,
+            recorderBusy: false,
+            proposalLoading: false,
+            onUploaded: noOp,
+            onHear: noOp,
+            onDifferent: noOp,
+            onFreeSing: noOp,
+            onMoveOn: noOp,
+            onShiftKey: noOp,
+            onCancel: noOp,
+            onRecorderStateChange: noOp,
+          },
+        ),
+      ),
+    );
+    expect(markup).toContain("Amazing grace, how sweet the sound");
+    expect(markup).toContain("Too high");
+    expect(markup).toContain("Too low");
+  });
 });

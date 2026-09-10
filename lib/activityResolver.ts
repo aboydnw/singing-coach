@@ -41,6 +41,7 @@ export function resolveActivity(
     duration_per_note_s: firstNoteDuration,
     vowel: activity.vowel,
     display_name: drill?.name ?? activity.id,
+    activity_kind: "technical",
     activity_id: activity.id,
     activity_version: activity.version,
     events: events.map((event) =>

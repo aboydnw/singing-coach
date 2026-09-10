@@ -44,6 +44,7 @@ export const exerciseSpecSchema = z.object({
   duration_per_note_s: z.number(),
   vowel: z.string(),
   display_name: z.string(),
+  activity_kind: z.enum(["technical", "song_passage", "guided_free_sing"]).optional(),
   activity_id: z.string().min(1).optional(),
   activity_version: z.number().int().positive().optional(),
   events: z.array(activityEventSchema).min(1).optional(),
@@ -51,6 +52,16 @@ export const exerciseSpecSchema = z.object({
   primary_cue: z.string().min(1).optional(),
   variety: activityVarietySchema.optional(),
   reference_audio: z.array(referenceAudioSchema).optional(),
+  excerpt: z.string().min(1).optional(),
+  focus_areas: z.array(focusAreaSchema).optional(),
+  transposition_semitones: z.number().int().optional(),
+  source: z
+    .object({
+      work: z.string().min(1),
+      publication_year: z.number().int(),
+      public_domain_basis: z.string().min(1),
+    })
+    .optional(),
 });
 
 export const noteAccuracySchema = z.object({

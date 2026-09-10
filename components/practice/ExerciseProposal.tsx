@@ -11,6 +11,8 @@ export type PracticeProposal = {
   reason: string;
   parentAttemptId: string | null;
   retry: boolean;
+  keyOptions?: ExerciseSpec[];
+  selectedKeyIndex?: number;
 };
 
 export function ExerciseProposal(props: {
@@ -25,6 +27,7 @@ export function ExerciseProposal(props: {
   onDifferent: () => void;
   onFreeSing: () => void;
   onMoveOn: () => void;
+  onShiftKey?: (direction: "lower" | "higher") => void;
   onCancel: () => void;
   onRecorderStateChange: (state: RecorderState) => void;
 }) {
@@ -49,11 +52,22 @@ export function ExerciseProposal(props: {
         {proposal.reason}
       </Text>
       {proposal.spec ? (
-        <Text mt={3} fontSize="sm" color="fg.muted">
-          {proposal.spec.target_notes_midi.length} note
-          {proposal.spec.target_notes_midi.length === 1 ? "" : "s"} · “
-          {proposal.spec.vowel}” · {proposal.spec.duration_per_note_s}s each
-        </Text>
+        <Stack mt={3} gap={2}>
+          {proposal.spec.excerpt ? (
+            <Text fontWeight="semibold">“{proposal.spec.excerpt}”</Text>
+          ) : null}
+          {proposal.spec.instructions ? <Text>{proposal.spec.instructions}</Text> : null}
+          {proposal.spec.primary_cue ? (
+            <Text fontSize="sm" color="fg.muted">
+              Listen for: {proposal.spec.primary_cue}
+            </Text>
+          ) : null}
+          <Text fontSize="sm" color="fg.muted">
+            {proposal.spec.target_notes_midi.length} note
+            {proposal.spec.target_notes_midi.length === 1 ? "" : "s"} · “
+            {proposal.spec.vowel}”
+          </Text>
+        </Stack>
       ) : (
         <Text mt={3} fontSize="sm" color="fg.muted">
           No target notes. Pitch accuracy will not be scored.
@@ -81,6 +95,34 @@ export function ExerciseProposal(props: {
             <Text fontSize="sm" color="fg.muted">
               Vocal example unavailable—playing pitch guide
             </Text>
+          ) : null}
+          {proposal.spec?.activity_kind === "song_passage" ? (
+            <Flex gap={3} wrap="wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => props.onShiftKey?.("lower")}
+                disabled={
+                  props.recorderBusy ||
+                  props.proposalLoading ||
+                  proposal.selectedKeyIndex === 0
+                }
+              >
+                Too high
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => props.onShiftKey?.("higher")}
+                disabled={
+                  props.recorderBusy ||
+                  props.proposalLoading ||
+                  proposal.selectedKeyIndex === (proposal.keyOptions?.length ?? 1) - 1
+                }
+              >
+                Too low
+              </Button>
+            </Flex>
           ) : null}
           <Recorder
             onUploaded={props.onUploaded}

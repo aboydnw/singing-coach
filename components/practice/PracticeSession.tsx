@@ -65,6 +65,8 @@ import {
 } from "@/lib/schema";
 import { parseStoredJson } from "@/lib/storedJson";
 import { playReference } from "@/lib/referencePlayback";
+import { nextLessonStage } from "@/lib/lessonStage";
+import { selectSongPassage } from "@/lib/repertoireResolver";
 import {
   insertSession,
   latestCalibration,
@@ -506,6 +508,28 @@ export function PracticeSession() {
         setNeedsCalibration(true);
         return;
       }
+      if (proposal?.spec?.activity_kind === "song_passage") {
+        const history = await listSessions(30);
+        const selectedSong = selectSongPassage({
+          calibration,
+          focusArea: contract?.focusArea ?? null,
+          history: [{ exercise_spec_json: JSON.stringify(proposal.spec) }, ...history],
+        });
+        if (selectedSong) {
+          const nextProposal = {
+            spec: selectedSong.spec,
+            reason: "A different familiar phrase that applies the same coaching focus.",
+            parentAttemptId: null,
+            retry: false,
+            keyOptions: selectedSong.options.map((option) => option.spec),
+            selectedKeyIndex: selectedSong.selectedIndex,
+          } satisfies PracticeProposal;
+          setProposal(nextProposal);
+          setDraftProposal(nextProposal);
+          setSetupOpen(true);
+          return;
+        }
+      }
       const current = currentExerciseForChange(
         setupOpen,
         proposal?.spec,
@@ -553,6 +577,30 @@ export function PracticeSession() {
       }
       const latest = bundle.attempts.at(-1);
       const recentSessions = await listSessions(30);
+      if (nextLessonStage(bundle.attempts) === "song_application") {
+        const selectedSong = selectSongPassage({
+          calibration,
+          focusArea: contract?.focusArea ?? null,
+          history: recentSessions,
+        });
+        if (selectedSong) {
+          const nextProposal = {
+            spec: selectedSong.spec,
+            reason: "Now apply the same coordination to a short, familiar song phrase.",
+            parentAttemptId: null,
+            retry: false,
+            keyOptions: selectedSong.options.map((option) => option.spec),
+            selectedKeyIndex: selectedSong.selectedIndex,
+          } satisfies PracticeProposal;
+          setNeedsCalibration(false);
+          setRotationIndex(null);
+          setProposal(nextProposal);
+          setDraftProposal(nextProposal);
+          setSetupOpen(true);
+          requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+          return;
+        }
+      }
       let preferredType: ExerciseSpec["type"] | null = null;
       let preferredDrillId: string | null = null;
       let drillName: string | null = null;
@@ -616,6 +664,25 @@ export function PracticeSession() {
     setDraftProposal(nextProposal);
     setSetupOpen(true);
     requestAnimationFrame(() => document.getElementById("exercise-setup")?.focus());
+  };
+
+  const shiftProposalKey = (direction: "lower" | "higher") => {
+    if (recorderBusy || proposalLoading) return;
+    const current = proposal;
+    if (
+      !current?.keyOptions ||
+      current.selectedKeyIndex === undefined ||
+      current.spec?.activity_kind !== "song_passage"
+    ) {
+      return;
+    }
+    const nextIndex = current.selectedKeyIndex + (direction === "higher" ? 1 : -1);
+    const spec = current.keyOptions[nextIndex];
+    if (!spec) return;
+    const adjusted = { ...current, spec, selectedKeyIndex: nextIndex };
+    setProposal(adjusted);
+    setDraftProposal(adjusted);
+    setReferenceFallback(false);
   };
 
   const retrySelected = () => {
@@ -957,6 +1024,7 @@ export function PracticeSession() {
               onDifferent={proposal.retry ? openNewExercise : differentExercise}
               onFreeSing={freeSing}
               onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
+              onShiftKey={shiftProposalKey}
               onCancel={cancelSetup}
               onRecorderStateChange={setRecorderState}
             />

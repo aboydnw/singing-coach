@@ -52,3 +52,28 @@ def test_exercise_spec_keeps_legacy_payloads_readable():
     )
 
     assert spec.activity_id is None
+
+
+def test_exercise_spec_accepts_public_domain_song_provenance():
+    spec = ExerciseSpec(
+        type="scale",
+        target_notes_midi=[60, 64, 67],
+        duration_per_note_s=0.5,
+        vowel="lyrics",
+        display_name="Amazing Grace",
+        activity_kind="song_passage",
+        activity_id="amazing_grace.opening",
+        activity_version=1,
+        excerpt="Amazing grace, how sweet the sound",
+        focus_areas=["breath_support", "pitch_accuracy"],
+        transposition_semitones=0,
+        source={
+            "work": "Amazing Grace",
+            "publication_year": 1779,
+            "public_domain_basis": "Published in the 18th century.",
+        },
+    )
+
+    assert spec.activity_kind == "song_passage"
+    assert spec.source is not None
+    assert spec.source.publication_year == 1779

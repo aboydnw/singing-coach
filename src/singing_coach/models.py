@@ -44,6 +44,12 @@ class ReferenceAudio(BaseModel):
     reviewed: bool
 
 
+class ActivitySource(BaseModel):
+    work: str
+    publication_year: int
+    public_domain_basis: str
+
+
 class ExerciseSpec(BaseModel):
     """A generated vocal exercise: what to sing and how long each note lasts."""
 
@@ -52,6 +58,7 @@ class ExerciseSpec(BaseModel):
     duration_per_note_s: float
     vowel: str
     display_name: str
+    activity_kind: Literal["technical", "song_passage", "guided_free_sing"] | None = None
     activity_id: str | None = None
     activity_version: int | None = None
     events: list[ActivityNoteEvent | ActivityRestEvent] | None = None
@@ -59,6 +66,10 @@ class ExerciseSpec(BaseModel):
     primary_cue: str | None = None
     variety: ActivityVariety | None = None
     reference_audio: list[ReferenceAudio] | None = None
+    excerpt: str | None = None
+    focus_areas: list[str] | None = None
+    transposition_semitones: int | None = None
+    source: ActivitySource | None = None
 
 
 class NoteAccuracy(BaseModel):
