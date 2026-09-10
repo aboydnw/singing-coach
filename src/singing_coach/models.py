@@ -20,6 +20,9 @@ class ActivityNoteEvent(BaseModel):
     midi: int
     duration_s: float
     syllable: str
+    phoneme_hint: str | None = None
+    articulation: str | None = None
+    dynamic: float | None = None
 
 
 class ActivityRestEvent(BaseModel):
@@ -39,8 +42,10 @@ class ReferenceAudio(BaseModel):
     semitones: int
     src: str
     engine: str
-    voice: str
-    license: str
+    model: str
+    voicebank: str
+    dataset: str
+    output_license: str
     reviewed: bool
 
 

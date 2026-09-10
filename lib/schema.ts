@@ -14,6 +14,9 @@ export const activityEventSchema = z.discriminatedUnion("kind", [
     midi: z.number().int(),
     duration_s: z.number().positive(),
     syllable: z.string().min(1),
+    phoneme_hint: z.string().min(1).optional(),
+    articulation: z.string().min(1).optional(),
+    dynamic: z.number().min(0).max(1).optional(),
   }),
   z.object({
     kind: z.literal("rest"),
@@ -31,10 +34,12 @@ export const activityVarietySchema = z.object({
 
 export const referenceAudioSchema = z.object({
   semitones: z.number().int(),
-  src: z.string().startsWith("/"),
+  src: z.string().startsWith("/audio/activities/"),
   engine: z.string().min(1),
-  voice: z.string().min(1),
-  license: z.string().min(1),
+  model: z.string().min(1),
+  voicebank: z.string().min(1),
+  dataset: z.string().min(1),
+  output_license: z.string().min(1),
   reviewed: z.boolean(),
 });
 
@@ -62,6 +67,14 @@ export const exerciseSpecSchema = z.object({
       public_domain_basis: z.string().min(1),
     })
     .optional(),
+});
+
+export const proposalMetadataSchema = z.object({
+  reason: z.string().min(1),
+  activity_id: z.string().min(1).nullable(),
+  activity_version: z.number().int().positive().nullable(),
+  transposition_semitones: z.number().int().nullable(),
+  reference_fallback: z.boolean(),
 });
 
 export const noteAccuracySchema = z.object({
@@ -199,6 +212,7 @@ export const contextAnchorSchema = z.object({
 
 export type FocusArea = z.infer<typeof focusAreaSchema>;
 export type ExerciseSpec = z.infer<typeof exerciseSpecSchema>;
+export type ProposalMetadata = z.infer<typeof proposalMetadataSchema>;
 export type Measurements = z.infer<typeof measurementsSchema>;
 export type CoachingResult = z.infer<typeof coachingResultSchema>;
 export type ResolvedCoachingPayload = z.infer<typeof resolvedCoachingSchema>;

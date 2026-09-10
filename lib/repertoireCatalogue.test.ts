@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PASSAGES,
   passagesForFocus,
+  passageSchema,
   validateRepertoireCatalogue,
 } from "@/lib/repertoireCatalogue";
 
@@ -29,5 +30,28 @@ describe("public-domain repertoire catalogue", () => {
         passage.focus_areas.includes("breath_support"),
       ),
     ).toBe(true);
+  });
+
+  it("rejects passages made entirely of rests", () => {
+    expect(
+      passageSchema.safeParse({
+        ...PASSAGES[0],
+        events: [{ kind: "rest", duration_s: 1 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("does not infer rights approval from free-form text", () => {
+    const future = {
+      ...PASSAGES[0],
+      source: {
+        ...PASSAGES[0].source,
+        publication_year: 2035,
+        public_domain_basis: "traditional",
+      },
+    };
+    expect(validateRepertoireCatalogue([future])).toContain(
+      `${future.id}@${future.version}: public-domain basis requires review`,
+    );
   });
 });

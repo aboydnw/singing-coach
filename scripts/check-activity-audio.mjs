@@ -6,15 +6,24 @@ export function checkActivityAudio(catalogue, projectRoot = process.cwd()) {
   const errors = [];
   for (const activity of catalogue.activities ?? []) {
     for (const reference of activity.reference_audio ?? []) {
-      if (!reference.reviewed) {
+      if (reference.reviewed !== true) {
         errors.push(`${activity.id}: unreviewed ${reference.src}`);
       }
-      for (const field of ["engine", "voice", "license"]) {
+      for (const field of [
+        "engine",
+        "model",
+        "voicebank",
+        "dataset",
+        "output_license",
+      ]) {
         if (!reference[field]?.trim()) {
           errors.push(`${activity.id}: ${reference.src} is missing ${field}`);
         }
       }
-      if (typeof reference.src !== "string" || !reference.src.startsWith("/")) {
+      if (
+        typeof reference.src !== "string" ||
+        !reference.src.startsWith("/audio/activities/")
+      ) {
         errors.push(`${activity.id}: invalid asset path ${reference.src ?? "(missing)"}`);
         continue;
       }

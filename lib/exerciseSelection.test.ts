@@ -109,4 +109,20 @@ describe("selectVariedExercise", () => {
 
     expect(selected.spec).toEqual(nextExercise(CALIBRATION, 0, null));
   });
+
+  it("penalizes matching notes even when catalogue identity differs", () => {
+    const generated = nextExercise(CALIBRATION, 0, "tone_quality");
+    const catalogueLike = {
+      ...generated,
+      activity_id: "catalogue.same-notes",
+      activity_version: 2,
+    };
+    const selected = selectVariedExercise({
+      calibration: CALIBRATION,
+      cursor: 0,
+      focusArea: "tone_quality",
+      history: [row(catalogueLike)],
+    });
+    expect(selected.spec.target_notes_midi).not.toEqual(generated.target_notes_midi);
+  });
 });

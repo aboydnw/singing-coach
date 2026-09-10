@@ -7,9 +7,9 @@ be played, the practice screen labels and plays the existing pitch guide instead
 
 Use a DiffSinger-compatible renderer and keep rendering outside the runtime app.
 Noncommercial voices and vocoders are acceptable for this project, but every asset
-must record the exact engine, voice, and output license used. Do not assume the
-engine's license also covers its voicebank, training data, vocoder, or generated
-output.
+must record the exact engine, acoustic model, voicebank, training dataset, and
+generated-output license used. Do not assume the engine's license also covers its
+model, voicebank, training data, vocoder, or generated output.
 
 Store reviewed files under `public/audio/activities/`. Use lossless WAV while
 reviewing; a later delivery optimization may add compressed copies without changing
@@ -22,8 +22,10 @@ Each `reference_audio` entry must include:
 - `semitones`: one of -6, -4, -2, 0, 2, 4, or 6
 - `src`: a root-relative file beneath `/audio/activities/`
 - `engine`: renderer and version
-- `voice`: voicebank name and version
-- `license`: the applicable output/redistribution license
+- `model`: acoustic model name and version
+- `voicebank`: voicebank name and version
+- `dataset`: training dataset and its applicable terms
+- `output_license`: the applicable generated-output and redistribution terms
 - `reviewed`: `true` only after the listening review below
 
 ## Listening review

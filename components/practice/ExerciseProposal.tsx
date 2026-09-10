@@ -105,6 +105,8 @@ export function ExerciseProposal(props: {
                 disabled={
                   props.recorderBusy ||
                   props.proposalLoading ||
+                  proposal.selectedKeyIndex === undefined ||
+                  !proposal.keyOptions?.length ||
                   proposal.selectedKeyIndex === 0
                 }
               >
@@ -117,6 +119,8 @@ export function ExerciseProposal(props: {
                 disabled={
                   props.recorderBusy ||
                   props.proposalLoading ||
+                  proposal.selectedKeyIndex === undefined ||
+                  !proposal.keyOptions?.length ||
                   proposal.selectedKeyIndex === (proposal.keyOptions?.length ?? 1) - 1
                 }
               >

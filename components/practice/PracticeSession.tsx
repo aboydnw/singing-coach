@@ -323,6 +323,13 @@ export function PracticeSession() {
           sequenceNumber,
           parentAttemptId: proposal.parentAttemptId,
           attemptKind: proposal.retry ? "retry" : "initial",
+          proposalMetadata: {
+            reason: proposal.reason,
+            activity_id: proposal.spec?.activity_id ?? null,
+            activity_version: proposal.spec?.activity_version ?? null,
+            transposition_semitones: proposal.spec?.transposition_semitones ?? null,
+            reference_fallback: referenceFallback,
+          },
         });
       } catch (reason) {
         saveError =
@@ -358,6 +365,13 @@ export function PracticeSession() {
           ts: new Date().toISOString(),
           exercise_type: proposal.spec?.type ?? "free_sing",
           exercise_spec_json: proposal.spec ? JSON.stringify(proposal.spec) : null,
+          proposal_metadata_json: JSON.stringify({
+            reason: proposal.reason,
+            activity_id: proposal.spec?.activity_id ?? null,
+            activity_version: proposal.spec?.activity_version ?? null,
+            transposition_semitones: proposal.spec?.transposition_semitones ?? null,
+            reference_fallback: referenceFallback,
+          }),
           measurements_json: JSON.stringify(analysis.measurements),
           coaching_md: coaching ? coachingToMarkdown(coaching) : "",
           coaching_json: coaching ? JSON.stringify(coaching) : null,
@@ -510,6 +524,7 @@ export function PracticeSession() {
       }
       if (proposal?.spec?.activity_kind === "song_passage") {
         const history = await listSessions(30);
+        if (requestId !== proposalRequestRef.current) return;
         const selectedSong = selectSongPassage({
           calibration,
           focusArea: contract?.focusArea ?? null,
@@ -577,6 +592,7 @@ export function PracticeSession() {
       }
       const latest = bundle.attempts.at(-1);
       const recentSessions = await listSessions(30);
+      if (requestId !== proposalRequestRef.current) return;
       if (nextLessonStage(bundle.attempts) === "song_application") {
         const selectedSong = selectSongPassage({
           calibration,
@@ -1017,9 +1033,12 @@ export function PracticeSession() {
               onHear={async () => {
                 if (!proposal.spec) return;
                 setPlaying(true);
-                const source = await playReference(proposal.spec).done;
-                setReferenceFallback(source === "pitch_fallback");
-                setPlaying(false);
+                try {
+                  const source = await playReference(proposal.spec).done;
+                  setReferenceFallback(source === "pitch_fallback");
+                } finally {
+                  setPlaying(false);
+                }
               }}
               onDifferent={proposal.retry ? openNewExercise : differentExercise}
               onFreeSing={freeSing}

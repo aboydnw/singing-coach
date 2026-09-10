@@ -14,8 +14,10 @@ function spec(reviewed = true): ExerciseSpec {
         semitones: 0,
         src: "/audio/activities/example.wav",
         engine: "DiffSinger",
-        voice: "demo",
-        license: "CC-BY-4.0",
+        model: "model",
+        voicebank: "demo",
+        dataset: "dataset",
+        output_license: "CC-BY-4.0",
         reviewed,
       },
     ],
@@ -56,5 +58,37 @@ describe("playReference", () => {
       "pitch_fallback",
     );
     expect(playAudio).not.toHaveBeenCalled();
+  });
+
+  it("selects only the asset for the resolved transposition", async () => {
+    const value = spec();
+    value.transposition_semitones = 2;
+    value.reference_audio = [
+      ...value.reference_audio!,
+      { ...value.reference_audio![0], semitones: 2, src: "/audio/activities/p2.wav" },
+    ];
+    const playAudio = vi.fn(() => ({ done: Promise.resolve(), stop: vi.fn() }));
+    await playReference(value, {
+      playAudio,
+      playPitch: () => ({ done: Promise.resolve(), stop: vi.fn() }),
+    }).done;
+    expect(playAudio).toHaveBeenCalledWith("/audio/activities/p2.wav");
+  });
+
+  it("uses timed events for fallback playback", async () => {
+    const value = {
+      ...spec(false),
+      events: [
+        { kind: "note" as const, midi: 60, duration_s: 0.25, syllable: "ah" },
+        { kind: "rest" as const, duration_s: 0.5 },
+      ],
+    };
+    const playTimedPitch = vi.fn(() => ({ done: Promise.resolve(), stop: vi.fn() }));
+    await playReference(value, {
+      playAudio: () => ({ done: Promise.resolve(), stop: vi.fn() }),
+      playPitch: () => ({ done: Promise.resolve(), stop: vi.fn() }),
+      playTimedPitch,
+    }).done;
+    expect(playTimedPitch).toHaveBeenCalledWith(value.events);
   });
 });

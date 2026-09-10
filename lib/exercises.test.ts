@@ -20,6 +20,22 @@ describe("nextExercise parity with exercises.py", () => {
   });
 });
 
+describe("incomplete tessitura fallback", () => {
+  it.each([
+    { tessitura_low_midi: null, tessitura_high_midi: 64 },
+    { tessitura_low_midi: 55, tessitura_high_midi: null },
+    { tessitura_low_midi: null, tessitura_high_midi: null },
+  ])("uses absolute range for missing bounds", (partial) => {
+    const spec = nextExercise(
+      { range_low_midi: 48, range_high_midi: 72, ...partial },
+      1,
+      null,
+    );
+    expect(Math.min(...spec.target_notes_midi)).toBeGreaterThanOrEqual(48);
+    expect(Math.max(...spec.target_notes_midi)).toBeLessThanOrEqual(72);
+  });
+});
+
 const CALIBRATION: Calibration = {
   range_low_midi: 48,
   range_high_midi: 72,

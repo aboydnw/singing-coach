@@ -4,6 +4,7 @@ import {
   ACTIVITIES,
   activitiesForDrill,
   findActivity,
+  newestActivityVersion,
   validateActivityCatalogue,
 } from "@/lib/activityCatalogue";
 
@@ -34,6 +35,19 @@ describe("technical activity catalogue", () => {
   it("finds activities by id", () => {
     expect(findActivity(ACTIVITIES[0].id)).toEqual(ACTIVITIES[0]);
     expect(findActivity("missing.activity")).toBeNull();
+  });
+
+  it("selects the newest version when no version is requested", () => {
+    expect(
+      newestActivityVersion(
+        [
+          { id: "same", version: 1 },
+          { id: "same", version: 3 },
+          { id: "same", version: 2 },
+        ],
+        "same",
+      )?.version,
+    ).toBe(3);
   });
 
   it("does not leave unknown or missing drill mappings", () => {

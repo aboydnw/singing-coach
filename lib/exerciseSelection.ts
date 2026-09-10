@@ -30,7 +30,10 @@ const RECENT_HISTORY_COUNT = 12;
 const HARD_EXCLUSION_COUNT = 2;
 
 export function exerciseSignature(spec: ExerciseSpec): string {
-  return `${spec.activity_id ?? spec.type}:${spec.target_notes_midi.join(",")}:${spec.vowel}`;
+  const identity = spec.activity_id
+    ? `${spec.activity_id}@${spec.activity_version ?? "unknown"}`
+    : spec.type;
+  return `${identity}:${noteSignature(spec)}`;
 }
 
 export function selectVariedExercise(args: VariedExerciseArgs): {
@@ -118,6 +121,33 @@ function addCandidate(
 function score(candidate: Candidate, recent: ExerciseSpec[]): number {
   const signature = exerciseSignature(candidate.spec);
   const exactUses = recent.filter((spec) => exerciseSignature(spec) === signature).length;
+  const noteUses = recent.filter(
+    (spec) => noteSignature(spec) === noteSignature(candidate.spec),
+  ).length;
   const typeUses = recent.filter((spec) => spec.type === candidate.spec.type).length;
-  return candidate.relevance - exactUses * 40 - typeUses * 12;
+  const varietyUses = recent.filter(
+    (spec) =>
+      spec.variety &&
+      candidate.spec.variety &&
+      varietySignature(spec) === varietySignature(candidate.spec),
+  ).length;
+  return (
+    candidate.relevance -
+    exactUses * 40 -
+    noteUses * 24 -
+    varietyUses * 16 -
+    typeUses * 12
+  );
+}
+
+function noteSignature(spec: ExerciseSpec): string {
+  return `${spec.target_notes_midi.join(",")}:${spec.vowel.trim().toLowerCase()}`;
+}
+
+function varietySignature(spec: ExerciseSpec): string {
+  return spec.variety
+    ? Object.values(spec.variety)
+        .map((value) => value.trim().toLowerCase())
+        .join(":")
+    : "";
 }

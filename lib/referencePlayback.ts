@@ -1,10 +1,11 @@
 import type { ExerciseSpec } from "@/lib/schema";
-import { playSequence } from "@/lib/toneGen";
+import { playSequence, playTimedSequence } from "@/lib/toneGen";
 
 type Player = { done: Promise<void>; stop: () => void };
 type PlaybackDependencies = {
   playAudio: (src: string) => Player;
   playPitch: (spec: ExerciseSpec) => Player;
+  playTimedPitch?: (events: NonNullable<ExerciseSpec["events"]>) => Player;
 };
 
 export function playReference(
@@ -13,8 +14,12 @@ export function playReference(
 ): { done: Promise<"vocal" | "pitch_fallback">; stop: () => void } {
   let active: Player | null = null;
   let stopped = false;
+  const transposition = spec.transposition_semitones ?? 0;
   const vocal = spec.reference_audio?.find(
-    (reference) => reference.reviewed && reference.src.startsWith("/"),
+    (reference) =>
+      reference.reviewed &&
+      reference.semitones === transposition &&
+      reference.src.startsWith("/audio/activities/"),
   );
 
   const done = (async () => {
@@ -27,7 +32,10 @@ export function playReference(
         if (stopped) return "vocal" as const;
       }
     }
-    active = dependencies.playPitch(spec);
+    active =
+      spec.events && dependencies.playTimedPitch
+        ? dependencies.playTimedPitch(spec.events)
+        : dependencies.playPitch(spec);
     await active.done;
     return "pitch_fallback" as const;
   })();
@@ -54,4 +62,5 @@ const browserDependencies: PlaybackDependencies = {
     return { done, stop: () => audio.pause() };
   },
   playPitch: (spec) => playSequence(spec.target_notes_midi, spec.duration_per_note_s),
+  playTimedPitch: (events) => playTimedSequence(events),
 };

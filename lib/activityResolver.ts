@@ -52,12 +52,15 @@ export function resolveActivity(
             midi: event.midi,
             duration_s: event.duration_s,
             syllable: event.syllable,
+            ...(event.phoneme_hint ? { phoneme_hint: event.phoneme_hint } : {}),
+            ...(event.articulation ? { articulation: event.articulation } : {}),
+            ...(event.dynamic !== undefined ? { dynamic: event.dynamic } : {}),
           },
     ),
     instructions: activity.instructions,
     primary_cue: stateForDrill(activity.drill_id)?.cues[0] ?? activity.instructions,
     variety: activity.variety,
-    reference_audio: [],
+    reference_audio: activity.reference_audio ?? [],
   };
 }
 

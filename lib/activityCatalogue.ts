@@ -8,6 +8,9 @@ const relativeEventSchema = z.discriminatedUnion("kind", [
     midi_offset: z.number().int(),
     duration_s: z.number().positive(),
     syllable: z.string().min(1),
+    phoneme_hint: z.string().min(1).optional(),
+    articulation: z.string().min(1).optional(),
+    dynamic: z.number().min(0).max(1).optional(),
   }),
   z.object({ kind: z.literal("rest"), duration_s: z.number().positive() }),
 ]);
@@ -19,6 +22,20 @@ const activitySchema = z.object({
   mode: z.enum(["scored", "guided"]),
   vowel: z.string().min(1),
   events: z.array(relativeEventSchema),
+  reference_audio: z
+    .array(
+      z.object({
+        semitones: z.number().int(),
+        src: z.string().startsWith("/audio/activities/"),
+        engine: z.string().min(1),
+        model: z.string().min(1),
+        voicebank: z.string().min(1),
+        dataset: z.string().min(1),
+        output_license: z.string().min(1),
+        reviewed: z.literal(true),
+      }),
+    )
+    .optional(),
   variety: z.object({
     shape: z.string().min(1),
     rhythm: z.string().min(1),
@@ -39,8 +56,25 @@ export const ACTIVITIES: TechnicalActivity[] = parsed.activities.map((activity) 
   instructions: findDrill(activity.drill_id)?.instructions ?? "",
 }));
 
-export function findActivity(id: string): TechnicalActivity | null {
-  return ACTIVITIES.find((activity) => activity.id === id) ?? null;
+export function newestActivityVersion<T extends { id: string; version: number }>(
+  activities: T[],
+  id: string,
+): T | null {
+  return (
+    activities
+      .filter((activity) => activity.id === id)
+      .sort((a, b) => b.version - a.version)[0] ?? null
+  );
+}
+
+export function findActivity(id: string, version?: number): TechnicalActivity | null {
+  if (version !== undefined) {
+    return (
+      ACTIVITIES.find((activity) => activity.id === id && activity.version === version) ??
+      null
+    );
+  }
+  return newestActivityVersion(ACTIVITIES, id);
 }
 
 export function activitiesForDrill(drillId: string): TechnicalActivity[] {

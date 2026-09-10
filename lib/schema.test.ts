@@ -183,8 +183,10 @@ describe("timed vocal activity schema", () => {
           semitones: 0,
           src: "/audio/activities/staccato-onsets-0.wav",
           engine: "DiffSinger",
-          voice: "licensed-demo",
-          license: "CC-BY-4.0",
+          model: "acoustic-v1",
+          voicebank: "licensed-demo",
+          dataset: "documented-dataset",
+          output_license: "CC-BY-4.0",
           reviewed: true,
         },
       ],
@@ -192,6 +194,30 @@ describe("timed vocal activity schema", () => {
 
     expect(parsed.events?.[1].kind).toBe("rest");
     expect(parsed.reference_audio?.[0].reviewed).toBe(true);
+  });
+
+  it("rejects scheme-relative reference audio", () => {
+    expect(() =>
+      exerciseSpecSchema.parse({
+        type: "scale",
+        target_notes_midi: [60],
+        duration_per_note_s: 1,
+        vowel: "ah",
+        display_name: "test",
+        reference_audio: [
+          {
+            semitones: 0,
+            src: "//example.invalid/audio.wav",
+            engine: "DiffSinger",
+            model: "model",
+            voicebank: "voice",
+            dataset: "dataset",
+            output_license: "CC-BY-4.0",
+            reviewed: true,
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("keeps legacy exercise specifications readable", () => {

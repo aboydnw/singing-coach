@@ -29,8 +29,10 @@ def test_exercise_spec_accepts_timed_activity_metadata():
                 "semitones": 0,
                 "src": "/audio/activities/staccato-onsets-0.wav",
                 "engine": "DiffSinger",
-                "voice": "licensed-demo",
-                "license": "CC-BY-4.0",
+                "model": "acoustic-v1",
+                "voicebank": "licensed-demo",
+                "dataset": "documented-dataset",
+                "output_license": "CC-BY-4.0",
                 "reviewed": True,
             }
         ],

@@ -12,7 +12,7 @@ const eventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("rest"), duration_s: z.number().positive() }),
 ]);
 
-const passageSchema = z.object({
+export const passageSchema = z.object({
   id: z.string().min(1),
   version: z.number().int().positive(),
   title: z.string().min(1),
@@ -25,7 +25,12 @@ const passageSchema = z.object({
     publication_year: z.number().int(),
     public_domain_basis: z.string().min(1),
   }),
-  events: z.array(eventSchema).min(1),
+  events: z
+    .array(eventSchema)
+    .min(1)
+    .refine((events) => events.some((event) => event.kind === "note"), {
+      message: "passage must contain at least one note",
+    }),
 });
 
 const parsed = z
@@ -47,19 +52,18 @@ export function passagesForFocus(focus: z.infer<typeof focusAreaSchema> | null) 
     : PASSAGES;
 }
 
-export function validateRepertoireCatalogue(): string[] {
+export function validateRepertoireCatalogue(
+  passages: typeof PASSAGES = PASSAGES,
+): string[] {
   const errors: string[] = [];
   const keys = new Set<string>();
-  for (const passage of PASSAGES) {
+  for (const passage of passages) {
     const key = `${passage.id}@${passage.version}`;
     if (keys.has(key)) errors.push(`${key}: duplicate id and version`);
     keys.add(key);
     const duration = passage.events.reduce((sum, event) => sum + event.duration_s, 0);
     if (duration > 30) errors.push(`${key}: passage exceeds 30 seconds`);
-    if (
-      passage.source.publication_year >= 1931 &&
-      !passage.source.public_domain_basis.includes("traditional")
-    ) {
+    if (passage.source.publication_year >= 1931) {
       errors.push(`${key}: public-domain basis requires review`);
     }
     if (passage.render_transpositions.join(",") !== "-6,-4,-2,0,2,4,6") {
