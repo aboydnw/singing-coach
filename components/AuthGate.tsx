@@ -162,6 +162,12 @@ function ChooseNewPassword({ onDone }: { onDone: () => void }) {
       }
       window.history.replaceState(null, "", window.location.pathname);
       onDone();
+    } catch {
+      setNotice({
+        tone: "danger",
+        title: "Couldn't save your password",
+        body: friendlyAuthMessage(null),
+      });
     } finally {
       setBusy(false);
     }

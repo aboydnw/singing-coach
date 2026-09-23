@@ -59,6 +59,12 @@ function ChangePassword() {
       }
       setFormKey((key) => key + 1);
       setNotice({ tone: "success", title: "Password updated" });
+    } catch {
+      setNotice({
+        tone: "danger",
+        title: "Couldn't change your password",
+        body: friendlyAuthMessage(null),
+      });
     } finally {
       setBusy(false);
     }
