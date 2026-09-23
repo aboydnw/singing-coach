@@ -38,6 +38,7 @@ describe("SignInPanel", () => {
     expect(html).toContain('autoComplete="username"');
     expect(html).toContain('autoComplete="current-password"');
     expect(html).toContain("<label");
+    expect(html).toContain('href="/privacy"');
   });
 
   it("asks password managers for a new password when signing up", () => {

@@ -8,9 +8,11 @@ import {
   Flex,
   Heading,
   Input,
+  Link,
   Stack,
   Text,
 } from "@chakra-ui/react";
+import NextLink from "next/link";
 import { useState } from "react";
 import { AppNotice } from "@/components/ui/AppNotice";
 import { Surface } from "@/components/ui/Surface";
@@ -66,6 +68,15 @@ export function AuthCard({
             <Text color="fg.muted">{lead}</Text>
           </Stack>
           {children}
+          <Link
+            asChild
+            alignSelf="center"
+            fontSize="xs"
+            color="fg.muted"
+            textDecoration="underline"
+          >
+            <NextLink href="/privacy">Privacy policy</NextLink>
+          </Link>
         </Stack>
       </Surface>
     </Center>
