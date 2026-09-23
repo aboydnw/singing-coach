@@ -3,7 +3,7 @@
 import { Box, Container, Heading, Link, List, Stack, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 
-export const PRIVACY_CONTACT = "anthony.n.boyd@gmail.com";
+export const PRIVACY_CONTACT = "privacy@anthonynboyd.com";
 export const PRIVACY_UPDATED = "September 23, 2026";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
