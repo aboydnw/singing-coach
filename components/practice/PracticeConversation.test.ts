@@ -14,22 +14,23 @@ function message(role: PracticeMessageRow["role"], text: string): PracticeMessag
     id: `${role}-message`,
     practice_session_id: "practice-1",
     attempt_id: "attempt-1",
+    user_id: "user-1",
     role,
     content_json: { text },
     context_anchor_json: null,
+    status: "complete",
     client_request_id: `${role}-request`,
-    parent_message_id: null,
     created_at: "2026-09-18T00:00:00.000Z",
+    completed_at: "2026-09-18T00:00:01.000Z",
   };
 }
 
 function renderMessage(value: PracticeMessageRow) {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(PracticeMessage, { message: value }),
-    ),
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(PracticeMessage, { message: value }),
+    }),
   );
 }
 
