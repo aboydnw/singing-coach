@@ -35,7 +35,15 @@ jobs:
         with:
           version: 2.90.0
       - run: node scripts/check-migrations.mjs
-      - run: supabase start
+      - name: Start Supabase (retry registry rate limits)
+        run: |
+          for attempt in 1 2 3 4; do
+            supabase start && exit 0
+            echo "supabase start failed (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 30))
+          done
+          exit 1
       - run: supabase db reset --local --no-seed
       - run: supabase db lint --local --fail-on error
       - run: supabase test db supabase/tests/database --local
