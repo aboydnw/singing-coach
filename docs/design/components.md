@@ -15,6 +15,18 @@
 Shared components own repeated accessibility, state, and visual behavior. Page-specific grid and
 composition stay local.
 
+## Auth components
+
+| Component         | Status      | Supported responsibility                                               |
+| ----------------- | ----------- | ---------------------------------------------------------------------- |
+| `AuthCard`        | Provisional | Centered frame for every signed-out screen                             |
+| `SignInPanel`     | Provisional | Google, email sign-in, sign-up, and password-reset request modes       |
+| `SetPasswordForm` | Provisional | New password plus confirmation, used after a reset link and on Account |
+
+`AuthGate` owns the Supabase calls and passes plain-language notices down; the auth components stay
+presentational so Storybook and tests can render them without a session. Error copy comes from
+`lib/authMessages.ts`, never from raw Supabase messages.
+
 ## Practice components
 
 | Component              | Status      | Supported responsibility                                                  |

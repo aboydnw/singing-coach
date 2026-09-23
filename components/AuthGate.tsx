@@ -1,23 +1,26 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Center,
-  Heading,
-  Input,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { useState } from "react";
+import { Button, Center, Spinner } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
+import {
+  AuthCard,
+  type AuthMode,
+  type AuthNotice,
+  SetPasswordForm,
+  SignInPanel,
+} from "@/components/auth/AuthForms";
+import {
+  authRedirectError,
+  friendlyAuthMessage,
+  newPasswordProblem,
+} from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
 /** The whole app sits behind this: no session, no pages. Unlike the Gradio
  * version, signing in controls entry as well as data scope. */
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, recovering, finishRecovery } = useAuth();
 
   if (loading) {
     return (
@@ -29,71 +32,155 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session) {
     return <SignIn />;
   }
+  if (recovering) {
+    return <ChooseNewPassword onDone={finishRecovery} />;
+  }
   return <>{children}</>;
 }
 
-function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+function returnUrl(): string {
+  return window.location.origin;
+}
 
-  const signIn = async () => {
+function SignIn() {
+  const [mode, setMode] = useState<AuthMode>("sign-in");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<AuthNotice>(() => {
+    const message = authRedirectError(window.location.href);
+    return message
+      ? { tone: "danger", title: "Couldn't sign you in", body: message }
+      : null;
+  });
+
+  useEffect(() => {
+    if (authRedirectError(window.location.href)) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
+  const run = async (action: () => Promise<AuthNotice>) => {
     setBusy(true);
-    setStatus(null);
+    setNotice(null);
     try {
-      const { error } = await supabase().auth.signInWithPassword({
-        email,
-        password,
+      setNotice(await action());
+    } catch {
+      setNotice({
+        tone: "danger",
+        title: "Couldn't reach the server",
+        body: friendlyAuthMessage(null),
       });
-      if (error) setStatus(error.message);
     } finally {
       setBusy(false);
     }
   };
 
-  const signUp = async () => {
+  const failed = (title: string, error: { code?: string }): AuthNotice => ({
+    tone: "danger",
+    title,
+    body: friendlyAuthMessage(error),
+  });
+
+  const submit = (email: string, password: string) =>
+    run(async () => {
+      if (mode === "sign-in") {
+        const { error } = await supabase().auth.signInWithPassword({ email, password });
+        return error ? failed("Couldn't sign in", error) : null;
+      }
+      if (mode === "forgot") {
+        const { error } = await supabase().auth.resetPasswordForEmail(email, {
+          redirectTo: returnUrl(),
+        });
+        return error
+          ? failed("Couldn't send the reset email", error)
+          : {
+              tone: "success",
+              title: "Check your email",
+              body: "If an account exists for that address, a reset link is on its way.",
+            };
+      }
+      const problem = newPasswordProblem(password, password);
+      if (problem)
+        return { tone: "danger", title: "Choose a different password", body: problem };
+      const { data, error } = await supabase().auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: returnUrl() },
+      });
+      if (error) return failed("Couldn't create your account", error);
+      if (data.user?.identities?.length === 0) {
+        return failed("Couldn't create your account", { code: "user_already_exists" });
+      }
+      return data.session
+        ? null
+        : {
+            tone: "success",
+            title: "Check your email",
+            body: "Open the confirmation link we sent to finish creating your account.",
+          };
+    });
+
+  const google = () =>
+    run(async () => {
+      const { error } = await supabase().auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: returnUrl() },
+      });
+      return error ? failed("Couldn't start Google sign-in", error) : null;
+    });
+
+  return (
+    <SignInPanel
+      mode={mode}
+      busy={busy}
+      notice={notice}
+      onModeChange={(next) => {
+        setMode(next);
+        setNotice(null);
+      }}
+      onSubmit={submit}
+      onGoogle={google}
+    />
+  );
+}
+
+function ChooseNewPassword({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<AuthNotice>(null);
+
+  const save = async (password: string) => {
     setBusy(true);
-    setStatus(null);
+    setNotice(null);
     try {
-      const { error } = await supabase().auth.signUp({ email, password });
-      setStatus(error ? error.message : "Check your email to confirm the account.");
+      const { error } = await supabase().auth.updateUser({ password });
+      if (error) {
+        setNotice({
+          tone: "danger",
+          title: "Couldn't save your password",
+          body: friendlyAuthMessage(error),
+        });
+        return;
+      }
+      window.history.replaceState(null, "", window.location.pathname);
+      onDone();
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Center minH="100vh" bg="cream.100">
-      <Box bg="panel" borderWidth="1px" borderColor="grid" rounded="lg" p={8} w="sm">
-        <Stack gap={4}>
-          <Heading size="lg" color="ink.900">
-            🎤 Singing Coach
-          </Heading>
-          <Text color="cream.600">Sign in to start practicing.</Text>
-          <Input
-            placeholder="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            bg="white"
-          />
-          <Input
-            placeholder="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            bg="white"
-          />
-          <Button colorPalette="coral" onClick={signIn} loading={busy}>
-            Sign in
-          </Button>
-          <Button variant="outline" onClick={signUp} loading={busy}>
-            Sign up
-          </Button>
-          {status && <Text color="coral.600">{status}</Text>}
-        </Stack>
-      </Box>
-    </Center>
+    <AuthCard
+      heading="Choose a new password"
+      lead="You're signed in. Pick a password for next time."
+    >
+      <SetPasswordForm
+        busy={busy}
+        notice={notice}
+        submitLabel="Save password"
+        onSubmit={save}
+      />
+      <Button variant="plain" size="sm" onClick={onDone}>
+        Skip for now
+      </Button>
+    </AuthCard>
   );
 }
