@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/app/providers";
 import { DevFeedback } from "@/components/DevFeedback";
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>{children}</Providers>
         <DevFeedback />
+        <Analytics />
       </body>
     </html>
   );
