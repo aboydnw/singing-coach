@@ -3,6 +3,7 @@
 import { Box, Container, Flex, Heading, Link as ChakraLink } from "@chakra-ui/react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
+import { AppFooter } from "@/components/AppFooter";
 import { AuthGate } from "@/components/AuthGate";
 
 const TABS = [
@@ -17,7 +18,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGate>
-      <Box minH="100dvh" bg="bg.canvas">
+      <Box minH="100dvh" bg="bg.canvas" display="flex" flexDirection="column">
         <ChakraLink
           href="#main-content"
           position="fixed"
@@ -72,9 +73,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Flex>
           </Container>
         </Box>
-        <Container as="main" id="main-content" maxW="6xl" py={{ base: 6, md: 9 }}>
+        <Container
+          as="main"
+          id="main-content"
+          maxW="6xl"
+          flex="1"
+          py={{ base: 6, md: 9 }}
+        >
           {children}
         </Container>
+        <AppFooter />
       </Box>
     </AuthGate>
   );

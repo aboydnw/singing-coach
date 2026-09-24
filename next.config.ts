@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA ?? "",
+    NEXT_PUBLIC_BUILT_AT: new Date().toISOString(),
+  },
   experimental: {
     optimizePackageImports: ["@chakra-ui/react"],
   },

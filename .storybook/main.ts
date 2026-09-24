@@ -9,6 +9,7 @@ const config: StorybookConfig = {
   async viteFinal(config) {
     return mergeConfig(config, {
       resolve: { alias: { "@": resolve(process.cwd()) } },
+      esbuild: { jsx: "automatic" },
     });
   },
 };
