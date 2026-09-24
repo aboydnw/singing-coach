@@ -2,6 +2,7 @@
 
 import { Box, Container, Heading, Link, List, Stack, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
+import { AppFooter } from "@/components/AppFooter";
 
 export const PRIVACY_CONTACT = "privacy@anthonynboyd.com";
 export const PRIVACY_UPDATED = "September 23, 2026";
@@ -100,6 +101,7 @@ export function PrivacyPolicy() {
           </Section>
         </Stack>
       </Container>
+      <AppFooter />
     </Box>
   );
 }

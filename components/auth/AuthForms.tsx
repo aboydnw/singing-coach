@@ -8,12 +8,11 @@ import {
   Flex,
   Heading,
   Input,
-  Link,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import NextLink from "next/link";
 import { useState } from "react";
+import { AppFooter } from "@/components/AppFooter";
 import { AppNotice } from "@/components/ui/AppNotice";
 import { Surface } from "@/components/ui/Surface";
 import { MIN_PASSWORD_LENGTH, newPasswordProblem } from "@/lib/authMessages";
@@ -55,7 +54,7 @@ export function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <Center minH="100vh" bg="bg.canvas" px={4} py={10}>
+    <Center minH="100vh" bg="bg.canvas" px={4} pt={10} flexDirection="column">
       <Surface variant="raised" p={{ base: 6, md: 8 }} w="full" maxW="sm">
         <Stack gap={5}>
           <Stack gap={1}>
@@ -68,17 +67,9 @@ export function AuthCard({
             <Text color="fg.muted">{lead}</Text>
           </Stack>
           {children}
-          <Link
-            asChild
-            alignSelf="center"
-            fontSize="xs"
-            color="fg.muted"
-            textDecoration="underline"
-          >
-            <NextLink href="/privacy">Privacy policy</NextLink>
-          </Link>
         </Stack>
       </Surface>
+      <AppFooter />
     </Center>
   );
 }
