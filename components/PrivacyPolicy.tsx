@@ -5,7 +5,7 @@ import NextLink from "next/link";
 import { AppFooter } from "@/components/AppFooter";
 
 export const PRIVACY_CONTACT = "privacy@anthonynboyd.com";
-export const PRIVACY_UPDATED = "September 23, 2026";
+export const PRIVACY_UPDATED = "September 25, 2026";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -43,8 +43,7 @@ export function PrivacyPolicy() {
           <Section title="What we collect">
             <List.Root ps={5} gap={1}>
               <List.Item>
-                Your email address and, if you sign in with Google, your name and profile
-                picture.
+                Your name, email address, and profile picture from your Google account.
               </List.Item>
               <List.Item>The recordings you make while practicing.</List.Item>
               <List.Item>
@@ -80,16 +79,18 @@ export function PrivacyPolicy() {
                 write coaching feedback. Your recordings are not sent.
               </List.Item>
               <List.Item>
-                <b>Google</b> confirms your identity if you choose to sign in with Google.
+                <b>Google</b> confirms your identity when you sign in.
               </List.Item>
             </List.Root>
           </Section>
 
           <Section title="Deleting your data">
             <Text>
-              Email <Link href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</Link> from
-              the address on your account and we will delete the account along with all of
-              its recordings and history.
+              Delete your account at any time from the Account page. This immediately and
+              permanently removes the account along with all of its recordings,
+              calibration, and practice history. If you can't sign in, email{" "}
+              <Link href={`mailto:${PRIVACY_CONTACT}`}>{PRIVACY_CONTACT}</Link> from the
+              address on your account and we will delete it for you.
             </Text>
           </Section>
 
