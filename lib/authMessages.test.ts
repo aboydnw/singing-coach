@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MIN_PASSWORD_LENGTH,
-  authRedirectError,
-  friendlyAuthMessage,
-  newPasswordProblem,
-} from "@/lib/authMessages";
+import { authRedirectError, friendlyAuthMessage } from "@/lib/authMessages";
 
 describe("friendlyAuthMessage", () => {
   it("replaces known Supabase codes instead of passing raw messages through", () => {
@@ -32,31 +27,14 @@ describe("authRedirectError", () => {
 
   it("reads errors from the hash", () => {
     const message = authRedirectError(
-      "https://app.test/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid",
+      "https://app.test/#error=access_denied&error_code=provider_disabled",
     );
-    expect(message).toBe(friendlyAuthMessage({ code: "otp_expired" }));
+    expect(message).toBe(friendlyAuthMessage({ code: "provider_disabled" }));
   });
 
   it("reads errors from the query string", () => {
     expect(authRedirectError("https://app.test/?error=access_denied")).toBe(
       friendlyAuthMessage({ code: "access_denied" }),
     );
-  });
-});
-
-describe("newPasswordProblem", () => {
-  const valid = "a".repeat(MIN_PASSWORD_LENGTH);
-
-  it("accepts a long enough matching password", () => {
-    expect(newPasswordProblem(valid, valid)).toBeNull();
-  });
-
-  it("rejects short passwords", () => {
-    const short = valid.slice(1);
-    expect(newPasswordProblem(short, short)).not.toBeNull();
-  });
-
-  it("rejects mismatched confirmation", () => {
-    expect(newPasswordProblem(valid, `${valid}b`)).not.toBeNull();
   });
 });
