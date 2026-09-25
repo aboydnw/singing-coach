@@ -43,7 +43,8 @@ export function PrivacyPolicy() {
           <Section title="What we collect">
             <List.Root ps={5} gap={1}>
               <List.Item>
-                Your name, email address, and profile picture from your Google account.
+                Your email address, plus your name and profile picture if you sign in with
+                Google.
               </List.Item>
               <List.Item>The recordings you make while practicing.</List.Item>
               <List.Item>
@@ -79,7 +80,7 @@ export function PrivacyPolicy() {
                 write coaching feedback. Your recordings are not sent.
               </List.Item>
               <List.Item>
-                <b>Google</b> confirms your identity when you sign in.
+                <b>Google</b> confirms your identity when you sign in with Google.
               </List.Item>
             </List.Root>
           </Section>
