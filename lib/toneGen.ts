@@ -1,9 +1,9 @@
+import { midiToHz } from "@/lib/referenceTone";
+
+export { midiToHz } from "@/lib/referenceTone";
+
 /** Reference tone playback, ported from tone_gen.py onto Web Audio.
  * Same waveform (0.5-amplitude sine per note), no server round trip. */
-
-export function midiToHz(midiNote: number): number {
-  return 440.0 * 2 ** ((midiNote - 69) / 12);
-}
 
 export function playSequence(
   midiNotes: number[],
