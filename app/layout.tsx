@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { APP_THEME_COLOR } from "@/app/manifest";
 import { Providers } from "@/app/providers";
 import { DevFeedback } from "@/components/DevFeedback";
 
@@ -24,7 +25,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#FFF8EF",
+  themeColor: APP_THEME_COLOR,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

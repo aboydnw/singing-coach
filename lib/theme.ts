@@ -92,6 +92,9 @@ const config = defineConfig({
         normal: { value: "180ms" },
         slow: { value: "260ms" },
       },
+      sizes: {
+        mobileNav: { value: "4.5rem" },
+      },
       easings: {
         standard: { value: "cubic-bezier(.2, .8, .2, 1)" },
       },
