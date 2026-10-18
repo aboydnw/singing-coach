@@ -85,7 +85,7 @@ export function PracticeHome() {
 
   return (
     <Stack gap={{ base: 7, md: 10 }}>
-      <Box maxW="44rem">
+      <Box maxW="44rem" order={{ base: 2, lg: 0 }}>
         <Eyebrow>Your practice room</Eyebrow>
         <Heading
           mt={2}
@@ -108,15 +108,18 @@ export function PracticeHome() {
       </Box>
 
       {error ? (
-        <AppNotice tone="danger" title="Could not load practice">
-          {error}
-          <Button mt={3} size="sm" variant="outline" onClick={load}>
-            Try again
-          </Button>
-        </AppNotice>
+        <Box order={{ base: 0, lg: 1 }}>
+          <AppNotice tone="danger" title="Could not load practice">
+            {error}
+            <Button mt={3} size="sm" variant="outline" onClick={load}>
+              Try again
+            </Button>
+          </AppNotice>
+        </Box>
       ) : null}
 
       <Grid
+        order={{ base: 1, lg: 2 }}
         templateColumns={{ base: "1fr", lg: "minmax(0, 1.7fr) minmax(17rem, .8fr)" }}
         gap={6}
         alignItems="start"
@@ -223,7 +226,7 @@ export function PracticeHome() {
         <CoachSnapshot latest={practices?.[0] ?? null} />
       </Grid>
 
-      <Box>
+      <Box order={3}>
         <Heading size="lg" letterSpacing="-0.02em">
           Recent practice
         </Heading>
