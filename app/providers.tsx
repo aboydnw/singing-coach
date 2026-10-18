@@ -7,42 +7,25 @@ import { AppToaster } from "@/components/ui/AppToaster";
 import { supabase } from "@/lib/supabase";
 import { system } from "@/lib/theme";
 
-type AuthState = {
-  session: Session | null;
-  loading: boolean;
-  /** True after the singer arrives from a password-reset email and before they choose a new one. */
-  recovering: boolean;
-  finishRecovery: () => void;
-};
+type AuthState = { session: Session | null; loading: boolean };
 
-const AuthContext = createContext<AuthState>({
-  session: null,
-  loading: true,
-  recovering: false,
-  finishRecovery: () => undefined,
-});
+const AuthContext = createContext<AuthState>({ session: null, loading: true });
 
 export function useAuth(): AuthState {
   return useContext(AuthContext);
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState<{ session: Session | null; loading: boolean }>({
-    session: null,
-    loading: true,
-  });
-  const [recovering, setRecovering] = useState(
-    () => typeof window !== "undefined" && window.location.hash.includes("type=recovery"),
-  );
+  const [auth, setAuth] = useState<AuthState>({ session: null, loading: true });
 
   useEffect(() => {
     let sawAuthEvent = false;
-    const { data: subscription } = supabase().auth.onAuthStateChange((event, session) => {
-      sawAuthEvent = true;
-      if (event === "PASSWORD_RECOVERY") setRecovering(true);
-      if (event === "SIGNED_OUT") setRecovering(false);
-      setAuth({ session, loading: false });
-    });
+    const { data: subscription } = supabase().auth.onAuthStateChange(
+      (_event, session) => {
+        sawAuthEvent = true;
+        setAuth({ session, loading: false });
+      },
+    );
     supabase()
       .auth.getSession()
       .then(({ data }) => {
@@ -56,11 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ChakraProvider value={system}>
-      <AuthContext.Provider
-        value={{ ...auth, recovering, finishRecovery: () => setRecovering(false) }}
-      >
-        {children}
-      </AuthContext.Provider>
+      <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
       <AppToaster />
     </ChakraProvider>
   );
