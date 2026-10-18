@@ -10,7 +10,10 @@ afterAll(() => vi.unstubAllGlobals());
 
 const noOp = () => undefined;
 
-function renderProposal(referenceFallback = false) {
+function renderProposal(
+  referenceFallback = false,
+  playbackState: "ready" | "preparing" | "playing" | "error" = "ready",
+) {
   return renderToStaticMarkup(
     React.createElement(
       ChakraProvider,
@@ -31,12 +34,13 @@ function renderProposal(referenceFallback = false) {
             retry: false,
           },
           processing: false,
-          playing: false,
+          playbackState,
           recorderBusy: false,
           proposalLoading: false,
           referenceFallback,
           onUploaded: noOp,
-          onHear: noOp,
+          onPlayReference: noOp,
+          onStopReference: noOp,
           onDifferent: noOp,
           onFreeSing: noOp,
           onMoveOn: noOp,
@@ -52,15 +56,22 @@ describe("ExerciseProposal", () => {
   it("offers playback and recording without an acceptance step", () => {
     const markup = renderProposal();
 
-    expect(markup).toContain("Hear example");
+    expect(markup).toContain("Hear reference");
     expect(markup).toContain("Record");
     expect(markup).not.toContain("Start this exercise");
   });
 
   it("labels the pitch guide when vocal playback falls back", () => {
-    expect(renderProposal(true)).toContain(
+    expect(renderProposal(true, "playing")).toContain(
       "Vocal example unavailable—playing pitch guide",
     );
+  });
+
+  it("keeps recording available after reference playback fails", () => {
+    const markup = renderProposal(false, "error");
+    expect(markup).toContain("Reference sound couldn’t play");
+    expect(markup).toContain("Retry");
+    expect(markup).toContain("Record");
   });
 
   it("shows lyrics and key comfort controls for a song passage", () => {
@@ -88,11 +99,12 @@ describe("ExerciseProposal", () => {
               selectedKeyIndex: 1,
             },
             processing: false,
-            playing: false,
+            playbackState: "ready",
             recorderBusy: false,
             proposalLoading: false,
             onUploaded: noOp,
-            onHear: noOp,
+            onPlayReference: noOp,
+            onStopReference: noOp,
             onDifferent: noOp,
             onFreeSing: noOp,
             onMoveOn: noOp,

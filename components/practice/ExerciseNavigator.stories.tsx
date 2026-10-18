@@ -65,6 +65,7 @@ const meta = {
   title: "Practice/ExerciseNavigator",
   component: ExerciseNavigator,
   args: {
+    variant: "desktop",
     threads,
     selectedExerciseId: "scale-root",
     onSelect: () => undefined,
@@ -98,6 +99,7 @@ export const MobileCompatibleLongNames: Story = {
     viewport: { value: "mobile1", isRotated: false },
   },
   args: {
+    variant: "mobile",
     threads: groupExerciseThreads([
       attempt({
         id: "long-name-root",

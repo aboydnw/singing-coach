@@ -34,9 +34,42 @@ const recordedThread: ExerciseThread = {
 };
 
 describe("ExerciseNavigator", () => {
+  const renderNavigator = (variant: "desktop" | "mobile") =>
+    renderToStaticMarkup(
+      React.createElement(
+        ChakraProvider,
+        { value: system },
+        React.createElement(ExerciseNavigator, {
+          variant,
+          threads: [recordedThread],
+          selectedExerciseId: recordedThread.id,
+          draft: { id: "draft-exercise", name: "Draft exercise" },
+          onSelect: () => undefined,
+          onNewExercise: () => undefined,
+          disabled: false,
+          ended: false,
+        }),
+      ),
+    );
+
+  it("renders direct exercise buttons only in the desktop variant", () => {
+    const markup = renderNavigator("desktop");
+
+    expect(markup).toContain('aria-label="Practice exercises"');
+    expect(markup).not.toContain("practice-exercise-select");
+  });
+
+  it("renders the compact exercise select only in the mobile variant", () => {
+    const markup = renderNavigator("mobile");
+
+    expect(markup).toContain("practice-exercise-select");
+    expect(markup).not.toContain('aria-label="Practice exercises"');
+  });
+
   it("renders no navigation when an ended practice has only a supplied draft", () => {
     const markup = renderToStaticMarkup(
       React.createElement(ExerciseNavigator, {
+        variant: "mobile",
         threads: [],
         selectedExerciseId: "draft-exercise",
         draft: { id: "draft-exercise", name: "Draft exercise" },
@@ -56,6 +89,7 @@ describe("ExerciseNavigator", () => {
         ChakraProvider,
         { value: system },
         React.createElement(ExerciseNavigator, {
+          variant: "desktop",
           threads: [recordedThread],
           selectedExerciseId: recordedThread.id,
           draft: { id: "draft-exercise", name: "Draft exercise" },

@@ -75,6 +75,17 @@ Storybook provides stable executable examples without depending on Supabase or O
 
 `yarn dev` serves the UI and the coach route. The Python `/api/analyze` function only runs on Vercel; point local testing at a preview deployment or use `vercel dev`.
 
+### Install on iPhone
+
+The deployed site can run from the iPhone Home Screen as a standalone web app. In Safari, open the
+site, tap **Share**, choose **Add to Home Screen**, then open Singing Coach from its new icon. After a
+deployment that changes the app icon or manifest, remove the old Home Screen icon and add it again so
+iOS refreshes the installed metadata.
+
+Reference playback must be started with the on-screen **Play reference** button. iPhone silent mode,
+the current media volume, Bluetooth routing, and connected headphones still control whether it is
+audible. Starting a recording stops reference playback so it cannot leak into the microphone take.
+
 To run the coaching eval (plants known vocal problems, checks the model diagnoses them). It asserts both the focus area and the `state_id`, which is the stronger check — a closed-set classification into `pedagogy.json` is unambiguous in a way a judgement about prose is not. It also counts how often the model named an id outside the asset, which is a prompt bug even when the focus area happened to be right:
 
 ```bash
@@ -137,7 +148,10 @@ This replaces the old local-only design, where audio never left the machine that
 
 ## Supported platforms
 
-Modern Chrome, Safari, Firefox — anything with MediaRecorder and Web Audio. The analyze function runs on Vercel's Python runtime (Linux x86-64), which matches the platforms torchcrepe and Praat are compiled for.
+Modern Chrome, Safari, Firefox — anything with MediaRecorder and standard HTML audio playback. The
+mobile interface is designed for standalone iPhone use and includes safe-area-aware navigation. The
+analyze function runs on Vercel's Python runtime (Linux x86-64), which matches the platforms
+torchcrepe and Praat are compiled for.
 
 ## License
 
