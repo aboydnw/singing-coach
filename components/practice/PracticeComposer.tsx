@@ -13,6 +13,8 @@ export function PracticeComposer(props: {
   streaming: boolean;
   disabled: boolean;
   actionsDisabled?: boolean;
+  showPracticeActions?: boolean;
+  placeholder?: string;
   onStop: () => void;
 }) {
   const dockRef = useRef<HTMLDivElement | null>(null);
@@ -74,7 +76,7 @@ export function PracticeComposer(props: {
             placeholder={
               props.disabled
                 ? "Finish this attempt before asking the coach"
-                : "Ask about this exercise or the coach’s feedback"
+                : (props.placeholder ?? "Ask about this exercise or the coach’s feedback")
             }
             value={props.value}
             onChange={(event) => props.onChange(event.target.value)}
@@ -103,24 +105,26 @@ export function PracticeComposer(props: {
           )}
         </Flex>
       </Box>
-      <Flex gap={3} wrap="wrap">
-        <Button
-          variant="outline"
-          colorPalette="coral"
-          onClick={props.onRetry}
-          disabled={props.disabled || props.actionsDisabled || props.streaming}
-        >
-          Try again
-        </Button>
-        <Button
-          variant="plain"
-          color="fg.muted"
-          onClick={props.onDifferent}
-          disabled={props.disabled || props.actionsDisabled || props.streaming}
-        >
-          Try a different exercise
-        </Button>
-      </Flex>
+      {props.showPracticeActions !== false ? (
+        <Flex gap={3} wrap="wrap">
+          <Button
+            variant="outline"
+            colorPalette="coral"
+            onClick={props.onRetry}
+            disabled={props.disabled || props.actionsDisabled || props.streaming}
+          >
+            Try again
+          </Button>
+          <Button
+            variant="plain"
+            color="fg.muted"
+            onClick={props.onDifferent}
+            disabled={props.disabled || props.actionsDisabled || props.streaming}
+          >
+            Try a different exercise
+          </Button>
+        </Flex>
+      ) : null}
     </Stack>
   );
 }
