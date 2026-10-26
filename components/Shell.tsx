@@ -1,24 +1,28 @@
 "use client";
 
 import { Box, Container, Flex, Heading, Link as ChakraLink } from "@chakra-ui/react";
-import NextLink from "next/link";
 import { usePathname } from "next/navigation";
+import { DesktopNavigation, MobileNavigation } from "@/components/AppNavigation";
 import { AppFooter } from "@/components/AppFooter";
 import { AuthGate } from "@/components/AuthGate";
-
-const TABS = [
-  { href: "/practice", label: "Practice" },
-  { href: "/calibrate", label: "Calibrate" },
-  { href: "/progress", label: "Progress" },
-  { href: "/account", label: "Account" },
-];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
     <AuthGate>
-      <Box minH="100dvh" bg="bg.canvas" display="flex" flexDirection="column">
+      <Box
+        minH="100dvh"
+        bg="bg.canvas"
+        display="flex"
+        flexDirection="column"
+        style={
+          {
+            "--mobile-nav-height": "calc(4.25rem + env(safe-area-inset-bottom))",
+          } as React.CSSProperties
+        }
+        pb={{ base: "var(--mobile-nav-height)", md: "0" }}
+      >
         <ChakraLink
           href="#main-content"
           position="fixed"
@@ -49,27 +53,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           zIndex="sticky"
         >
           <Container maxW="6xl" py={3}>
-            <Flex align="center" justify="space-between" gap={6} wrap="wrap">
+            <Flex align="center" justify="space-between" gap={6}>
               <Heading size="md" color="ink.900" letterSpacing="-0.025em">
                 <Box as="span" color="coral.600">
                   ◉
                 </Box>{" "}
                 Singing Coach
               </Heading>
-              <Flex gap={4} wrap="wrap">
-                {TABS.map((tab) => (
-                  <ChakraLink
-                    key={tab.href}
-                    asChild
-                    fontWeight={pathname.startsWith(tab.href) ? "semibold" : "medium"}
-                    color={pathname.startsWith(tab.href) ? "coral.600" : "cream.700"}
-                    textUnderlineOffset="6px"
-                    textDecoration={pathname.startsWith(tab.href) ? "underline" : "none"}
-                  >
-                    <NextLink href={tab.href}>{tab.label}</NextLink>
-                  </ChakraLink>
-                ))}
-              </Flex>
+              <Box display={{ base: "none", md: "block" }}>
+                <DesktopNavigation pathname={pathname} />
+              </Box>
             </Flex>
           </Container>
         </Box>
@@ -83,6 +76,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </Container>
         <AppFooter />
+        <MobileNavigation pathname={pathname} />
       </Box>
     </AuthGate>
   );
