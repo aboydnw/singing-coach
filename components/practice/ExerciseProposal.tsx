@@ -2,6 +2,10 @@ import { Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { Recorder } from "@/components/Recorder";
 import { AttemptProgress } from "@/components/practice/AttemptProgress";
 import type { RecorderState } from "@/components/Recorder";
+import {
+  ReferencePlaybackControl,
+  type ReferencePlaybackState,
+} from "@/components/practice/ReferencePlaybackControl";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
 import type { ExerciseSpec } from "@/lib/schema";
@@ -18,12 +22,13 @@ export type PracticeProposal = {
 export function ExerciseProposal(props: {
   proposal: PracticeProposal;
   processing: boolean;
-  playing: boolean;
+  playbackState: ReferencePlaybackState;
   recorderBusy: boolean;
   proposalLoading: boolean;
   referenceFallback?: boolean;
   onUploaded: (key: string) => void;
-  onHear: () => void;
+  onPlayReference: () => void;
+  onStopReference: () => void;
   onDifferent: () => void;
   onFreeSing: () => void;
   onMoveOn: () => void;
@@ -80,21 +85,13 @@ export function ExerciseProposal(props: {
             Keep one cue in mind, then record when you are ready.
           </Text>
           {proposal.spec ? (
-            <Button
-              alignSelf="start"
-              variant="outline"
-              colorPalette="teal"
-              onClick={props.onHear}
-              loading={props.playing}
+            <ReferencePlaybackControl
+              state={props.playbackState}
+              referenceFallback={Boolean(props.referenceFallback)}
               disabled={props.recorderBusy || props.proposalLoading}
-            >
-              Hear example
-            </Button>
-          ) : null}
-          {props.referenceFallback ? (
-            <Text fontSize="sm" color="fg.muted">
-              Vocal example unavailable—playing pitch guide
-            </Text>
+              onPlay={props.onPlayReference}
+              onStop={props.onStopReference}
+            />
           ) : null}
           {proposal.spec?.activity_kind === "song_passage" ? (
             <Flex gap={3} wrap="wrap">

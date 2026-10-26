@@ -22,6 +22,7 @@ import {
   ExerciseProposal,
   type PracticeProposal,
 } from "@/components/practice/ExerciseProposal";
+import type { ReferencePlaybackState } from "@/components/practice/ReferencePlaybackControl";
 import { PracticeCompass } from "@/components/practice/PracticeCompass";
 import { PracticeComposer } from "@/components/practice/PracticeComposer";
 import { PracticeConversationViewport } from "@/components/practice/PracticeConversationViewport";
@@ -74,7 +75,7 @@ import {
   type Measurements,
 } from "@/lib/schema";
 import { parseStoredJson } from "@/lib/storedJson";
-import { playReference } from "@/lib/referencePlayback";
+import { playReference, type ReferencePlayer } from "@/lib/referencePlayback";
 import { nextLessonStage } from "@/lib/lessonStage";
 import { selectSongPassage } from "@/lib/repertoireResolver";
 import {
@@ -93,7 +94,7 @@ export function PracticeSession() {
   const [bundle, setBundle] = useState<PracticeBundle | null>(null);
   const [proposal, setProposal] = useState<PracticeProposal | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [playing, setPlaying] = useState(false);
+  const [playbackState, setPlaybackState] = useState<ReferencePlaybackState>("ready");
   const [referenceFallback, setReferenceFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
@@ -127,6 +128,25 @@ export function PracticeSession() {
   const [proposalLoading, setProposalLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const proposalRequestRef = useRef(0);
+  const activeReferenceRef = useRef<ReferencePlayer | null>(null);
+
+  const stopReference = useCallback(() => {
+    const active = activeReferenceRef.current;
+    activeReferenceRef.current = null;
+    active?.stop();
+    setPlaybackState("ready");
+    setReferenceFallback(false);
+  }, []);
+
+  const onRecorderStateChange = useCallback(
+    (state: RecorderState) => {
+      if (state.phase === "requesting" || state.phase === "recording") {
+        stopReference();
+      }
+      setRecorderState(state);
+    },
+    [stopReference],
+  );
 
   /** The inline notice lives above the exercise grid, which is off-screen once
    * the singer has scrolled to the composer. Anything raised by an action they
@@ -226,6 +246,8 @@ export function PracticeSession() {
         ),
       );
   }, [refresh]);
+
+  useEffect(() => () => activeReferenceRef.current?.stop(), []);
 
   const contract = bundle?.practice.learning_contract_json;
   const ended = bundle?.practice.status === "ended";
@@ -582,6 +604,7 @@ export function PracticeSession() {
 
   const differentExercise = async () => {
     if (!bundle || recorderBusy || proposalLoading) return;
+    stopReference();
     const requestId = ++proposalRequestRef.current;
     setProposalLoading(true);
     try {
@@ -652,6 +675,7 @@ export function PracticeSession() {
 
   const nextFromCoach = async () => {
     if (!bundle || recorderBusy || proposalLoading) return;
+    stopReference();
     const requestId = ++proposalRequestRef.current;
     setProposalLoading(true);
     try {
@@ -777,6 +801,7 @@ export function PracticeSession() {
 
   const retrySelected = () => {
     if (!activeAttempt || recorderBusy || proposalLoading) return;
+    stopReference();
     setRotationIndex(null);
     setReferenceFallback(false);
     setProposal({
@@ -792,6 +817,7 @@ export function PracticeSession() {
 
   const openNewExercise = async () => {
     if (!bundle || recorderBusy || proposalLoading || ended) return;
+    stopReference();
     const next = selectDraft();
     setAnchor(null);
     if (!next.created) {
@@ -814,6 +840,8 @@ export function PracticeSession() {
         exerciseId !== draftExerciseId)
     )
       return;
+
+    stopReference();
 
     setExerciseSelection((current) => {
       const next = selectedExerciseFromNavigator(
@@ -876,6 +904,7 @@ export function PracticeSession() {
 
   const cancelSetup = () => {
     if (recorderBusy) return;
+    stopReference();
     proposalRequestRef.current += 1;
     setProposalLoading(false);
     setSetupOpen(false);
@@ -1002,27 +1031,30 @@ export function PracticeSession() {
         gap={6}
         alignItems="start"
       >
-        <ExerciseNavigator
-          threads={exerciseThreads}
-          selectedExerciseId={selectedExerciseId}
-          draft={
-            activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
-              ? {
-                  id: pendingJobExerciseId,
-                  name: pendingJobSpec?.display_name ?? "Free sing",
-                }
-              : draftExerciseId
+        <Box display={{ base: "none", lg: "block" }}>
+          <ExerciseNavigator
+            variant="desktop"
+            threads={exerciseThreads}
+            selectedExerciseId={selectedExerciseId}
+            draft={
+              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
                 ? {
-                    id: draftExerciseId,
-                    name: draftProposal?.spec?.display_name ?? "Free sing",
+                    id: pendingJobExerciseId,
+                    name: pendingJobSpec?.display_name ?? "Free sing",
                   }
-                : undefined
-          }
-          onSelect={selectExercise}
-          onNewExercise={openNewExercise}
-          disabled={processing || streaming || recorderBusy || proposalLoading}
-          ended={ended}
-        />
+                : draftExerciseId
+                  ? {
+                      id: draftExerciseId,
+                      name: draftProposal?.spec?.display_name ?? "Free sing",
+                    }
+                  : undefined
+            }
+            onSelect={selectExercise}
+            onNewExercise={openNewExercise}
+            disabled={processing || streaming || recorderBusy || proposalLoading}
+            ended={ended}
+          />
+        </Box>
 
         <Stack gap={5}>
           <SessionOrigin direction={bundle.practice.starting_direction} />
@@ -1126,31 +1158,47 @@ export function PracticeSession() {
             />
           ) : null}
           {!ended && setupOpen && proposal ? (
-            <ExerciseProposal
-              proposal={proposal}
-              processing={processing}
-              playing={playing}
-              recorderBusy={recorderBusy}
-              proposalLoading={proposalLoading}
-              referenceFallback={referenceFallback}
-              onUploaded={onUploadedDurable}
-              onHear={async () => {
-                if (!proposal.spec) return;
-                setPlaying(true);
-                try {
-                  const source = await playReference(proposal.spec).done;
-                  setReferenceFallback(source === "pitch_fallback");
-                } finally {
-                  setPlaying(false);
-                }
-              }}
-              onDifferent={proposal.retry ? openNewExercise : differentExercise}
-              onFreeSing={freeSing}
-              onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
-              onShiftKey={shiftProposalKey}
-              onCancel={cancelSetup}
-              onRecorderStateChange={setRecorderState}
-            />
+            <Box order={{ base: -1, lg: "initial" }}>
+              <ExerciseProposal
+                proposal={proposal}
+                processing={processing}
+                playbackState={playbackState}
+                recorderBusy={recorderBusy}
+                proposalLoading={proposalLoading}
+                referenceFallback={referenceFallback}
+                onUploaded={onUploadedDurable}
+                onPlayReference={async () => {
+                  if (!proposal.spec) return;
+                  stopReference();
+                  setPlaybackState("preparing");
+                  const player = playReference(proposal.spec);
+                  activeReferenceRef.current = player;
+                  try {
+                    const source = await player.started;
+                    if (activeReferenceRef.current !== player) return;
+                    setReferenceFallback(source === "pitch_fallback");
+                    setPlaybackState("playing");
+                    await player.done;
+                    if (activeReferenceRef.current === player) {
+                      activeReferenceRef.current = null;
+                      setPlaybackState("ready");
+                    }
+                  } catch {
+                    if (activeReferenceRef.current === player) {
+                      activeReferenceRef.current = null;
+                      setPlaybackState("error");
+                    }
+                  }
+                }}
+                onStopReference={stopReference}
+                onDifferent={proposal.retry ? openNewExercise : differentExercise}
+                onFreeSing={freeSing}
+                onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
+                onShiftKey={shiftProposalKey}
+                onCancel={cancelSetup}
+                onRecorderStateChange={onRecorderStateChange}
+              />
+            </Box>
           ) : null}
           {ended ? (
             <Box borderTopWidth="1px" borderColor="grid" py={6}>
@@ -1172,6 +1220,31 @@ export function PracticeSession() {
             </Flex>
           )}
         </Stack>
+
+        <Box display={{ base: "block", lg: "none" }}>
+          <ExerciseNavigator
+            variant="mobile"
+            threads={exerciseThreads}
+            selectedExerciseId={selectedExerciseId}
+            draft={
+              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
+                ? {
+                    id: pendingJobExerciseId,
+                    name: pendingJobSpec?.display_name ?? "Free sing",
+                  }
+                : draftExerciseId
+                  ? {
+                      id: draftExerciseId,
+                      name: draftProposal?.spec?.display_name ?? "Free sing",
+                    }
+                  : undefined
+            }
+            onSelect={selectExercise}
+            onNewExercise={openNewExercise}
+            disabled={processing || streaming || recorderBusy || proposalLoading}
+            ended={ended}
+          />
+        </Box>
 
         {contract ? (
           <PracticeCompass

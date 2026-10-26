@@ -9,6 +9,7 @@ type ExerciseDraft = {
 };
 
 type ExerciseNavigatorProps = {
+  variant: "desktop" | "mobile";
   threads: ExerciseThread[];
   selectedExerciseId: string | null;
   draft?: ExerciseDraft;
@@ -22,12 +23,11 @@ export function ExerciseNavigator(props: ExerciseNavigatorProps) {
   const draft = props.ended ? undefined : props.draft;
   if (props.threads.length === 0 && !draft && props.ended) return null;
 
-  return (
-    <>
+  if (props.variant === "desktop") {
+    return (
       <Surface
         as="nav"
         aria-label="Practice exercises"
-        display={{ base: "none", lg: "block" }}
         position="sticky"
         top="5.5rem"
         p={3}
@@ -114,46 +114,48 @@ export function ExerciseNavigator(props: ExerciseNavigatorProps) {
           ) : null}
         </Stack>
       </Surface>
+    );
+  }
 
-      <Surface display={{ base: "block", lg: "none" }} p={3}>
-        <Stack gap={3}>
-          <Box>
-            <label htmlFor="practice-exercise-select">
-              <Text fontSize="sm">Exercise</Text>
-            </label>
-            <NativeSelect.Root mt={1} disabled={props.disabled}>
-              <NativeSelect.Field
-                id="practice-exercise-select"
-                value={props.selectedExerciseId ?? ""}
-                onChange={(event) => props.onSelect(event.target.value)}
-              >
-                {props.threads.map((thread, index) => {
-                  const summary = exerciseNavigationSummary(thread, index);
-                  return (
-                    <option key={thread.id} value={thread.id}>
-                      {summary.label} · {summary.name} · {summary.attemptCount}
-                    </option>
-                  );
-                })}
-                {draft ? (
-                  <option value={draft.id}>Draft exercise · {draft.name}</option>
-                ) : null}
-              </NativeSelect.Field>
-              <NativeSelect.Indicator />
-            </NativeSelect.Root>
-          </Box>
-          {!props.ended ? (
-            <Button
-              colorPalette="coral"
-              size="sm"
-              onClick={props.onNewExercise}
-              disabled={props.disabled}
+  return (
+    <Surface p={3}>
+      <Stack gap={3}>
+        <Box>
+          <label htmlFor="practice-exercise-select">
+            <Text fontSize="sm">Exercise</Text>
+          </label>
+          <NativeSelect.Root mt={1} disabled={props.disabled}>
+            <NativeSelect.Field
+              id="practice-exercise-select"
+              value={props.selectedExerciseId ?? ""}
+              onChange={(event) => props.onSelect(event.target.value)}
             >
-              + New exercise
-            </Button>
-          ) : null}
-        </Stack>
-      </Surface>
-    </>
+              {props.threads.map((thread, index) => {
+                const summary = exerciseNavigationSummary(thread, index);
+                return (
+                  <option key={thread.id} value={thread.id}>
+                    {summary.label} · {summary.name} · {summary.attemptCount}
+                  </option>
+                );
+              })}
+              {draft ? (
+                <option value={draft.id}>Draft exercise · {draft.name}</option>
+              ) : null}
+            </NativeSelect.Field>
+            <NativeSelect.Indicator />
+          </NativeSelect.Root>
+        </Box>
+        {!props.ended ? (
+          <Button
+            colorPalette="coral"
+            size="sm"
+            onClick={props.onNewExercise}
+            disabled={props.disabled}
+          >
+            + New exercise
+          </Button>
+        ) : null}
+      </Stack>
+    </Surface>
   );
 }
