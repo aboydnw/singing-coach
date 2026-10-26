@@ -13,6 +13,7 @@ const noOp = () => undefined;
 function renderProposal(
   referenceFallback = false,
   playbackState: "ready" | "preparing" | "playing" | "error" = "ready",
+  compact = false,
 ) {
   return renderToStaticMarkup(
     React.createElement(
@@ -46,6 +47,7 @@ function renderProposal(
           onMoveOn: noOp,
           onCancel: noOp,
           onRecorderStateChange: noOp,
+          compact,
         },
       ),
     ),
@@ -72,6 +74,14 @@ describe("ExerciseProposal", () => {
     expect(markup).toContain("Reference sound couldn’t play");
     expect(markup).toContain("Retry");
     expect(markup).toContain("Record");
+  });
+
+  it("can render only playback and recording inside the action workspace", () => {
+    const markup = renderProposal(false, "ready", true);
+    expect(markup).toContain("Hear reference");
+    expect(markup).toContain("Record");
+    expect(markup).not.toContain("Different exercise");
+    expect(markup).not.toContain("Cancel");
   });
 
   it("shows lyrics and key comfort controls for a song passage", () => {

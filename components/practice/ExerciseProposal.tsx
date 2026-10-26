@@ -35,6 +35,7 @@ export function ExerciseProposal(props: {
   onShiftKey?: (direction: "lower" | "higher") => void;
   onCancel: () => void;
   onRecorderStateChange: (state: RecorderState) => void;
+  compact?: boolean;
 }) {
   const { proposal } = props;
   return (
@@ -49,14 +50,18 @@ export function ExerciseProposal(props: {
       p={{ base: 5, md: 6 }}
       boxShadow="none"
     >
-      <Eyebrow>{proposal.retry ? "Focused retry" : "Next exercise"}</Eyebrow>
-      <Heading mt={2} size="lg">
-        {proposal.spec?.display_name ?? "Free sing"}
-      </Heading>
-      <Text mt={2} color="fg.muted" lineHeight="1.7">
-        {proposal.reason}
-      </Text>
-      {proposal.spec ? (
+      {!props.compact ? (
+        <>
+          <Eyebrow>{proposal.retry ? "Focused retry" : "Next exercise"}</Eyebrow>
+          <Heading mt={2} size="lg">
+            {proposal.spec?.display_name ?? "Free sing"}
+          </Heading>
+          <Text mt={2} color="fg.muted" lineHeight="1.7">
+            {proposal.reason}
+          </Text>
+        </>
+      ) : null}
+      {proposal.spec && !props.compact ? (
         <Stack mt={3} gap={2}>
           {proposal.spec.excerpt ? (
             <Text fontWeight="semibold">“{proposal.spec.excerpt}”</Text>
@@ -73,13 +78,13 @@ export function ExerciseProposal(props: {
             {proposal.spec.vowel}”
           </Text>
         </Stack>
-      ) : (
+      ) : !proposal.spec && !props.compact ? (
         <Text mt={3} fontSize="sm" color="fg.muted">
           No target notes. Pitch accuracy will not be scored.
         </Text>
-      )}
+      ) : null}
 
-      <Surface variant="subtle" mt={5} p={4}>
+      <Surface variant="subtle" mt={props.compact ? 0 : 5} p={4}>
         <Stack gap={4}>
           <Text fontWeight="semibold">
             Keep one cue in mind, then record when you are ready.
@@ -130,59 +135,67 @@ export function ExerciseProposal(props: {
             onStateChange={props.onRecorderStateChange}
             disabled={props.processing || props.proposalLoading}
           />
-          <Flex gap={4} wrap="wrap">
-            <Button
-              variant="plain"
-              color="fg.muted"
-              px={0}
-              onClick={props.onDifferent}
-              loading={props.proposalLoading}
-              disabled={props.processing || props.recorderBusy}
-            >
-              Different exercise
-            </Button>
-            {proposal.spec ? (
+          {!props.compact ? (
+            <Flex gap={4} wrap="wrap">
               <Button
                 variant="plain"
                 color="fg.muted"
                 px={0}
-                onClick={props.onFreeSing}
-                disabled={props.processing || props.recorderBusy || props.proposalLoading}
+                onClick={props.onDifferent}
+                loading={props.proposalLoading}
+                disabled={props.processing || props.recorderBusy}
               >
-                Free sing instead
+                Different exercise
               </Button>
-            ) : (
+              {proposal.spec ? (
+                <Button
+                  variant="plain"
+                  color="fg.muted"
+                  px={0}
+                  onClick={props.onFreeSing}
+                  disabled={
+                    props.processing || props.recorderBusy || props.proposalLoading
+                  }
+                >
+                  Free sing instead
+                </Button>
+              ) : (
+                <Button
+                  variant="plain"
+                  color="fg.muted"
+                  px={0}
+                  onClick={props.onMoveOn}
+                  disabled={
+                    props.processing || props.recorderBusy || props.proposalLoading
+                  }
+                >
+                  Coach’s exercise instead
+                </Button>
+              )}
+              {proposal.retry ? (
+                <Button
+                  variant="plain"
+                  color="action.primary"
+                  px={0}
+                  onClick={props.onMoveOn}
+                  disabled={
+                    props.processing || props.recorderBusy || props.proposalLoading
+                  }
+                >
+                  Move on
+                </Button>
+              ) : null}
               <Button
                 variant="plain"
                 color="fg.muted"
                 px={0}
-                onClick={props.onMoveOn}
-                disabled={props.processing || props.recorderBusy || props.proposalLoading}
+                onClick={props.onCancel}
+                disabled={props.processing || props.recorderBusy}
               >
-                Coach’s exercise instead
+                Cancel
               </Button>
-            )}
-            {proposal.retry ? (
-              <Button
-                variant="plain"
-                color="action.primary"
-                px={0}
-                onClick={props.onMoveOn}
-                disabled={props.processing || props.recorderBusy || props.proposalLoading}
-              >
-                Move on
-              </Button>
-            ) : null}
-            <Button
-              variant="plain"
-              color="fg.muted"
-              px={0}
-              onClick={props.onCancel}
-              disabled={props.processing || props.recorderBusy}
-            >
-              Cancel
-            </Button>
-          </Flex>
+            </Flex>
+          ) : null}
           {props.processing ? <AttemptProgress /> : null}
         </Stack>
       </Surface>
