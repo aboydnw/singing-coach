@@ -74,15 +74,16 @@ describe("uploadRecording", () => {
 
 describe("startAttemptJob", () => {
   it("hands immutable proposal context to the durable endpoint", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          id: "job-1",
-          status: "queued",
-          practice_session_id: "11111111-1111-1111-1111-111111111101",
-        }),
-        { status: 202, headers: { "Content-Type": "application/json" } },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: "job-1",
+            status: "queued",
+            practice_session_id: "11111111-1111-1111-1111-111111111101",
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } },
+        ),
     );
     vi.stubGlobal("fetch", fetchMock);
     const result = await startAttemptJob({

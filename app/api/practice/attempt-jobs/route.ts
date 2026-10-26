@@ -9,12 +9,19 @@ import { processPracticeAttempt } from "@/workflows/processPracticeAttempt";
 
 export async function POST(request: Request) {
   const auth = await authenticateRequest(request);
-  if (!auth) return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
+  if (!auth)
+    return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
-  const parsed = attemptJobRequestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "invalid request body" }, { status: 400 });
+  const parsed = attemptJobRequestSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success)
+    return NextResponse.json({ error: "invalid request body" }, { status: 400 });
   if (!ownsAudioKey(parsed.data.audio_key, auth.userId)) {
-    return NextResponse.json({ error: "storage key not owned by caller" }, { status: 403 });
+    return NextResponse.json(
+      { error: "storage key not owned by caller" },
+      { status: 403 },
+    );
   }
 
   const caller = createClient(
@@ -27,8 +34,10 @@ export async function POST(request: Request) {
     .select("id,status")
     .eq("id", parsed.data.practice_session_id)
     .maybeSingle();
-  if (practiceError || !practice) return NextResponse.json({ error: "practice not found" }, { status: 404 });
-  if (practice.status !== "in_progress") return NextResponse.json({ error: "practice has ended" }, { status: 409 });
+  if (practiceError || !practice)
+    return NextResponse.json({ error: "practice not found" }, { status: 404 });
+  if (practice.status !== "in_progress")
+    return NextResponse.json({ error: "practice has ended" }, { status: 409 });
 
   if (parsed.data.parent_attempt_id) {
     const { data: parent } = await caller
@@ -37,7 +46,8 @@ export async function POST(request: Request) {
       .eq("id", parsed.data.parent_attempt_id)
       .eq("practice_session_id", practice.id)
       .maybeSingle();
-    if (!parent) return NextResponse.json({ error: "parent attempt not found" }, { status: 400 });
+    if (!parent)
+      return NextResponse.json({ error: "parent attempt not found" }, { status: 400 });
   }
 
   const service = serviceSupabase();
@@ -50,7 +60,9 @@ export async function POST(request: Request) {
       practice_session_id: practice.id,
       audio_key: parsed.data.audio_key,
       status: "queued",
-      exercise_spec_json: parsed.data.exercise_spec ? JSON.stringify(parsed.data.exercise_spec) : null,
+      exercise_spec_json: parsed.data.exercise_spec
+        ? JSON.stringify(parsed.data.exercise_spec)
+        : null,
       proposal_metadata_json: JSON.stringify(parsed.data.proposal_metadata),
       parent_attempt_id: parsed.data.parent_attempt_id,
       attempt_kind: parsed.data.attempt_kind,
@@ -86,6 +98,9 @@ export async function POST(request: Request) {
       })
       .eq("id", jobId)
       .eq("status", "queued");
-    return NextResponse.json({ error: "could not start attempt processing", job_id: jobId }, { status: 503 });
+    return NextResponse.json(
+      { error: "could not start attempt processing", job_id: jobId },
+      { status: 503 },
+    );
   }
 }

@@ -246,10 +246,11 @@ export function PracticeSession() {
   const pendingJobSpec = activeJob
     ? parseStoredJson(activeJob.exercise_spec_json, exerciseSpecSchema)
     : null;
-  const visibleJob = (bundle?.jobs ?? []).toReversed().find((job) => {
-    if (job.status === "completed") return false;
-    return jobExerciseId(job, exerciseThreads) === selectedExerciseId;
-  }) ?? null;
+  const visibleJob =
+    (bundle?.jobs ?? []).toReversed().find((job) => {
+      if (job.status === "completed") return false;
+      return jobExerciseId(job, exerciseThreads) === selectedExerciseId;
+    }) ?? null;
   const unsavedExerciseId = unsavedAttempt?.parent_attempt_id
     ? recordedExerciseIdForAttempt(exerciseThreads, unsavedAttempt.parent_attempt_id)
     : draftExerciseId;
@@ -350,14 +351,17 @@ export function PracticeSession() {
       setExerciseSelection((current) => ({
         ...current,
         selectedExerciseId:
-          jobExerciseId(job, groupExerciseThreads(loaded.attempts)) ?? current.selectedExerciseId,
+          jobExerciseId(job, groupExerciseThreads(loaded.attempts)) ??
+          current.selectedExerciseId,
       }));
       setProposal(null);
       setDraftProposal(null);
       setSetupOpen(false);
     } catch (reason) {
       reportError(
-        reason instanceof Error ? reason.message : "The recording could not be handed off.",
+        reason instanceof Error
+          ? reason.message
+          : "The recording could not be handed off.",
       );
     } finally {
       setProcessing(false);
@@ -1008,11 +1012,11 @@ export function PracticeSession() {
                   name: pendingJobSpec?.display_name ?? "Free sing",
                 }
               : draftExerciseId
-              ? {
-                  id: draftExerciseId,
-                  name: draftProposal?.spec?.display_name ?? "Free sing",
-                }
-              : undefined
+                ? {
+                    id: draftExerciseId,
+                    name: draftProposal?.spec?.display_name ?? "Free sing",
+                  }
+                : undefined
           }
           onSelect={selectExercise}
           onNewExercise={openNewExercise}
@@ -1029,35 +1033,35 @@ export function PracticeSession() {
             >
               <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
                 {activeTimeline.map((item) =>
-                item.type === "attempt" ? (
-                  <AttemptResult
-                    key={`attempt-${item.attempt.id}`}
-                    attempt={item.attempt}
-                    fallbackIndex={bundle.attempts.findIndex(
-                      (attempt) => attempt.id === item.attempt.id,
-                    )}
-                    parent={
-                      item.attempt.parent_attempt_id
-                        ? (bundle.attempts.find(
-                            (attempt) => attempt.id === item.attempt.parent_attempt_id,
-                          ) ?? null)
-                        : null
-                    }
-                    expanded={Boolean(details[item.attempt.id])}
-                    onToggle={() =>
-                      setDetails((current) => ({
-                        ...current,
-                        [item.attempt.id]: !current[item.attempt.id],
-                      }))
-                    }
-                    onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
-                  />
-                ) : (
-                  <PracticeMessage
-                    key={`message-${item.message.id}`}
-                    message={item.message}
-                  />
-                ),
+                  item.type === "attempt" ? (
+                    <AttemptResult
+                      key={`attempt-${item.attempt.id}`}
+                      attempt={item.attempt}
+                      fallbackIndex={bundle.attempts.findIndex(
+                        (attempt) => attempt.id === item.attempt.id,
+                      )}
+                      parent={
+                        item.attempt.parent_attempt_id
+                          ? (bundle.attempts.find(
+                              (attempt) => attempt.id === item.attempt.parent_attempt_id,
+                            ) ?? null)
+                          : null
+                      }
+                      expanded={Boolean(details[item.attempt.id])}
+                      onToggle={() =>
+                        setDetails((current) => ({
+                          ...current,
+                          [item.attempt.id]: !current[item.attempt.id],
+                        }))
+                      }
+                      onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
+                    />
+                  ) : (
+                    <PracticeMessage
+                      key={`message-${item.message.id}`}
+                      message={item.message}
+                    />
+                  ),
                 )}
                 <StreamingPracticeMessage text={streamingText} anchor={anchor} />
               </Stack>

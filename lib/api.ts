@@ -85,7 +85,9 @@ export async function startAttemptJob(
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error ?? `attempt handoff failed with status ${response.status}`);
+    throw new Error(
+      body.error ?? `attempt handoff failed with status ${response.status}`,
+    );
   }
   return body as AttemptJobRow;
 }

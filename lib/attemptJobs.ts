@@ -34,17 +34,14 @@ export type AttemptJobRow = {
   completed_at: string | null;
 };
 
-const ACTIVE_STATUSES = new Set<AttemptJobStatus>([
-  "queued",
-  "analyzing",
-  "coaching",
-]);
+const ACTIVE_STATUSES = new Set<AttemptJobStatus>(["queued", "analyzing", "coaching"]);
 
 export function activeAttemptJob(jobs: AttemptJobRow[]): AttemptJobRow | null {
   return (
     jobs
       .filter((job) => ACTIVE_STATUSES.has(job.status))
-      .toSorted((left, right) => right.created_at.localeCompare(left.created_at))[0] ?? null
+      .toSorted((left, right) => right.created_at.localeCompare(left.created_at))[0] ??
+    null
   );
 }
 

@@ -9,7 +9,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateRequest(request);
-  if (!auth) return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
+  if (!auth)
+    return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
   const { id } = await context.params;
   const service = serviceSupabase();
   const { data: job, error } = await service
@@ -26,7 +27,8 @@ export async function POST(
     .eq("status", "failed")
     .select("*")
     .maybeSingle();
-  if (error || !job) return NextResponse.json({ error: "failed job not found" }, { status: 404 });
+  if (error || !job)
+    return NextResponse.json({ error: "failed job not found" }, { status: 404 });
   try {
     const run = await start(processPracticeAttempt, [id]);
     const { data: updated, error: updateError } = await service
@@ -46,6 +48,9 @@ export async function POST(
         error_message: "We could not restart processing yet. Try again.",
       })
       .eq("id", id);
-    return NextResponse.json({ error: "could not restart attempt processing" }, { status: 503 });
+    return NextResponse.json(
+      { error: "could not restart attempt processing" },
+      { status: 503 },
+    );
   }
 }

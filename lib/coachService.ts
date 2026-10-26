@@ -55,13 +55,12 @@ function stripNulls(value: unknown): unknown {
   return value;
 }
 
-export function formatCoachUserMessage(
-  body: CoachRequest,
-  calibrating: boolean,
-): string {
+export function formatCoachUserMessage(body: CoachRequest, calibrating: boolean): string {
   const blocks: string[] = [];
   if (body.exercise_spec !== null) {
-    blocks.push(`<exercise>\n${JSON.stringify(body.exercise_spec, null, 2)}\n</exercise>`);
+    blocks.push(
+      `<exercise>\n${JSON.stringify(body.exercise_spec, null, 2)}\n</exercise>`,
+    );
   }
   blocks.push(
     `<measurements>\n${JSON.stringify(stripNulls(body.measurements), null, 2)}\n</measurements>`,

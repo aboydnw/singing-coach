@@ -15,8 +15,6 @@ export type AttemptJobRequest = z.infer<typeof attemptJobRequestSchema>;
 export function ownsAudioKey(audioKey: string, userId: string): boolean {
   const parts = audioKey.split("/");
   return (
-    parts.length === 2 &&
-    parts[0] === userId &&
-    /^[A-Za-z0-9_-]+\.wav$/.test(parts[1])
+    parts.length === 2 && parts[0] === userId && /^[A-Za-z0-9_-]+\.wav$/.test(parts[1])
   );
 }

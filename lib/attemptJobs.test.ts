@@ -56,7 +56,12 @@ function attempt(overrides: Partial<SessionRow> = {}): SessionRow {
 describe("attempt jobs", () => {
   it("returns only the newest active job", () => {
     const jobs = [
-      job({ id: "done", status: "completed", completed_at: "2026-10-26T12:02:00Z", attempt_id: "attempt-1" }),
+      job({
+        id: "done",
+        status: "completed",
+        completed_at: "2026-10-26T12:02:00Z",
+        attempt_id: "attempt-1",
+      }),
       job({ id: "active", status: "coaching", created_at: "2026-10-26T12:03:00Z" }),
     ];
     expect(activeAttemptJob(jobs)?.id).toBe("active");
@@ -71,7 +76,12 @@ describe("attempt jobs", () => {
       attempt(),
       attempt({ id: "attempt-2", parent_attempt_id: "attempt-1", sequence_number: 2 }),
     ]);
-    expect(jobExerciseId(job({ parent_attempt_id: "attempt-2", attempt_kind: "retry" }), threads)).toBe("attempt-1");
+    expect(
+      jobExerciseId(
+        job({ parent_attempt_id: "attempt-2", attempt_kind: "retry" }),
+        threads,
+      ),
+    ).toBe("attempt-1");
   });
 
   it("uses a saved cue before proposal copy", () => {
@@ -84,9 +94,7 @@ describe("attempt jobs", () => {
         job({ proposal_metadata_json: '{"reason":"Sing softly"}' }),
         contract,
       ),
-    ).toBe(
-      "Aim the first note before adding volume. Don’t record another attempt yet.",
-    );
+    ).toBe("Aim the first note before adding volume. Don’t record another attempt yet.");
   });
 
   it("falls back to proposal guidance and removes line breaks", () => {

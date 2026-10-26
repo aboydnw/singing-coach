@@ -9,10 +9,7 @@ export function jobRefreshDelay(
   return active && visibility === "visible" ? 5_000 : null;
 }
 
-export function usePracticeJobRefresh(
-  active: boolean,
-  refresh: () => Promise<unknown>,
-) {
+export function usePracticeJobRefresh(active: boolean, refresh: () => Promise<unknown>) {
   const inFlight = useRef<Promise<unknown> | null>(null);
 
   useEffect(() => {

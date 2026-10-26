@@ -22,8 +22,17 @@ describe("attempt job request", () => {
   });
 
   it("rejects an audio object outside the caller folder", () => {
-    expect(ownsAudioKey(valid.audio_key, "22222222-2222-2222-2222-222222222222")).toBe(true);
-    expect(ownsAudioKey(valid.audio_key, "33333333-3333-3333-3333-333333333333")).toBe(false);
-    expect(ownsAudioKey("22222222-2222-2222-2222-222222222222/../take.wav", "22222222-2222-2222-2222-222222222222")).toBe(false);
+    expect(ownsAudioKey(valid.audio_key, "22222222-2222-2222-2222-222222222222")).toBe(
+      true,
+    );
+    expect(ownsAudioKey(valid.audio_key, "33333333-3333-3333-3333-333333333333")).toBe(
+      false,
+    );
+    expect(
+      ownsAudioKey(
+        "22222222-2222-2222-2222-222222222222/../take.wav",
+        "22222222-2222-2222-2222-222222222222",
+      ),
+    ).toBe(false);
   });
 });

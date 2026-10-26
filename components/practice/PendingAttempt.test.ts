@@ -12,23 +12,36 @@ afterAll(() => vi.unstubAllGlobals());
 
 function job(status: AttemptJobRow["status"]): AttemptJobRow {
   return {
-    id: "job-1", user_id: "user-1", practice_session_id: "practice-1",
-    audio_key: "user-1/take.wav", status, exercise_spec_json: null,
+    id: "job-1",
+    user_id: "user-1",
+    practice_session_id: "practice-1",
+    audio_key: "user-1/take.wav",
+    status,
+    exercise_spec_json: null,
     proposal_metadata_json: '{"reason":"Hum the pattern once."}',
-    parent_attempt_id: null, attempt_kind: "initial", attempt_id: null,
-    measurements_json: null, contour_json: null, workflow_run_id: "run-1",
+    parent_attempt_id: null,
+    attempt_kind: "initial",
+    attempt_id: null,
+    measurements_json: null,
+    contour_json: null,
+    workflow_run_id: "run-1",
     error_code: status === "failed" ? "processing_failed" : null,
     error_message: status === "failed" ? "Analysis could not finish." : null,
-    created_at: "2026-10-26T12:00:00Z", updated_at: "2026-10-26T12:00:00Z",
+    created_at: "2026-10-26T12:00:00Z",
+    updated_at: "2026-10-26T12:00:00Z",
     completed_at: null,
   };
 }
 
 function render(status: AttemptJobRow["status"]) {
   return renderToStaticMarkup(
-    React.createElement(ChakraProvider, { value: system },
+    React.createElement(
+      ChakraProvider,
+      { value: system },
       React.createElement(PendingAttempt, {
-        job: job(status), contract: initialContract("coach_pick"), onRetry: () => undefined,
+        job: job(status),
+        contract: initialContract("coach_pick"),
+        onRetry: () => undefined,
       }),
     ),
   );
