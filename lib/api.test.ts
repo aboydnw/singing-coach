@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { uploadRecording } from "@/lib/api";
+import { startAttemptJob, uploadRecording } from "@/lib/api";
 
 vi.mock("@/lib/supabase", () => ({
   accessToken: vi.fn(async () => "token"),
@@ -69,5 +69,43 @@ describe("uploadRecording", () => {
       uploadRecording(new Blob(["wav"]), undefined, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(PendingUploadRequest.latest).toBeNull();
+  });
+});
+
+describe("startAttemptJob", () => {
+  it("hands immutable proposal context to the durable endpoint", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          id: "job-1",
+          status: "queued",
+          practice_session_id: "11111111-1111-1111-1111-111111111101",
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await startAttemptJob({
+      practice_session_id: "11111111-1111-1111-1111-111111111101",
+      audio_key: "user-1/take.wav",
+      exercise_spec: null,
+      proposal_metadata: {
+        reason: "Sing freely",
+        activity_id: null,
+        activity_version: null,
+        transposition_semitones: null,
+        reference_fallback: false,
+      },
+      parent_attempt_id: null,
+      attempt_kind: "initial",
+    });
+    expect(result.id).toBe("job-1");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/practice/attempt-jobs",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+      }),
+    );
   });
 });

@@ -5,6 +5,8 @@ import {
 } from "@/lib/schema";
 import type { CoachingResponse, ExerciseSpec, Measurements } from "@/lib/schema";
 import type { ContextAnchor } from "@/lib/schema";
+import type { AttemptJobRow } from "@/lib/attemptJobs";
+import type { AttemptJobRequest } from "@/lib/attemptJobRequest";
 import { accessToken, supabase, userId } from "@/lib/supabase";
 
 export async function uploadRecording(
@@ -66,6 +68,40 @@ export async function uploadRecording(
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("Upload aborted", "AbortError");
+}
+
+export async function startAttemptJob(
+  request: AttemptJobRequest,
+): Promise<AttemptJobRow> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+  const response = await fetch("/api/practice/attempt-jobs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error ?? `attempt handoff failed with status ${response.status}`);
+  }
+  return body as AttemptJobRow;
+}
+
+export async function retryAttemptJob(jobId: string): Promise<AttemptJobRow> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+  const response = await fetch(`/api/practice/attempt-jobs/${jobId}/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error ?? `attempt retry failed with status ${response.status}`);
+  }
+  return body as AttemptJobRow;
 }
 
 export async function analyze(
