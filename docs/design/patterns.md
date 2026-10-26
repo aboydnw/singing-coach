@@ -2,10 +2,15 @@
 
 ## Attempt lifecycle
 
-`ready → recording → encoding → uploading → analyzing → coaching → completed`
+`ready → recording → encoding → uploading → queued → analyzing → coaching → completed`
 
 Every async stage is visible in the existing artifact. A failure preserves the last recoverable
 state and offers a specific retry. Only one attempt may record or process at a time.
+
+The singer must remain on the page through upload and durable job acknowledgement. After the UI
+says “Recording uploaded,” the persisted job—not the browser—owns analysis, coaching, and attempt
+creation. Reloading or returning later restores that job. Terminal failure keeps the artifact in
+place and retries from its safe checkpoint rather than creating a second attempt.
 
 ## Partial save
 
@@ -42,6 +47,20 @@ Exercise setup is preparation, not a recorded attempt. One client-only draft may
 navigator until its first recording is saved. Reopening New exercise selects that draft without
 regenerating its proposal, Cancel returns to the prior recorded exercise, and a successful first
 recording replaces the draft with its recorded exercise thread.
+
+## Conversation live edge
+
+Conversation order stays oldest-to-newest. When the singer is near the live edge, new coaching
+keeps the newest content visible. When they have scrolled up, incoming content does not move the
+viewport; a “Jump to latest” control reports unseen updates. Recording and retry actions remain in
+the mobile sticky dock at the live edge rather than being duplicated inside old messages.
+
+## Practice entry
+
+The signed-in practice home presents Continue practice and Start new practice together whenever a
+session is active. The resume card shows a short, plain-text coaching cue rather than stored
+Markdown or diagnostics. Starting new requires confirmation, saves and ends the active practice
+first, and reveals alternate focus choices only on request.
 
 ## Proposal and confirmation
 
