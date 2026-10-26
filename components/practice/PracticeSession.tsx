@@ -24,6 +24,7 @@ import {
 } from "@/components/practice/ExerciseProposal";
 import { PracticeCompass } from "@/components/practice/PracticeCompass";
 import { PracticeComposer } from "@/components/practice/PracticeComposer";
+import { PracticeConversationViewport } from "@/components/practice/PracticeConversationViewport";
 import {
   PracticeMessage,
   StreamingPracticeMessage,
@@ -1022,8 +1023,12 @@ export function PracticeSession() {
         <Stack gap={5}>
           <SessionOrigin direction={bundle.practice.starting_direction} />
           {activeExercise ? (
-            <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
-              {activeTimeline.map((item) =>
+            <PracticeConversationViewport
+              itemCount={activeTimeline.length + (streamingText ? 1 : 0)}
+              exerciseId={selectedExerciseId}
+            >
+              <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
+                {activeTimeline.map((item) =>
                 item.type === "attempt" ? (
                   <AttemptResult
                     key={`attempt-${item.attempt.id}`}
@@ -1053,9 +1058,10 @@ export function PracticeSession() {
                     message={item.message}
                   />
                 ),
-              )}
-              <StreamingPracticeMessage text={streamingText} anchor={anchor} />
-            </Stack>
+                )}
+                <StreamingPracticeMessage text={streamingText} anchor={anchor} />
+              </Stack>
+            </PracticeConversationViewport>
           ) : null}
           {visibleJob ? (
             <PendingAttempt
@@ -1111,6 +1117,7 @@ export function PracticeSession() {
               onDifferent={openNewExercise}
               streaming={streaming}
               disabled={processing || recorderBusy || proposalLoading}
+              actionsDisabled={Boolean(activeJob)}
               onStop={() => abortRef.current?.abort()}
             />
           ) : null}
