@@ -15,6 +15,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isRecorderBusy, type RecorderState } from "@/components/Recorder";
 import { AttemptResult } from "@/components/practice/AttemptResult";
+import { PendingAttempt } from "@/components/practice/PendingAttempt";
+import { usePracticeJobRefresh } from "@/components/practice/usePracticeJobRefresh";
 import { ExerciseNavigator } from "@/components/practice/ExerciseNavigator";
 import {
   ExerciseProposal,
@@ -23,6 +25,7 @@ import {
 import type { ReferencePlaybackState } from "@/components/practice/ReferencePlaybackControl";
 import { PracticeCompass } from "@/components/practice/PracticeCompass";
 import { PracticeComposer } from "@/components/practice/PracticeComposer";
+import { PracticeConversationViewport } from "@/components/practice/PracticeConversationViewport";
 import {
   PracticeMessage,
   StreamingPracticeMessage,
@@ -31,7 +34,14 @@ import { AppNotice } from "@/components/ui/AppNotice";
 import { toaster } from "@/components/ui/AppToaster";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
-import { analyze, coach, streamPracticeCoach } from "@/lib/api";
+import {
+  analyze,
+  coach,
+  retryAttemptJob,
+  startAttemptJob,
+  streamPracticeCoach,
+} from "@/lib/api";
+import { activeAttemptJob, jobExerciseId } from "@/lib/attemptJobs";
 import { skipFromCursor } from "@/lib/exercises";
 import { selectVariedExercise } from "@/lib/exerciseSelection";
 import {
@@ -251,11 +261,27 @@ export function PracticeSession() {
   const recorderBusy = isRecorderBusy(recorderState);
   const activeTimeline =
     bundle && activeExercise ? exerciseTimeline(activeExercise, bundle.messages) : [];
+  const activeJob = activeAttemptJob(bundle?.jobs ?? []);
+  const pendingJobExerciseId = activeJob
+    ? jobExerciseId(activeJob, exerciseThreads)
+    : null;
+  const pendingJobSpec = activeJob
+    ? parseStoredJson(activeJob.exercise_spec_json, exerciseSpecSchema)
+    : null;
+  const visibleJob =
+    (bundle?.jobs ?? []).toReversed().find((job) => {
+      if (job.status === "completed") return false;
+      return jobExerciseId(job, exerciseThreads) === selectedExerciseId;
+    }) ?? null;
   const unsavedExerciseId = unsavedAttempt?.parent_attempt_id
     ? recordedExerciseIdForAttempt(exerciseThreads, unsavedAttempt.parent_attempt_id)
     : draftExerciseId;
   const showUnsavedAttempt =
     Boolean(unsavedAttempt) && unsavedExerciseId === selectedExerciseId;
+
+  usePracticeJobRefresh(Boolean(activeJob), async () => {
+    await refresh();
+  });
 
   const askAbout = (
     label: string,
@@ -323,7 +349,48 @@ export function PracticeSession() {
     }
   };
 
-  const onUploaded = async (audioKey: string) => {
+  const onUploadedDurable = async (audioKey: string) => {
+    if (!bundle || !proposal) return;
+    setProcessing(true);
+    setError(null);
+    try {
+      const job = await startAttemptJob({
+        practice_session_id: bundle.practice.id,
+        audio_key: audioKey,
+        exercise_spec: proposal.spec,
+        proposal_metadata: {
+          reason: proposal.reason,
+          activity_id: proposal.spec?.activity_id ?? null,
+          activity_version: proposal.spec?.activity_version ?? null,
+          transposition_semitones: proposal.spec?.transposition_semitones ?? null,
+          reference_fallback: referenceFallback,
+        },
+        parent_attempt_id: proposal.parentAttemptId,
+        attempt_kind: proposal.retry ? "retry" : "initial",
+      });
+      const loaded = await refresh();
+      setBundle(loaded);
+      setExerciseSelection((current) => ({
+        ...current,
+        selectedExerciseId:
+          jobExerciseId(job, groupExerciseThreads(loaded.attempts)) ??
+          current.selectedExerciseId,
+      }));
+      setProposal(null);
+      setDraftProposal(null);
+      setSetupOpen(false);
+    } catch (reason) {
+      reportError(
+        reason instanceof Error
+          ? reason.message
+          : "The recording could not be handed off.",
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const onUploadedLegacy = async (audioKey: string) => {
     if (!bundle || !proposal) return;
     setProcessing(true);
     setError(null);
@@ -970,12 +1037,17 @@ export function PracticeSession() {
             threads={exerciseThreads}
             selectedExerciseId={selectedExerciseId}
             draft={
-              draftExerciseId
+              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
                 ? {
-                    id: draftExerciseId,
-                    name: draftProposal?.spec?.display_name ?? "Free sing",
+                    id: pendingJobExerciseId,
+                    name: pendingJobSpec?.display_name ?? "Free sing",
                   }
-                : undefined
+                : draftExerciseId
+                  ? {
+                      id: draftExerciseId,
+                      name: draftProposal?.spec?.display_name ?? "Free sing",
+                    }
+                  : undefined
             }
             onSelect={selectExercise}
             onNewExercise={openNewExercise}
@@ -987,40 +1059,63 @@ export function PracticeSession() {
         <Stack gap={5}>
           <SessionOrigin direction={bundle.practice.starting_direction} />
           {activeExercise ? (
-            <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
-              {activeTimeline.map((item) =>
-                item.type === "attempt" ? (
-                  <AttemptResult
-                    key={`attempt-${item.attempt.id}`}
-                    attempt={item.attempt}
-                    fallbackIndex={bundle.attempts.findIndex(
-                      (attempt) => attempt.id === item.attempt.id,
-                    )}
-                    parent={
-                      item.attempt.parent_attempt_id
-                        ? (bundle.attempts.find(
-                            (attempt) => attempt.id === item.attempt.parent_attempt_id,
-                          ) ?? null)
-                        : null
-                    }
-                    expanded={Boolean(details[item.attempt.id])}
-                    onToggle={() =>
-                      setDetails((current) => ({
-                        ...current,
-                        [item.attempt.id]: !current[item.attempt.id],
-                      }))
-                    }
-                    onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
-                  />
-                ) : (
-                  <PracticeMessage
-                    key={`message-${item.message.id}`}
-                    message={item.message}
-                  />
-                ),
-              )}
-              <StreamingPracticeMessage text={streamingText} anchor={anchor} />
-            </Stack>
+            <PracticeConversationViewport
+              itemCount={activeTimeline.length + (streamingText ? 1 : 0)}
+              exerciseId={selectedExerciseId}
+            >
+              <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
+                {activeTimeline.map((item) =>
+                  item.type === "attempt" ? (
+                    <AttemptResult
+                      key={`attempt-${item.attempt.id}`}
+                      attempt={item.attempt}
+                      fallbackIndex={bundle.attempts.findIndex(
+                        (attempt) => attempt.id === item.attempt.id,
+                      )}
+                      parent={
+                        item.attempt.parent_attempt_id
+                          ? (bundle.attempts.find(
+                              (attempt) => attempt.id === item.attempt.parent_attempt_id,
+                            ) ?? null)
+                          : null
+                      }
+                      expanded={Boolean(details[item.attempt.id])}
+                      onToggle={() =>
+                        setDetails((current) => ({
+                          ...current,
+                          [item.attempt.id]: !current[item.attempt.id],
+                        }))
+                      }
+                      onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
+                    />
+                  ) : (
+                    <PracticeMessage
+                      key={`message-${item.message.id}`}
+                      message={item.message}
+                    />
+                  ),
+                )}
+                <StreamingPracticeMessage text={streamingText} anchor={anchor} />
+              </Stack>
+            </PracticeConversationViewport>
+          ) : null}
+          {visibleJob ? (
+            <PendingAttempt
+              job={visibleJob}
+              contract={contract ?? null}
+              onRetry={async () => {
+                try {
+                  await retryAttemptJob(visibleJob.id);
+                  await refresh();
+                } catch (reason) {
+                  reportError(
+                    reason instanceof Error
+                      ? reason.message
+                      : "Attempt processing could not be retried.",
+                  );
+                }
+              }}
+            />
           ) : null}
           {showUnsavedAttempt && unsavedAttempt ? (
             <Box borderWidth="2px" borderColor="coral.400" rounded="surface" p={1}>
@@ -1058,6 +1153,7 @@ export function PracticeSession() {
               onDifferent={openNewExercise}
               streaming={streaming}
               disabled={processing || recorderBusy || proposalLoading}
+              actionsDisabled={Boolean(activeJob)}
               onStop={() => abortRef.current?.abort()}
             />
           ) : null}
@@ -1070,7 +1166,7 @@ export function PracticeSession() {
                 recorderBusy={recorderBusy}
                 proposalLoading={proposalLoading}
                 referenceFallback={referenceFallback}
-                onUploaded={onUploaded}
+                onUploaded={onUploadedDurable}
                 onPlayReference={async () => {
                   if (!proposal.spec) return;
                   stopReference();
@@ -1131,12 +1227,17 @@ export function PracticeSession() {
             threads={exerciseThreads}
             selectedExerciseId={selectedExerciseId}
             draft={
-              draftExerciseId
+              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
                 ? {
-                    id: draftExerciseId,
-                    name: draftProposal?.spec?.display_name ?? "Free sing",
+                    id: pendingJobExerciseId,
+                    name: pendingJobSpec?.display_name ?? "Free sing",
                   }
-                : undefined
+                : draftExerciseId
+                  ? {
+                      id: draftExerciseId,
+                      name: draftProposal?.spec?.display_name ?? "Free sing",
+                    }
+                  : undefined
             }
             onSelect={selectExercise}
             onNewExercise={openNewExercise}

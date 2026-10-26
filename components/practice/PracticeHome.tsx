@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  Dialog,
   Grid,
   Heading,
   SimpleGrid,
@@ -20,10 +21,13 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { Surface } from "@/components/ui/Surface";
 import type { StartingDirection } from "@/lib/schema";
+import { practiceResumeSummary, replaceActivePractice } from "@/lib/practiceHome";
 import {
   STARTING_DIRECTION_LABELS,
   createPractice,
+  endPractice,
   listPractices,
+  loadPractice,
   type PracticeSessionRow,
 } from "@/lib/practice";
 
@@ -53,6 +57,8 @@ export function PracticeHome() {
   const [active, setActive] = useState<PracticeSessionRow | null>(null);
   const [practices, setPractices] = useState<PracticeSessionRow[] | null>(null);
   const [starting, setStarting] = useState(false);
+  const [newPracticeOpen, setNewPracticeOpen] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -83,13 +89,40 @@ export function PracticeHome() {
     }
   };
 
+  const replacePractice = async () => {
+    if (!active) return;
+    setStarting(true);
+    setError(null);
+    try {
+      const practice = await replaceActivePractice(active.id, selected, {
+        load: async (id) => {
+          const loaded = await loadPractice(id);
+          if (!loaded.practice.learning_contract_json) {
+            throw new Error("This practice is missing its coaching plan.");
+          }
+          return {
+            attempts: loaded.attempts,
+            contract: loaded.practice.learning_contract_json,
+          };
+        },
+        end: endPractice,
+        create: createPractice,
+      });
+      router.push(`/practice/${practice.id}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not start practice.");
+      setStarting(false);
+      setNewPracticeOpen(false);
+    }
+  };
+
   return (
     <Stack gap={{ base: 7, md: 10 }}>
       <Box maxW="44rem" order={{ base: 2, lg: 0 }}>
         <Eyebrow>Your practice room</Eyebrow>
         <Heading
           mt={2}
-          fontSize={{ base: "2.25rem", md: "3.25rem" }}
+          fontSize={{ base: "2rem", md: "3.25rem" }}
           lineHeight="0.98"
           letterSpacing="-0.04em"
         >
@@ -98,7 +131,7 @@ export function PracticeHome() {
         <Text
           mt={4}
           color="cream.700"
-          fontSize={{ base: "md", md: "lg" }}
+          fontSize={{ base: "sm", md: "lg" }}
           maxW="38rem"
           lineHeight="1.7"
         >
@@ -138,19 +171,29 @@ export function PracticeHome() {
                 <Heading size="xl" letterSpacing="-0.025em">
                   Continue where you left off
                 </Heading>
-                <Text color="cream.700">
-                  Started {formatRelative(active.started_at)} ·{" "}
-                  {active.learning_contract_json?.focus ?? "Finding today’s focus"}
+                <Text color="cream.600" fontSize="sm">
+                  Started {formatRelative(active.started_at)}
+                </Text>
+                <Text color="cream.700" lineClamp={3}>
+                  {practiceResumeSummary(active.learning_contract_json)}
                 </Text>
               </Stack>
-              <Button
-                size="lg"
-                colorPalette="coral"
-                alignSelf="start"
-                onClick={() => router.push(`/practice/${active.id}`)}
-              >
-                Continue practice →
-              </Button>
+              <Stack direction={{ base: "column", sm: "row" }} gap={3}>
+                <Button
+                  size="lg"
+                  colorPalette="coral"
+                  onClick={() => router.push(`/practice/${active.id}`)}
+                >
+                  Continue practice →
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setNewPracticeOpen(true)}
+                >
+                  Start new practice
+                </Button>
+              </Stack>
             </Stack>
           ) : (
             <Stack gap={6}>
@@ -290,6 +333,68 @@ export function PracticeHome() {
           </Surface>
         )}
       </Box>
+
+      <Dialog.Root
+        open={newPracticeOpen}
+        onOpenChange={(event) => setNewPracticeOpen(event.open)}
+      >
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content rounded="xl" mx={4}>
+            <Dialog.Header>
+              <Dialog.Title>Start a new practice?</Dialog.Title>
+            </Dialog.Header>
+            <Dialog.Body>
+              <Stack gap={4}>
+                <Text color="cream.700">
+                  This will end your current practice and save its progress before opening
+                  a new one.
+                </Text>
+                <Button
+                  variant="ghost"
+                  justifyContent="start"
+                  px={0}
+                  onClick={() => setFocusOpen((open) => !open)}
+                  aria-expanded={focusOpen}
+                >
+                  {focusOpen ? "Hide focus choices" : "Choose a different focus"}
+                </Button>
+                {focusOpen ? (
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap={2}>
+                    {DIRECTIONS.map((direction) => (
+                      <Button
+                        key={direction.id}
+                        variant="outline"
+                        minH="12"
+                        whiteSpace="normal"
+                        borderColor={selected === direction.id ? "coral.400" : "grid"}
+                        bg={selected === direction.id ? "coral.50" : "cream.50"}
+                        onClick={() => setSelected(direction.id)}
+                        aria-pressed={selected === direction.id}
+                      >
+                        {STARTING_DIRECTION_LABELS[direction.id]}
+                      </Button>
+                    ))}
+                  </SimpleGrid>
+                ) : null}
+              </Stack>
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.ActionTrigger asChild>
+                <Button variant="outline">Keep current practice</Button>
+              </Dialog.ActionTrigger>
+              <Button
+                colorPalette="coral"
+                onClick={replacePractice}
+                loading={starting}
+                loadingText="Saving and starting…"
+              >
+                Save and start new
+              </Button>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Root>
     </Stack>
   );
 }

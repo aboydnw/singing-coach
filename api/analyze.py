@@ -14,6 +14,10 @@ import os
 import re
 import sys
 import tempfile
+import base64
+import hashlib
+import hmac
+import time
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -43,6 +47,65 @@ MAX_AUDIO_BYTES = 25 * 1024 * 1024
 # One filename segment under the caller's own uid - no dots, no slashes, no
 # traversal - matching exactly what the Recorder uploads.
 OBJECT_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+\.wav$")
+
+
+def _decode_base64url(value: str) -> bytes:
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def _verify_job_assertion(token: str) -> str:
+    secret = os.environ.get("ATTEMPT_JOB_SIGNING_SECRET", "")
+    if len(secret.encode()) < 32:
+        raise PermissionError("job assertions are not configured")
+    try:
+        payload, supplied = token.split(".")
+        expected = base64.urlsafe_b64encode(
+            hmac.new(secret.encode(), payload.encode(), hashlib.sha256).digest()
+        ).decode().rstrip("=")
+        if not hmac.compare_digest(supplied, expected):
+            raise PermissionError("invalid job assertion")
+        decoded = json.loads(_decode_base64url(payload))
+        job_id = decoded["jobId"]
+        expires_at = decoded["expiresAt"]
+        if not isinstance(job_id, str) or not isinstance(expires_at, (int, float)):
+            raise PermissionError("invalid job assertion")
+        if expires_at < int(time.time() * 1000):
+            raise PermissionError("expired job assertion")
+        return job_id
+    except PermissionError:
+        raise
+    except Exception as exc:
+        raise PermissionError("invalid job assertion") from exc
+
+
+def _load_attempt_job(job_id: str) -> dict | None:
+    url = f"{SUPABASE_URL}/rest/v1/practice_attempt_jobs"
+    headers = {
+        "apikey": SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SERVICE_ROLE_KEY}",
+    }
+    params = {
+        "id": f"eq.{job_id}",
+        "select": "id,audio_key,exercise_spec_json",
+        "limit": "1",
+    }
+    with httpx.Client(timeout=15) as client:
+        response = client.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        rows = response.json()
+    return rows[0] if rows else None
+
+
+def _resolve_internal_job(token: str) -> tuple[dict, ExerciseSpec | None]:
+    job_id = _verify_job_assertion(token)
+    job = _load_attempt_job(job_id)
+    if not job:
+        raise FileNotFoundError("attempt job not found")
+    spec_json = job.get("exercise_spec_json")
+    if isinstance(spec_json, str):
+        spec_json = json.loads(spec_json)
+    spec = ExerciseSpec(**spec_json) if spec_json else None
+    return {"storage_key": job["audio_key"], "mode": "full"}, spec
 
 
 def _storage_key_owned_by(storage_key: str, uid: str) -> bool:
@@ -148,25 +211,39 @@ class handler(BaseHTTPRequestHandler):
             self._reply(400, {"error": "invalid JSON body"})
             return
 
-        try:
-            uid = _verify_jwt(self.headers.get("Authorization"))
-        except Exception:
-            self._reply(401, {"error": "invalid or missing token"})
-            return
+        job_assertion = self.headers.get("X-Attempt-Job-Assertion")
+        if job_assertion:
+            try:
+                body, spec = _resolve_internal_job(job_assertion)
+            except PermissionError:
+                self._reply(401, {"error": "invalid or expired job assertion"})
+                return
+            except FileNotFoundError:
+                self._reply(404, {"error": "attempt job not found"})
+                return
+            except (TypeError, ValueError, json.JSONDecodeError):
+                self._reply(400, {"error": "invalid attempt job"})
+                return
+        else:
+            try:
+                uid = _verify_jwt(self.headers.get("Authorization"))
+            except Exception:
+                self._reply(401, {"error": "invalid or missing token"})
+                return
 
-        storage_key = body.get("storage_key", "")
-        if not isinstance(storage_key, str) or not _storage_key_owned_by(
-            storage_key, uid
-        ):
-            self._reply(403, {"error": "storage key not owned by caller"})
-            return
+            storage_key = body.get("storage_key", "")
+            if not isinstance(storage_key, str) or not _storage_key_owned_by(
+                storage_key, uid
+            ):
+                self._reply(403, {"error": "storage key not owned by caller"})
+                return
 
-        spec_json = body.get("exercise_spec")
-        try:
-            spec = ExerciseSpec(**spec_json) if spec_json else None
-        except (TypeError, ValueError):
-            self._reply(400, {"error": "invalid exercise_spec"})
-            return
+            spec_json = body.get("exercise_spec")
+            try:
+                spec = ExerciseSpec(**spec_json) if spec_json else None
+            except (TypeError, ValueError):
+                self._reply(400, {"error": "invalid exercise_spec"})
+                return
 
         try:
             self._reply(200, run_analysis(body, spec))

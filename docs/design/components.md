@@ -11,6 +11,7 @@
 | `EmptyState`     | Established | Composed empty state with optional action                          |
 | `LoadingSurface` | Established | Shape-matched panel loading state                                  |
 | `ContextAction`  | Established | Consistent contextual explanation affordance                       |
+| `MobileTabBar`   | Established | Safe-area-aware mobile bottom navigation                           |
 
 Shared components own repeated accessibility, state, and visual behavior. Page-specific grid and
 composition stay local.
@@ -33,26 +34,36 @@ injected in `next.config.ts` from Vercel's `VERCEL_GIT_COMMIT_SHA`).
 
 ## Practice components
 
-| Component              | Status      | Supported responsibility                                                  |
-| ---------------------- | ----------- | ------------------------------------------------------------------------- |
-| `PracticeHome`         | Provisional | Start/resume composition and recent practice                              |
-| `PracticeCompass`      | Provisional | Current learning contract and contextual questions                        |
-| `ExerciseProposal`     | Provisional | Proposed, accepted, processing, retry, and free-sing states               |
-| `AttemptResult`        | Provisional | Immutable assessment and progressive analysis disclosure                  |
-| `PracticeMessage`      | Provisional | One persisted message rendered inline in an exercise timeline             |
-| `StreamingPracticeMessage` | Provisional | The live assistant message and streaming cursor rendered inline       |
-| `PracticeComposer`     | Provisional | Exercise-scoped question entry, retry, and new-exercise shortcuts          |
-| `ExerciseNavigator`    | Established | Exercise-thread selection, summaries, draft state, and new exercise entry |
-| `PlasticityLoop`       | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
-| `Recorder`             | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
+| Component                  | Status      | Supported responsibility                                                  |
+| -------------------------- | ----------- | ------------------------------------------------------------------------- |
+| `PracticeHome`             | Provisional | Start/resume composition and recent practice                              |
+| `PracticeCompass`          | Provisional | Current learning contract and contextual questions                        |
+| `ExerciseProposal`         | Provisional | Proposed, accepted, processing, retry, and free-sing states               |
+| `AttemptResult`            | Provisional | Immutable assessment and progressive analysis disclosure                  |
+| `PracticeMessage`          | Provisional | One persisted message rendered inline in an exercise timeline             |
+| `StreamingPracticeMessage` | Provisional | The live assistant message and streaming cursor rendered inline           |
+| `PracticeComposer`         | Provisional | Exercise-scoped question entry, retry, and new-exercise shortcuts         |
+| `ExerciseNavigator`        | Established | Exercise-thread selection, summaries, draft state, and new exercise entry |
+| `PlasticityLoop`           | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
+| `Recorder`                 | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
+| `PendingAttempt`           | Provisional | Persisted upload, analysis, coaching, and retry status                    |
 
 `PracticeMessage` and `StreamingPracticeMessage` are inline timeline renderers rather than a
 conversation wrapper. `PracticeSession` interleaves them with attempt cards inside the selected
 exercise's live-region stack.
 
 `PracticeComposer` is inline and exercise-scoped. It owns the question input plus the Try again and
-Try a different exercise footer actions; it does not float over the page. Contextual questions are
+Try a different exercise footer actions. On narrow screens it becomes a sticky action dock above
+the bottom navigation; the timeline reserves matching space. Contextual questions are
 available only for persisted sources whose source attempt belongs to the selected exercise.
+
+`PendingAttempt` appears in the same chronological position as the attempt it will become. It may
+say navigation is safe only after the durable endpoint acknowledges the uploaded recording. Its
+waiting guidance is short, comes from saved practice context, and never invites another recording.
+
+`MobileTabBar` uses text plus symbols for four destinations. Targets are at least 48 CSS pixels
+high, account for the device safe area, and expose the active destination with
+`aria-current="page"`; the desktop shell uses the same destination labels.
 
 `ExerciseNavigator` groups retries under their root exercise. Recorded exercises show the root
 exercise name, total attempt count, and latest outcome; a pending proposal appears once as a Draft

@@ -9,6 +9,7 @@ import {
   type StartingDirection,
 } from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
+import type { AttemptJobRow } from "@/lib/attemptJobs";
 import { parseStoredJson } from "@/lib/storedJson";
 
 const contractCoachingSchema = z
@@ -72,6 +73,7 @@ export type PracticeBundle = {
   practice: PracticeSessionRow;
   attempts: SessionRow[];
   messages: PracticeMessageRow[];
+  jobs: AttemptJobRow[];
 };
 
 export const STARTING_DIRECTION_LABELS: Record<StartingDirection, string> = {
@@ -129,7 +131,7 @@ export async function createPractice(
 }
 
 export async function loadPractice(id: string): Promise<PracticeBundle> {
-  const [practiceResult, attemptsResult, messagesResult] = await Promise.all([
+  const [practiceResult, attemptsResult, messagesResult, jobsResult] = await Promise.all([
     supabase().from("practice_sessions").select("*").eq("id", id).single(),
     supabase()
       .from("sessions")
@@ -145,14 +147,21 @@ export async function loadPractice(id: string): Promise<PracticeBundle> {
       .select("*")
       .eq("practice_session_id", id)
       .order("created_at", { ascending: true }),
+    supabase()
+      .from("practice_attempt_jobs")
+      .select("*")
+      .eq("practice_session_id", id)
+      .order("created_at", { ascending: true }),
   ]);
   if (practiceResult.error) throw new Error(practiceResult.error.message);
   if (attemptsResult.error) throw new Error(attemptsResult.error.message);
   if (messagesResult.error) throw new Error(messagesResult.error.message);
+  if (jobsResult.error) throw new Error(jobsResult.error.message);
   return {
     practice: practiceResult.data as PracticeSessionRow,
     attempts: (attemptsResult.data ?? []) as SessionRow[],
     messages: (messagesResult.data ?? []) as PracticeMessageRow[],
+    jobs: (jobsResult.data ?? []) as AttemptJobRow[],
   };
 }
 

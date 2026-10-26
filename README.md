@@ -33,10 +33,15 @@ Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Ex
 
 ```
 browser: record -> encode WAV -> upload to Supabase Storage
-   -> POST /api/analyze   (Python: torchcrepe + Praat, unchanged DSP)
-   -> POST /api/coach     (TypeScript: OpenRouter, structured output)
-   -> insert session      (Supabase, row-level security)
+   -> POST /api/practice/attempt-jobs (acknowledge durable work)
+   -> Workflow: analyze   (Python: torchcrepe + Praat, unchanged DSP)
+   -> Workflow: coach     (TypeScript: OpenRouter, structured output)
+   -> insert session      (Supabase, idempotent + row-level security)
 ```
+
+Once the job endpoint acknowledges the upload, processing continues if the singer navigates away,
+backgrounds the app, or locks their phone. Returning to the practice restores the current stage or
+a retry action from the persisted job record.
 
 Pitch detection uses [torchcrepe](https://github.com/maxrmorrison/torchcrepe), a neural pitch tracker. The voiced part of your recording is split across the exercise's target notes to score each one in cents. Voice-quality measurements (jitter, shimmer, HNR, formants) come from [Praat](https://www.fon.hum.uva.nl/praat/) via [Parselmouth](https://parselmouth.readthedocs.io/). Vibrato rate and extent are extracted from an FFT of the pitch contour. That pipeline runs in `src/singing_coach/`, imported unchanged by the `/api/analyze` Vercel Python function — the numbers are the product, so the DSP chain is pinned by a committed regression fixture (`tests/test_regression_fixture.py`) and torchcrepe's pitch dither is seeded so identical audio always measures identically.
 
@@ -129,7 +134,7 @@ Two things that will silently cost you the button:
 The app deploys to Vercel from this repo. Requirements beyond the defaults:
 
 - **Large functions.** The analyze function bundles CPU-only PyTorch (~1.2 GB uncompressed), far over the standard 500 MB Python cap. Set `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` as a project env var; Fluid compute with Active CPU must be enabled.
-- **Environment variables:** see [`.env.example`](.env.example) — Supabase URL/keys for the browser and the analyze function, `OPENROUTER_API_KEY` and `COACH_MODEL` for coaching.
+- **Environment variables:** see [`.env.example`](.env.example) — Supabase URL/keys for the browser and the analyze function, `OPENROUTER_API_KEY` and `COACH_MODEL` for coaching, and a shared 32-byte-or-longer `ATTEMPT_JOB_SIGNING_SECRET` for internal Workflow analysis assertions.
 - **Supabase:** run every file in [`supabase/migrations/`](supabase/migrations/) against your project, in order. They create the tables, the private `recordings` bucket, the row-level-security policies that keep accounts apart, and the `contour_json` column that ghost racing reads. Ghost racing stays silently empty until `0003` is applied.
 
 `uv.lock` is the single dependency manifest, locally and on Vercel. It pins torch/torchaudio to the CPU index (`[tool.uv.sources]` in `pyproject.toml`): the default PyPI wheels bundle ~4 GB of CUDA libraries that nothing here uses — and that blew even the 5 GB function limit before the pin.

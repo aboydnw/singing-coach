@@ -1,8 +1,9 @@
 begin;
-select plan(29);
+select plan(40);
 
 select has_table('public', 'practice_sessions', 'practice_sessions exists');
 select has_table('public', 'practice_messages', 'practice_messages exists');
+select has_table('public', 'practice_attempt_jobs', 'practice attempt jobs exist');
 select has_column('public', 'sessions', 'practice_session_id', 'sessions link to a practice session');
 select has_column('public', 'sessions', 'sequence_number', 'sessions have a practice sequence');
 select has_column('public', 'sessions', 'parent_attempt_id', 'sessions can link retries');
@@ -176,6 +177,102 @@ select ok(
 select ok(
   pg_catalog.has_table_privilege('authenticated', 'public.practice_messages', 'INSERT'),
   'authenticated can create practice messages'
+);
+
+select has_index(
+  'public',
+  'practice_attempt_jobs',
+  'practice_attempt_jobs_one_active_per_practice',
+  'only one attempt job may process per practice'
+);
+select has_index(
+  'public',
+  'practice_attempt_jobs',
+  'practice_attempt_jobs_user_created',
+  'attempt jobs have an owner history index'
+);
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_constraint
+    where conrelid = 'public.practice_attempt_jobs'::regclass
+      and conname in (
+        'practice_attempt_jobs_status_valid',
+        'practice_attempt_jobs_attempt_kind_valid',
+        'practice_attempt_jobs_practice_owner_fkey'
+      )
+  $$,
+  array[3],
+  'attempt jobs constrain lifecycle, kind, and practice ownership'
+);
+select results_eq(
+  $$ select relrowsecurity from pg_class where oid = 'public.practice_attempt_jobs'::regclass $$,
+  array[true],
+  'practice_attempt_jobs has RLS'
+);
+select ok(
+  pg_catalog.has_table_privilege('authenticated', 'public.practice_attempt_jobs', 'SELECT'),
+  'authenticated can read owned attempt jobs'
+);
+select ok(
+  not pg_catalog.has_table_privilege('authenticated', 'public.practice_attempt_jobs', 'UPDATE'),
+  'authenticated cannot mutate attempt job lifecycle fields'
+);
+
+insert into public.practice_attempt_jobs (
+  id, user_id, practice_session_id, audio_key, status,
+  exercise_spec_json, proposal_metadata_json, attempt_kind,
+  measurements_json, contour_json
+) values (
+  '11111111-1111-1111-1111-111111111130',
+  '11111111-1111-1111-1111-111111111111',
+  '11111111-1111-1111-1111-111111111101',
+  '11111111-1111-1111-1111-111111111111/take.wav',
+  'analyzing',
+  null,
+  '{"reason":"Free sing"}',
+  'initial',
+  '{}',
+  '{"times":[],"f0_midi":[],"confidence":[]}'
+);
+
+select throws_ok(
+  $$
+    insert into public.practice_attempt_jobs (
+      id, user_id, practice_session_id, audio_key, status, attempt_kind
+    ) values (
+      '11111111-1111-1111-1111-111111111131',
+      '11111111-1111-1111-1111-111111111111',
+      '11111111-1111-1111-1111-111111111101',
+      '11111111-1111-1111-1111-111111111111/take-2.wav',
+      'queued',
+      'initial'
+    )
+  $$,
+  '23505', null,
+  'a practice cannot have two active attempt jobs'
+);
+
+select results_eq(
+  $$ select public.create_attempt_from_job('11111111-1111-1111-1111-111111111130'::uuid) $$,
+  $$ select public.create_attempt_from_job('11111111-1111-1111-1111-111111111130'::uuid) $$,
+  'attempt creation is idempotent'
+);
+select results_eq(
+  $$
+    select count(*)::integer
+    from public.sessions
+    where id = (
+      select attempt_id from public.practice_attempt_jobs
+      where id = '11111111-1111-1111-1111-111111111130'
+    )
+  $$,
+  array[1],
+  'an attempt job creates exactly one session row'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.create_attempt_from_job(uuid)', 'EXECUTE'),
+  'authenticated clients cannot invoke attempt persistence'
 );
 
 select col_is_null('public', 'sessions', 'practice_session_id', 'legacy attempts need no practice session');

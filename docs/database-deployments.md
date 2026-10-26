@@ -34,3 +34,33 @@ Use expand/deploy/contract changes:
 4. Remove old schema only in a later deployment after no running application uses it.
 
 Do not make production schema changes directly in the Supabase Dashboard. If an emergency requires it, capture the change immediately with `supabase db pull`, verify with `supabase db reset`, and commit the generated migration before further deployments.
+
+## Durable practice-attempt rollout
+
+The application requires `20261026120000_durable_attempt_jobs.sql` before durable attempt requests
+are enabled. The migration adds the job ledger, owner-only read policy, one-active-job constraint,
+and the service-role-only idempotent attempt persistence function.
+
+Configure the same random `ATTEMPT_JOB_SIGNING_SECRET` (at least 32 bytes) for the Next.js and
+Python runtimes in every Vercel environment. It signs short-lived, job-scoped assertions; never
+expose it through a `NEXT_PUBLIC_` variable. Vercel Workflow also needs its generated handlers to
+remain reachable at `/.well-known/workflow/v1/flow` and
+`/.well-known/workflow/v1/webhook/[token]`.
+
+Deploy in this order:
+
+1. Apply and verify the migration.
+2. Add `ATTEMPT_JOB_SIGNING_SECRET` to the Vercel environment and redeploy all functions.
+3. Deploy the application and confirm the two Workflow routes are present in the build output.
+4. Record a short attempt in a preview, wait for “Recording uploaded,” background the app, then
+   return and confirm the same attempt advances through analysis and coaching without duplication.
+5. Force one processing failure, use Retry processing, and confirm the original job remains the
+   root of a single saved attempt.
+
+### Rollback
+
+Roll back the application deployment first. Keep the additive job table and function in place so
+in-flight work and old application versions remain safe; do not delete queued jobs. A later cleanup
+migration may remove the durable schema only after no deployed version uses it and all active jobs
+are terminal. Rotating the signing secret invalidates outstanding assertions, so do that only after
+allowing active jobs to finish or accepting that they will need an explicit retry.

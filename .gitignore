@@ -22,3 +22,4 @@ storybook-static/
 # Screenshots dropped in the repo root for an agent to read
 image.png
 *.screenshot.png
+/.swc
