@@ -36,24 +36,25 @@ Questions may be anchored to coaching text, an exercise instruction, a measureme
 field. The visible context label and server payload must refer to the same immutable source. Removing
 the chip removes context from the request; it does not delete earlier messages.
 
-## Exercise-owned conversation
+## Attempt-owned conversation
 
-Each exercise thread owns one chronological coach conversation and contains every recorded retry
-of that exercise inline. Messages retain the concrete attempt that supplied their context, while
-unanchored questions attach to the latest attempt in the selected exercise. Try again appends to the
-current exercise; Try a different exercise starts or returns to the one temporary draft.
+The product hierarchy is Practice → Attempts → Attempt detail → Conversation. The practice route
+is an action workspace and attempt index, not a chat transcript. Each attempt detail renders only
+messages whose `attempt_id` matches that attempt, and every new question persists that ID.
 
-Exercise setup is preparation, not a recorded attempt. One client-only draft may appear in the
-navigator until its first recording is saved. Reopening New exercise selects that draft without
-regenerating its proposal, Cancel returns to the prior recorded exercise, and a successful first
-recording replaces the draft with its recorded exercise thread.
+Legacy null-attempt messages remain readable as General practice questions but are not reassigned.
+Context anchors may target coaching text, instructions, or measurements inside the displayed
+attempt. Try again returns to the practice controls with that owned attempt as the retry parent.
 
-## Conversation live edge
+## Action-first practice
 
-Conversation order stays oldest-to-newest. When the singer is near the live edge, new coaching
-keeps the newest content visible. When they have scrolled up, incoming content does not move the
-viewport; a “Jump to latest” control reports unseen updates. Recording and retry actions remain in
-the mobile sticky dock at the live edge rather than being duplicated inside old messages.
+An active practice opens ready to repeat the latest exercise: concise progress and focus copy,
+reference playback, then recording. Different exercise and End practice stay adjacent. Attempts
+are listed newest-first below and link to dedicated review; charts and conversations never push
+recording controls down the practice page.
+
+After the controls leave the viewport, Back to practice controls replaces the former Jump to latest
+behavior. The attempt detail route instead keeps Back to practice and Try again in sticky context.
 
 ## Practice entry
 
@@ -62,11 +63,10 @@ session is active. The resume card shows a short, plain-text coaching cue rather
 Markdown or diagnostics. Starting new requires confirmation, saves and ends the active practice
 first, and reveals alternate focus choices only on request.
 
-## Proposal and confirmation
+## Proposal and recording
 
-The coach proposes an exercise; the singer explicitly accepts before recording controls appear.
-Singer alternatives—different exercise, free sing, ask, and move on—remain available before
-acceptance.
+The current proposal appears directly in the action workspace with reference playback and recording;
+there is no extra acceptance step. Different exercise stays available before recording.
 
 ## Explicit session ending
 
@@ -84,5 +84,5 @@ retry controls and receive no artificial coach sign-off.
 
 ## Responsive progressive disclosure
 
-Desktop may keep the Compass sticky beside the timeline. Narrow screens place the Compass in normal
-flow until a dedicated focus sheet is supported. Full analysis remains collapsed by default.
+Desktop and mobile preserve the same controls-first hierarchy. Full analysis remains collapsed by
+default and opens on the attempt detail route.
