@@ -11,11 +11,14 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isRecorderBusy, type RecorderState } from "@/components/Recorder";
 import { AttemptResult } from "@/components/practice/AttemptResult";
 import { PendingAttempt } from "@/components/practice/PendingAttempt";
+import { AttemptSummaryCard } from "@/components/practice/AttemptSummaryCard";
+import { BackToPracticeControls } from "@/components/practice/BackToPracticeControls";
+import { PracticeActionWorkspace } from "@/components/practice/PracticeActionWorkspace";
 import { usePracticeJobRefresh } from "@/components/practice/usePracticeJobRefresh";
 import { ExerciseNavigator } from "@/components/practice/ExerciseNavigator";
 import {
@@ -60,6 +63,7 @@ import {
   contractFromAttempt,
   currentExerciseForChange,
   endPractice,
+  attemptExerciseName,
   loadPractice,
   nextAttemptSequence,
   savePracticeMessage,
@@ -75,6 +79,13 @@ import {
   type Measurements,
 } from "@/lib/schema";
 import { parseStoredJson } from "@/lib/storedJson";
+import {
+  attemptsNewestFirst,
+  generalPracticeMessages,
+  practiceWorkspaceSummary,
+  retryProposalForAttempt,
+  workspaceAttempt,
+} from "@/lib/practiceWorkspace";
 import { playReference, type ReferencePlayer } from "@/lib/referencePlayback";
 import { nextLessonStage } from "@/lib/lessonStage";
 import { selectSongPassage } from "@/lib/repertoireResolver";
@@ -91,6 +102,7 @@ import {
 export function PracticeSession() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [bundle, setBundle] = useState<PracticeBundle | null>(null);
   const [proposal, setProposal] = useState<PracticeProposal | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -183,6 +195,25 @@ export function PracticeSession() {
     refresh()
       .then(async (loaded) => {
         if (loaded.practice.status === "ended") return;
+        if (loaded.attempts.length > 0) {
+          const requestedRetryId = searchParams.get("retry");
+          const target = workspaceAttempt(loaded.attempts, requestedRetryId);
+          if (target) {
+            const threads = groupExerciseThreads(loaded.attempts);
+            const selectedExerciseId = recordedExerciseIdForAttempt(threads, target.id);
+            setExerciseSelection({
+              selectedExerciseId,
+              draftExerciseId: null,
+              previousRecordedExerciseId: null,
+            });
+            setProposal(retryProposalForAttempt(target));
+            setSetupOpen(true);
+            if (requestedRetryId) {
+              window.history.replaceState(null, "", `/practice/${loaded.practice.id}`);
+            }
+          }
+          return;
+        }
         if (loaded.attempts.length === 0) {
           const draftId = `draft-${crypto.randomUUID()}`;
           setExerciseSelection((current) => {
@@ -245,7 +276,7 @@ export function PracticeSession() {
           reason instanceof Error ? reason.message : "Could not open this practice.",
         ),
       );
-  }, [refresh]);
+  }, [refresh, searchParams]);
 
   useEffect(() => () => activeReferenceRef.current?.stop(), []);
 
@@ -278,6 +309,15 @@ export function PracticeSession() {
     : draftExerciseId;
   const showUnsavedAttempt =
     Boolean(unsavedAttempt) && unsavedExerciseId === selectedExerciseId;
+  const workspaceTarget =
+    (proposal?.parentAttemptId
+      ? bundle?.attempts.find((attempt) => attempt.id === proposal.parentAttemptId)
+      : null) ?? workspaceAttempt(bundle?.attempts ?? [], null);
+  const workspaceSummary = practiceWorkspaceSummary(workspaceTarget, contract ?? null);
+  const workspaceExerciseName =
+    proposal?.spec?.display_name ??
+    (workspaceTarget ? attemptExerciseName(workspaceTarget) : "First exercise");
+  const generalMessages = generalPracticeMessages(bundle?.messages ?? []);
 
   usePracticeJobRefresh(Boolean(activeJob), async () => {
     await refresh();
@@ -982,16 +1022,7 @@ export function PracticeSession() {
           >
             Back to Practice
           </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            colorPalette="coral"
-            disabled={processing || streaming || recorderBusy || proposalLoading}
-            onClick={() => setEndOpen(true)}
-          >
-            End practice
-          </Button>
-        )}
+        ) : null}
       </Flex>
 
       {error ? (
@@ -1023,82 +1054,20 @@ export function PracticeSession() {
         </AppNotice>
       ) : null}
 
-      <Grid
-        templateColumns={{
-          base: "minmax(0, 1fr)",
-          lg: "15rem minmax(0, 1fr) 18rem",
-        }}
-        gap={6}
-        alignItems="start"
-      >
-        <Box display={{ base: "none", lg: "block" }}>
-          <ExerciseNavigator
-            variant="desktop"
-            threads={exerciseThreads}
-            selectedExerciseId={selectedExerciseId}
-            draft={
-              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
-                ? {
-                    id: pendingJobExerciseId,
-                    name: pendingJobSpec?.display_name ?? "Free sing",
-                  }
-                : draftExerciseId
-                  ? {
-                      id: draftExerciseId,
-                      name: draftProposal?.spec?.display_name ?? "Free sing",
-                    }
-                  : undefined
-            }
-            onSelect={selectExercise}
-            onNewExercise={openNewExercise}
-            disabled={processing || streaming || recorderBusy || proposalLoading}
-            ended={ended}
-          />
-        </Box>
-
-        <Stack gap={5}>
-          <SessionOrigin direction={bundle.practice.starting_direction} />
-          {activeExercise ? (
-            <PracticeConversationViewport
-              itemCount={activeTimeline.length + (streamingText ? 1 : 0)}
-              exerciseId={selectedExerciseId}
-            >
-              <Stack gap={3} aria-live="polite" aria-label="Exercise conversation">
-                {activeTimeline.map((item) =>
-                  item.type === "attempt" ? (
-                    <AttemptResult
-                      key={`attempt-${item.attempt.id}`}
-                      attempt={item.attempt}
-                      fallbackIndex={bundle.attempts.findIndex(
-                        (attempt) => attempt.id === item.attempt.id,
-                      )}
-                      parent={
-                        item.attempt.parent_attempt_id
-                          ? (bundle.attempts.find(
-                              (attempt) => attempt.id === item.attempt.parent_attempt_id,
-                            ) ?? null)
-                          : null
-                      }
-                      expanded={Boolean(details[item.attempt.id])}
-                      onToggle={() =>
-                        setDetails((current) => ({
-                          ...current,
-                          [item.attempt.id]: !current[item.attempt.id],
-                        }))
-                      }
-                      onAsk={(label, value) => askAbout(label, value, item.attempt.id)}
-                    />
-                  ) : (
-                    <PracticeMessage
-                      key={`message-${item.message.id}`}
-                      message={item.message}
-                    />
-                  ),
-                )}
-                <StreamingPracticeMessage text={streamingText} anchor={anchor} />
-              </Stack>
-            </PracticeConversationViewport>
-          ) : null}
+      {!ended ? (
+        <PracticeActionWorkspace
+          summary={workspaceSummary}
+          exerciseName={workspaceExerciseName}
+          onDifferent={openNewExercise}
+          onEnd={() => setEndOpen(true)}
+          actionsDisabled={
+            processing ||
+            streaming ||
+            recorderBusy ||
+            proposalLoading ||
+            Boolean(activeJob)
+          }
+        >
           {visibleJob ? (
             <PendingAttempt
               job={visibleJob}
@@ -1116,148 +1085,82 @@ export function PracticeSession() {
                 }
               }}
             />
-          ) : null}
-          {showUnsavedAttempt && unsavedAttempt ? (
-            <Box borderWidth="2px" borderColor="coral.400" rounded="surface" p={1}>
-              <Badge m={3} mb={1} colorPalette="coral" variant="subtle">
-                Not saved to history
-              </Badge>
-              <AttemptResult
-                attempt={unsavedAttempt}
-                fallbackIndex={bundle.attempts.length}
-                parent={
-                  unsavedAttempt.parent_attempt_id
-                    ? (bundle.attempts.find(
-                        (attempt) => attempt.id === unsavedAttempt.parent_attempt_id,
-                      ) ?? null)
-                    : null
+          ) : setupOpen && proposal ? (
+            <ExerciseProposal
+              compact
+              proposal={proposal}
+              processing={processing}
+              playbackState={playbackState}
+              recorderBusy={recorderBusy}
+              proposalLoading={proposalLoading}
+              referenceFallback={referenceFallback}
+              onUploaded={onUploadedDurable}
+              onPlayReference={async () => {
+                if (!proposal.spec) return;
+                stopReference();
+                setPlaybackState("preparing");
+                const player = playReference(proposal.spec);
+                activeReferenceRef.current = player;
+                try {
+                  const source = await player.started;
+                  if (activeReferenceRef.current !== player) return;
+                  setReferenceFallback(source === "pitch_fallback");
+                  setPlaybackState("playing");
+                  await player.done;
+                  if (activeReferenceRef.current === player) {
+                    activeReferenceRef.current = null;
+                    setPlaybackState("ready");
+                  }
+                } catch {
+                  if (activeReferenceRef.current === player) {
+                    activeReferenceRef.current = null;
+                    setPlaybackState("error");
+                  }
                 }
-                expanded={Boolean(details[unsavedAttempt.id])}
-                onToggle={() =>
-                  setDetails((current) => ({
-                    ...current,
-                    [unsavedAttempt.id]: !current[unsavedAttempt.id],
-                  }))
-                }
-              />
-            </Box>
-          ) : null}
-          {!ended && activeAttempt ? (
-            <PracticeComposer
-              value={question}
-              onChange={setQuestion}
-              anchor={anchor}
-              onClearAnchor={() => setAnchor(null)}
-              onSend={sendQuestion}
-              onRetry={retrySelected}
+              }}
+              onStopReference={stopReference}
               onDifferent={openNewExercise}
-              streaming={streaming}
-              disabled={processing || recorderBusy || proposalLoading}
-              actionsDisabled={Boolean(activeJob)}
-              onStop={() => abortRef.current?.abort()}
+              onFreeSing={freeSing}
+              onMoveOn={nextFromCoach}
+              onShiftKey={shiftProposalKey}
+              onCancel={cancelSetup}
+              onRecorderStateChange={onRecorderStateChange}
             />
-          ) : null}
-          {!ended && setupOpen && proposal ? (
-            <Box order={{ base: -1, lg: "initial" }}>
-              <ExerciseProposal
-                proposal={proposal}
-                processing={processing}
-                playbackState={playbackState}
-                recorderBusy={recorderBusy}
-                proposalLoading={proposalLoading}
-                referenceFallback={referenceFallback}
-                onUploaded={onUploadedDurable}
-                onPlayReference={async () => {
-                  if (!proposal.spec) return;
-                  stopReference();
-                  setPlaybackState("preparing");
-                  const player = playReference(proposal.spec);
-                  activeReferenceRef.current = player;
-                  try {
-                    const source = await player.started;
-                    if (activeReferenceRef.current !== player) return;
-                    setReferenceFallback(source === "pitch_fallback");
-                    setPlaybackState("playing");
-                    await player.done;
-                    if (activeReferenceRef.current === player) {
-                      activeReferenceRef.current = null;
-                      setPlaybackState("ready");
-                    }
-                  } catch {
-                    if (activeReferenceRef.current === player) {
-                      activeReferenceRef.current = null;
-                      setPlaybackState("error");
-                    }
-                  }
-                }}
-                onStopReference={stopReference}
-                onDifferent={proposal.retry ? openNewExercise : differentExercise}
-                onFreeSing={freeSing}
-                onMoveOn={proposal.retry ? openNewExercise : nextFromCoach}
-                onShiftKey={shiftProposalKey}
-                onCancel={cancelSetup}
-                onRecorderStateChange={onRecorderStateChange}
-              />
-            </Box>
-          ) : null}
-          {ended ? (
-            <Box borderTopWidth="1px" borderColor="grid" py={6}>
-              <Text color="cream.600">
-                This practice has ended. Its attempts and explanations are preserved as
-                they happened.
-              </Text>
-            </Box>
           ) : (
-            <Flex borderTopWidth="1px" borderColor="grid" pt={5} justify="flex-end">
-              <Button
-                variant="ghost"
-                colorPalette="coral"
-                disabled={processing || streaming || recorderBusy || proposalLoading}
-                onClick={() => setEndOpen(true)}
-              >
-                End practice
-              </Button>
-            </Flex>
+            <LoadingSurface lines={3} />
           )}
+        </PracticeActionWorkspace>
+      ) : null}
+
+      <Box>
+        <Heading size="lg">Attempts</Heading>
+        <Text mt={2} color="fg.muted">
+          Review an attempt for its full analysis and conversation.
+        </Text>
+        <Stack mt={4} gap={3}>
+          {attemptsNewestFirst(bundle.attempts).map((attempt) => (
+            <AttemptSummaryCard
+              key={attempt.id}
+              practiceId={bundle.practice.id}
+              attempt={attempt}
+              fallbackIndex={bundle.attempts.findIndex((row) => row.id === attempt.id)}
+            />
+          ))}
         </Stack>
+      </Box>
 
-        <Box display={{ base: "block", lg: "none" }}>
-          <ExerciseNavigator
-            variant="mobile"
-            threads={exerciseThreads}
-            selectedExerciseId={selectedExerciseId}
-            draft={
-              activeJob && !activeJob.parent_attempt_id && pendingJobExerciseId
-                ? {
-                    id: pendingJobExerciseId,
-                    name: pendingJobSpec?.display_name ?? "Free sing",
-                  }
-                : draftExerciseId
-                  ? {
-                      id: draftExerciseId,
-                      name: draftProposal?.spec?.display_name ?? "Free sing",
-                    }
-                  : undefined
-            }
-            onSelect={selectExercise}
-            onNewExercise={openNewExercise}
-            disabled={processing || streaming || recorderBusy || proposalLoading}
-            ended={ended}
-          />
+      {generalMessages.length > 0 ? (
+        <Box>
+          <Heading size="md">General practice questions</Heading>
+          <Stack mt={3} gap={3}>
+            {generalMessages.map((message) => (
+              <PracticeMessage key={message.id} message={message} />
+            ))}
+          </Stack>
         </Box>
+      ) : null}
 
-        {contract ? (
-          <PracticeCompass
-            contract={contract}
-            canAsk={Boolean(activeAttempt) && !ended}
-            onAsk={(label, value) => {
-              if (activeAttempt) {
-                askAbout(label, value, activeAttempt.id, "compass_field");
-              }
-            }}
-          />
-        ) : null}
-      </Grid>
+      {!ended ? <BackToPracticeControls /> : null}
 
       <Dialog.Root open={endOpen} onOpenChange={(event) => setEndOpen(event.open)}>
         <Dialog.Backdrop />

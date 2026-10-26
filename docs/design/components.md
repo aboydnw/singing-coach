@@ -47,17 +47,26 @@ injected in `next.config.ts` from Vercel's `VERCEL_GIT_COMMIT_SHA`).
 | `PlasticityLoop`           | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
 | `Recorder`                 | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
 | `PendingAttempt`           | Provisional | Persisted upload, analysis, coaching, and retry status                    |
+| `PracticeActionWorkspace`  | Provisional | Coaching focus, reference, recording, and practice exit actions           |
+| `AttemptSummaryCard`       | Provisional | Compact attempt index entry linking to dedicated review                   |
+| `AttemptDetail`            | Provisional | One attempt's analysis and strictly owned coaching conversation           |
+| `BackToPracticeControls`   | Provisional | Return to recording controls after scrolling into attempt history         |
 
-`PracticeMessage` and `StreamingPracticeMessage` are inline timeline renderers rather than a
-conversation wrapper. `PracticeSession` interleaves them with attempt cards inside the selected
-exercise's live-region stack.
+`PracticeMessage` and `StreamingPracticeMessage` render only inside an attempt detail conversation,
+except for legacy null-attempt messages shown read-only under General practice questions.
 
-`PracticeComposer` is inline and exercise-scoped. It owns the question input plus the Try again and
-Try a different exercise footer actions. On narrow screens it becomes a sticky action dock above
-the bottom navigation; the timeline reserves matching space. Contextual questions are
-available only for persisted sources whose source attempt belongs to the selected exercise.
+`PracticeComposer` is attempt-scoped on the detail route. It can omit practice actions when the
+sticky attempt navigation already provides Try again. Contextual questions always persist the
+attempt displayed by that route.
 
-`PendingAttempt` appears in the same chronological position as the attempt it will become. It may
+`PracticeActionWorkspace` is the first substantial surface in an active practice. It owns the
+short coaching recap, current proposal, reference playback, recorder, durable pending state,
+Different exercise, and End practice. `AttemptSummaryCard` entries follow below, newest first.
+
+`AttemptDetail` owns full analysis and conversation for exactly one attempt. Its sticky navigation
+returns to the practice or deep-links that attempt into the retry-ready workspace.
+
+`PendingAttempt` replaces the recorder inside the action workspace while durable work runs. It may
 say navigation is safe only after the durable endpoint acknowledges the uploaded recording. Its
 waiting guidance is short, comes from saved practice context, and never invites another recording.
 

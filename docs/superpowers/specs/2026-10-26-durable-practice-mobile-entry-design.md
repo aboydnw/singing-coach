@@ -153,6 +153,11 @@ The page polls jobs every five seconds only while visible and an active job exis
 
 ## Exercise conversation and actions
 
+> Superseded on 2026-10-26 by
+> `2026-10-26-action-first-practice-workspace-design.md`. Durable job behavior remains
+> authoritative here, while the practice route now uses an action workspace and attempt-specific
+> detail conversations instead of a practice-wide live edge.
+
 ### Chronology and live edge
 
 Attempt cards and messages remain in chronological order. A bottom sentinel defines the live edge. On first opening an exercise, after the singer sends a question, or after they explicitly start retry setup, the view moves to the latest relevant content.
