@@ -35,6 +35,8 @@ describe("MobileTabBar", () => {
     expect(markup).toContain("Calibrate");
     expect(markup).toContain("Progress");
     expect(markup).toContain("Account");
+    expect(markup.match(/aria-hidden="true"/g)).toHaveLength(5);
+    expect(markup).not.toMatch(/[♪⌁↗○]/);
   });
 
   it("marks Account current without selecting another tab", () => {
