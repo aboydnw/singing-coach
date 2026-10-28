@@ -38,6 +38,7 @@ import { toaster } from "@/components/ui/AppToaster";
 import { LoadingSurface } from "@/components/ui/LoadingSurface";
 import { StatusLabel } from "@/components/ui/StatusLabel";
 import {
+  abandonAttemptJob,
   analyze,
   coach,
   retryAttemptJob,
@@ -73,6 +74,7 @@ import {
 import {
   coachingResponseSchema,
   exerciseSpecSchema,
+  proposalMetadataSchema,
   type ContextAnchor,
   type CoachingResponse,
   type ExerciseSpec,
@@ -301,7 +303,7 @@ export function PracticeSession() {
     : null;
   const visibleJob =
     (bundle?.jobs ?? []).toReversed().find((job) => {
-      if (job.status === "completed") return false;
+      if (job.status === "completed" || job.status === "abandoned") return false;
       return jobExerciseId(job, exerciseThreads) === selectedExerciseId;
     }) ?? null;
   const unsavedExerciseId = unsavedAttempt?.parent_attempt_id
@@ -1081,6 +1083,43 @@ export function PracticeSession() {
                     reason instanceof Error
                       ? reason.message
                       : "Attempt processing could not be retried.",
+                  );
+                }
+              }}
+              onNewAttempt={async () => {
+                try {
+                  await abandonAttemptJob(visibleJob.id);
+                  const loaded = await refresh();
+                  const savedAttempt = visibleJob.attempt_id
+                    ? loaded.attempts.find(
+                        (attempt) => attempt.id === visibleJob.attempt_id,
+                      )
+                    : null;
+                  if (savedAttempt) {
+                    setProposal(retryProposalForAttempt(savedAttempt));
+                  } else {
+                    const metadata = parseStoredJson(
+                      visibleJob.proposal_metadata_json,
+                      proposalMetadataSchema,
+                    );
+                    setProposal({
+                      spec: parseStoredJson(
+                        visibleJob.exercise_spec_json,
+                        exerciseSpecSchema,
+                      ),
+                      reason:
+                        metadata?.reason ??
+                        "Try the same exercise again with a fresh recording.",
+                      parentAttemptId: visibleJob.parent_attempt_id,
+                      retry: visibleJob.parent_attempt_id !== null,
+                    });
+                  }
+                  setSetupOpen(true);
+                } catch (reason) {
+                  reportError(
+                    reason instanceof Error
+                      ? reason.message
+                      : "A new attempt could not be started.",
                   );
                 }
               }}

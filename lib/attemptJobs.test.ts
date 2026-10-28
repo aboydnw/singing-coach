@@ -4,6 +4,7 @@ import { initialContract } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 import {
   activeAttemptJob,
+  attemptJobResumePoint,
   jobExerciseId,
   pendingGuidance,
   type AttemptJobRow,
@@ -104,5 +105,24 @@ describe("attempt jobs", () => {
         null,
       ),
     ).toBe("Hum the pattern just once. Don’t record another attempt yet.");
+  });
+
+  it("resumes failed coaching from its saved analysis checkpoint", () => {
+    expect(
+      attemptJobResumePoint(
+        job({
+          status: "failed",
+          attempt_id: "attempt-1",
+          measurements_json: '{"pitch_median_hz":220}',
+          contour_json: '{"times":[]}',
+        }),
+      ),
+    ).toEqual({ stage: "coaching", attemptId: "attempt-1" });
+  });
+
+  it("restarts analysis when a failed job has no complete checkpoint", () => {
+    expect(attemptJobResumePoint(job({ status: "failed" }))).toEqual({
+      stage: "analysis",
+    });
   });
 });

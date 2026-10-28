@@ -9,6 +9,7 @@ export const attemptJobStatusSchema = z.enum([
   "coaching",
   "completed",
   "failed",
+  "abandoned",
 ]);
 
 export type AttemptJobStatus = z.infer<typeof attemptJobStatusSchema>;
@@ -43,6 +44,16 @@ export function activeAttemptJob(jobs: AttemptJobRow[]): AttemptJobRow | null {
       .toSorted((left, right) => right.created_at.localeCompare(left.created_at))[0] ??
     null
   );
+}
+
+export type AttemptJobResumePoint =
+  { stage: "analysis" } | { stage: "coaching"; attemptId: string };
+
+export function attemptJobResumePoint(job: AttemptJobRow): AttemptJobResumePoint {
+  if (job.attempt_id && job.measurements_json !== null && job.contour_json !== null) {
+    return { stage: "coaching", attemptId: job.attempt_id };
+  }
+  return { stage: "analysis" };
 }
 
 export function jobExerciseId(
