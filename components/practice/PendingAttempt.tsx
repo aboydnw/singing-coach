@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import type { AttemptJobRow } from "@/lib/attemptJobs";
 import { pendingGuidance } from "@/lib/attemptJobs";
 import type { LearningContract } from "@/lib/schema";
@@ -27,16 +27,22 @@ const STAGES: Record<AttemptJobRow["status"], { title: string; detail: string }>
     title: "This attempt needs another try",
     detail: "Your uploaded recording is still safe.",
   },
+  abandoned: {
+    title: "Processing set aside",
+    detail: "Your saved analysis remains in the attempt history.",
+  },
 };
 
 export function PendingAttempt({
   job,
   contract,
   onRetry,
+  onNewAttempt,
 }: {
   job: AttemptJobRow;
   contract: LearningContract | null;
   onRetry: () => void;
+  onNewAttempt: () => void;
 }) {
   const stage = STAGES[job.status];
   return (
@@ -56,9 +62,14 @@ export function PendingAttempt({
           </Text>
         </Box>
         {job.status === "failed" ? (
-          <Button colorPalette="coral" alignSelf="start" onClick={onRetry}>
-            Retry processing
-          </Button>
+          <Flex gap={3} wrap="wrap">
+            <Button colorPalette="coral" onClick={onRetry}>
+              Retry processing
+            </Button>
+            <Button variant="outline" onClick={onNewAttempt}>
+              Try a new attempt
+            </Button>
+          </Flex>
         ) : (
           <Box bg="bg.subtle" rounded="inner" px={4} py={3}>
             <Text fontWeight="semibold">While you wait</Text>

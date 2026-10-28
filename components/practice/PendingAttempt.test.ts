@@ -42,6 +42,7 @@ function render(status: AttemptJobRow["status"]) {
         job: job(status),
         contract: initialContract("coach_pick"),
         onRetry: () => undefined,
+        onNewAttempt: () => undefined,
       }),
     ),
   );
@@ -64,5 +65,6 @@ describe("PendingAttempt", () => {
     const markup = render("failed");
     expect(markup).toContain("This attempt needs another try");
     expect(markup).toContain("Retry processing");
+    expect(markup).toContain("Try a new attempt");
   });
 });

@@ -1,6 +1,7 @@
 import { analyzeResponseSchema, coachingResponseSchema, exerciseSpecSchema, learningContractSchema } from "@/lib/schema";
 import type { AnalyzeResponse, CoachingResponse } from "@/lib/schema";
 import type { AttemptJobRow } from "@/lib/attemptJobs";
+import { attemptJobResumePoint, type AttemptJobResumePoint } from "@/lib/attemptJobs";
 import { serviceSupabase } from "@/lib/serverSupabase";
 import { signJobAssertion } from "@/lib/jobAssertion";
 import { generateCoaching } from "@/lib/coachService";
@@ -38,9 +39,18 @@ async function transition(
   }
 }
 
-export async function claimAnalysis(jobId: string) {
+export async function claimAttemptWork(
+  jobId: string,
+): Promise<AttemptJobResumePoint> {
   "use step";
-  await transition(jobId, ["queued"], "analyzing");
+  const job = await loadJob(jobId);
+  const resumePoint = attemptJobResumePoint(job);
+  await transition(
+    jobId,
+    ["queued"],
+    resumePoint.stage === "coaching" ? "coaching" : "analyzing",
+  );
+  return resumePoint;
 }
 
 export async function analyzeAttempt(jobId: string): Promise<AnalyzeResponse> {
