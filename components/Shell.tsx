@@ -110,6 +110,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           maxW="6xl"
           flex="1"
           py={{ base: 6, md: 9 }}
+          minW="0"
+          overflowX="clip"
         >
           {children}
         </Container>

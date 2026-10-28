@@ -1,17 +1,9 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Spinner,
-  Stack,
-  Table,
-  Text,
-} from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Spinner, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import { ProgressCharts } from "@/components/ProgressCharts";
+import { AttemptHistoryTable } from "@/components/AttemptHistoryTable";
 import { Shell } from "@/components/Shell";
 import { AppNotice } from "@/components/ui/AppNotice";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -181,70 +173,15 @@ export default function ProgressPage() {
                   </Button>
                 ))}
               </Flex>
-              <Table.Root size="sm" variant="line">
-                <Table.Header>
-                  <Table.Row bg="transparent">
-                    <Table.ColumnHeader>when</Table.ColumnHeader>
-                    <Table.ColumnHeader>exercise</Table.ColumnHeader>
-                    <Table.ColumnHeader>coaching</Table.ColumnHeader>
-                    <Table.ColumnHeader>audio</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {filtered.map((row) => (
-                    <Table.Row key={row.id} bg="transparent">
-                      <Table.Cell whiteSpace="nowrap">
-                        {new Date(row.ts).toLocaleString()}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {specName(row) ?? row.exercise_type.replace("_", " ")}
-                      </Table.Cell>
-                      <Table.Cell maxW="72" truncate>
-                        {coachingHeadline(row) ?? "—"}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {row.audio_key ? (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="teal"
-                            onClick={() => play(row)}
-                            disabled={playingId === row.id}
-                          >
-                            {playingId === row.id ? "▶ playing" : "▶ play"}
-                          </Button>
-                        ) : (
-                          <Text color="cream.600" fontSize="xs">
-                            not available
-                          </Text>
-                        )}
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
+              <AttemptHistoryTable
+                attempts={filtered}
+                playingId={playingId}
+                onPlay={(row) => void play(row)}
+              />
             </Box>
           </>
         )}
       </Stack>
     </Shell>
   );
-}
-
-function specName(row: SessionRow): string | null {
-  if (!row.exercise_spec_json) return null;
-  try {
-    return JSON.parse(row.exercise_spec_json).display_name ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function coachingHeadline(row: SessionRow): string | null {
-  if (!row.coaching_json) return null;
-  try {
-    return JSON.parse(row.coaching_json).top_issue ?? null;
-  } catch {
-    return null;
-  }
 }
