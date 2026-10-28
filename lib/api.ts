@@ -106,6 +106,22 @@ export async function retryAttemptJob(jobId: string): Promise<AttemptJobRow> {
   return body as AttemptJobRow;
 }
 
+export async function abandonAttemptJob(jobId: string): Promise<AttemptJobRow> {
+  const token = await accessToken();
+  if (!token) throw new Error("not signed in");
+  const response = await fetch(`/api/practice/attempt-jobs/${jobId}/abandon`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      body.error ?? `attempt abandon failed with status ${response.status}`,
+    );
+  }
+  return body as AttemptJobRow;
+}
+
 export async function analyze(
   storageKey: string,
   exerciseSpec: ExerciseSpec | null,

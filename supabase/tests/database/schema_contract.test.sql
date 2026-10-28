@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 select has_table('public', 'practice_sessions', 'practice_sessions exists');
 select has_table('public', 'practice_messages', 'practice_messages exists');
@@ -273,6 +273,17 @@ select results_eq(
 select ok(
   not has_function_privilege('authenticated', 'public.create_attempt_from_job(uuid)', 'EXECUTE'),
   'authenticated clients cannot invoke attempt persistence'
+);
+select lives_ok(
+  $$
+    update public.practice_attempt_jobs
+    set status = 'failed'
+    where id = '11111111-1111-1111-1111-111111111130';
+    update public.practice_attempt_jobs
+    set status = 'abandoned'
+    where id = '11111111-1111-1111-1111-111111111130'
+  $$,
+  'a failed processing record can be abandoned without deleting its attempt'
 );
 
 select col_is_null('public', 'sessions', 'practice_session_id', 'legacy attempts need no practice session');
