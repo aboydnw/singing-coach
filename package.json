@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/prepare-workflow-routes.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
