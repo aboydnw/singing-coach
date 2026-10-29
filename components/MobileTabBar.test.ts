@@ -30,12 +30,11 @@ describe("MobileTabBar", () => {
     );
     expect(currentAnchor(markup)).toContain('href="/practice"');
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
-    expect(markup).toContain("data-active-marker");
     expect(markup).toContain("Practice");
     expect(markup).toContain("Calibrate");
     expect(markup).toContain("Progress");
     expect(markup).toContain("Account");
-    expect(markup.match(/aria-hidden="true"/g)).toHaveLength(5);
+    expect(markup.match(/aria-hidden="true"/g)).toHaveLength(4);
     expect(markup).not.toMatch(/[♪⌁↗○]/);
   });
 
@@ -43,5 +42,11 @@ describe("MobileTabBar", () => {
     const markup = renderTabs("/account");
     expect(currentAnchor(markup)).toContain('href="/account"');
     expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
+  });
+
+  it("keeps all four tab targets aligned without turning the active tab into a card", () => {
+    const markup = renderTabs("/calibrate");
+    expect(markup.match(/data-mobile-tab="true"/g)).toHaveLength(4);
+    expect(markup).not.toContain("data-active-marker");
   });
 });
