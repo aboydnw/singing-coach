@@ -23,13 +23,13 @@ export function MobileTabBar({ currentPath }: { currentPath: string }) {
       borderTopWidth="1px"
       borderColor="border.default"
       boxShadow="overlay"
-      px={2}
-      pt={2}
+      px={3}
+      pt={1.5}
       pb="max(0.5rem, env(safe-area-inset-bottom))"
     >
       <Grid
         gridTemplateColumns="repeat(4, minmax(0, 1fr))"
-        gap={1}
+        gap={0.5}
         minH="mobileNav"
         maxW="30rem"
         mx="auto"
@@ -41,43 +41,34 @@ export function MobileTabBar({ currentPath }: { currentPath: string }) {
             <ChakraLink
               key={tab.href}
               asChild
+              data-mobile-tab="true"
               flex="1"
               minW="0"
-              minH="3.75rem"
-              position="relative"
+              minH="4rem"
               color={active ? "action.primary" : "fg.muted"}
               fontWeight={active ? "semibold" : "medium"}
-              bg={active ? "coral.50" : "transparent"}
-              borderWidth="1px"
-              borderColor={active ? "coral.200" : "transparent"}
+              bg="transparent"
               rounded="inner"
               textDecoration="none"
-              _hover={{ bg: active ? "coral.100" : "cream.50" }}
+              _hover={{ bg: "cream.50" }}
               _focusVisible={{ outline: "2px solid", outlineColor: "border.focus" }}
               _active={{ transform: "translateY(1px)" }}
             >
               <NextLink href={tab.href} aria-current={active ? "page" : undefined}>
-                {active ? (
-                  <Box
-                    data-active-marker
-                    aria-hidden="true"
-                    position="absolute"
-                    top="-2"
-                    insetInline="3"
-                    h="0.75"
-                    bg="action.primary"
-                    roundedBottom="full"
-                  />
-                ) : null}
-                <Grid minH="3.75rem" placeItems="center" gap="0.5" py={1}>
+                <Grid
+                  minH="4rem"
+                  gridTemplateRows="2.25rem 1rem"
+                  placeItems="center"
+                  gap="0.5"
+                  py={1}
+                >
                   <Box
                     display="grid"
                     placeItems="center"
-                    boxSize="1.9rem"
-                    rounded="0.55rem"
-                    bg={active ? "coral.100" : "cream.50"}
-                    borderWidth="1px"
-                    borderColor={active ? "coral.200" : "grid"}
+                    w="3rem"
+                    h="2rem"
+                    rounded="full"
+                    bg={active ? "coral.100" : "transparent"}
                   >
                     <Icon />
                   </Box>

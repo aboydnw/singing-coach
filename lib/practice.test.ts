@@ -10,6 +10,7 @@ import {
   selectedAttemptAfterRefresh,
   type PracticeMessageRow,
 } from "@/lib/practice";
+import type { ExerciseSpec } from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
 
 function attempt(coaching: Record<string, unknown> | null): SessionRow {
@@ -187,20 +188,20 @@ describe("nextAttemptSequence", () => {
 });
 
 describe("currentExerciseForChange", () => {
-  const selected = {
-    type: "sustained_note",
+  const selected: ExerciseSpec = {
+    type: "sustained",
     target_notes_midi: [60],
     duration_per_note_s: 2,
     vowel: "ah",
     display_name: "Selected exercise",
-  } as const;
-  const proposed = {
+  };
+  const proposed: ExerciseSpec = {
     type: "scale",
     target_notes_midi: [60, 62, 64],
     duration_per_note_s: 0.5,
     vowel: "ah",
     display_name: "Proposed exercise",
-  } as const;
+  };
 
   it("ignores a hidden stale proposal after selecting an attempt", () => {
     expect(currentExerciseForChange(false, proposed, selected)).toBe(selected);

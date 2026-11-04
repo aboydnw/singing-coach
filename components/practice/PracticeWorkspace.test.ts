@@ -13,7 +13,7 @@ afterAll(() => vi.unstubAllGlobals());
 
 function render(element: React.ReactElement) {
   return renderToStaticMarkup(
-    React.createElement(ChakraProvider, { value: system }, element),
+    React.createElement(ChakraProvider, { value: system, children: element }),
   );
 }
 
@@ -42,20 +42,17 @@ const attempt: SessionRow = {
 describe("PracticeActionWorkspace", () => {
   it("puts concise coaching before controls and keeps exit actions together", () => {
     const html = render(
-      React.createElement(
-        PracticeActionWorkspace,
-        {
-          summary: {
-            encouragement: "Your onset stayed clear.",
-            focus: "Aim at the far wall.",
-          },
-          exerciseName: "Five-note scale",
-          onDifferent: () => undefined,
-          onEnd: () => undefined,
-          actionsDisabled: false,
+      React.createElement(PracticeActionWorkspace, {
+        summary: {
+          encouragement: "Your onset stayed clear.",
+          focus: "Aim at the far wall.",
         },
-        React.createElement("div", null, "Reference and recording controls"),
-      ),
+        exerciseName: "Five-note scale",
+        onDifferent: () => undefined,
+        onEnd: () => undefined,
+        actionsDisabled: false,
+        children: React.createElement("div", null, "Reference and recording controls"),
+      }),
     );
     expect(html.indexOf("How it is going")).toBeLessThan(html.indexOf("Focus on this"));
     expect(html.indexOf("Focus on this")).toBeLessThan(

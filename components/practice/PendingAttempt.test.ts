@@ -35,16 +35,15 @@ function job(status: AttemptJobRow["status"]): AttemptJobRow {
 
 function render(status: AttemptJobRow["status"]) {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(PendingAttempt, {
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(PendingAttempt, {
         job: job(status),
         contract: initialContract("coach_pick"),
         onRetry: () => undefined,
         onNewAttempt: () => undefined,
       }),
-    ),
+    }),
   );
 }
 

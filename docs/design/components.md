@@ -70,9 +70,10 @@ returns to the practice or deep-links that attempt into the retry-ready workspac
 say navigation is safe only after the durable endpoint acknowledges the uploaded recording. Its
 waiting guidance is short, comes from saved practice context, and never invites another recording.
 
-`MobileTabBar` uses text plus symbols for four destinations. Targets are at least 48 CSS pixels
-high, account for the device safe area, and expose the active destination with
-`aria-current="page"`; the desktop shell uses the same destination labels.
+`MobileTabBar` uses text plus line icons for four equal-width destinations. Targets are at least
+48 CSS pixels high, account for the device safe area, and expose the active destination with a
+compact tinted icon capsule plus `aria-current="page"`. The active destination must not become a
+larger card or shift its label baseline; the desktop shell uses the same destination labels.
 
 `ExerciseNavigator` groups retries under their root exercise. Recorded exercises show the root
 exercise name, total attempt count, and latest outcome; a pending proposal appears once as a Draft

@@ -13,17 +13,16 @@ afterAll(() => vi.unstubAllGlobals());
 
 function renderControl(state: ReferencePlaybackState, referenceFallback = false): string {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(ReferencePlaybackControl, {
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(ReferencePlaybackControl, {
         state,
         referenceFallback,
         disabled: false,
         onPlay: () => undefined,
         onStop: () => undefined,
       }),
-    ),
+    }),
   );
 }
 

@@ -16,10 +16,9 @@ function renderProposal(
   compact = false,
 ) {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(
         ExerciseProposal as React.ComponentType<Record<string, unknown>>,
         {
           proposal: {
@@ -50,7 +49,7 @@ function renderProposal(
           compact,
         },
       ),
-    ),
+    }),
   );
 }
 
@@ -86,10 +85,9 @@ describe("ExerciseProposal", () => {
 
   it("shows lyrics and key comfort controls for a song passage", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(
           ExerciseProposal as React.ComponentType<Record<string, unknown>>,
           {
             proposal: {
@@ -123,7 +121,7 @@ describe("ExerciseProposal", () => {
             onRecorderStateChange: noOp,
           },
         ),
-      ),
+      }),
     );
     expect(markup).toContain("Amazing grace, how sweet the sound");
     expect(markup).toContain("Too high");
