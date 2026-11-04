@@ -10,11 +10,10 @@ afterAll(() => vi.unstubAllGlobals());
 
 function renderTabs(currentPath: string): string {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(MobileTabBar, { currentPath }),
-    ),
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(MobileTabBar, { currentPath }),
+    }),
   );
 }
 

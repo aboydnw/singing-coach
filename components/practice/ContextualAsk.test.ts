@@ -57,32 +57,29 @@ const unsavedAttempt: SessionRow = {
 describe("contextual asking for persisted sources", () => {
   it("does not expose contextual chat on a draft exercise proposal", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(
-          ExerciseProposal as React.ComponentType<Record<string, unknown>>,
-          {
-            proposal: {
-              spec: null,
-              reason: "Sing something familiar.",
-              parentAttemptId: null,
-              retry: false,
-            },
-            processing: false,
-            playing: false,
-            recorderBusy: false,
-            proposalLoading: false,
-            onUploaded: noOp,
-            onHear: noOp,
-            onDifferent: noOp,
-            onFreeSing: noOp,
-            onMoveOn: noOp,
-            onCancel: noOp,
-            onRecorderStateChange: noOp,
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(ExerciseProposal, {
+          proposal: {
+            spec: null,
+            reason: "Sing something familiar.",
+            parentAttemptId: null,
+            retry: false,
           },
-        ),
-      ),
+          processing: false,
+          playbackState: "ready",
+          recorderBusy: false,
+          proposalLoading: false,
+          onUploaded: noOp,
+          onPlayReference: noOp,
+          onStopReference: noOp,
+          onDifferent: noOp,
+          onFreeSing: noOp,
+          onMoveOn: noOp,
+          onCancel: noOp,
+          onRecorderStateChange: noOp,
+        }),
+      }),
     );
 
     expect(markup).not.toContain("Ask about this");
@@ -93,20 +90,16 @@ describe("contextual asking for persisted sources", () => {
       coachingResponseSchema.safeParse(JSON.parse(unsavedAttempt.coaching_json!)).success,
     ).toBe(true);
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(
-          AttemptResult as React.ComponentType<Record<string, unknown>>,
-          {
-            attempt: unsavedAttempt,
-            fallbackIndex: 1,
-            parent: null,
-            expanded: false,
-            onToggle: noOp,
-          },
-        ),
-      ),
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(AttemptResult, {
+          attempt: unsavedAttempt,
+          fallbackIndex: 1,
+          parent: null,
+          expanded: false,
+          onToggle: noOp,
+        }),
+      }),
     );
 
     expect(markup).not.toContain("Explain this");
@@ -114,10 +107,9 @@ describe("contextual asking for persisted sources", () => {
 
   it("keeps contextual chat available for a persisted attempt result", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(AttemptResult, {
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(AttemptResult, {
           attempt: { ...unsavedAttempt, id: "persisted-attempt" },
           fallbackIndex: 1,
           parent: null,
@@ -125,7 +117,7 @@ describe("contextual asking for persisted sources", () => {
           onToggle: noOp,
           onAsk: noOp,
         }),
-      ),
+      }),
     );
 
     expect(markup).toContain("Explain this");

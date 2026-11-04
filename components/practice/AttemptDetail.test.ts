@@ -49,10 +49,9 @@ function message(id: string, attemptId: string): PracticeMessageRow {
 
 function render(ended = false) {
   return renderToStaticMarkup(
-    React.createElement(
-      ChakraProvider,
-      { value: system },
-      React.createElement(AttemptDetailView, {
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: React.createElement(AttemptDetailView, {
         practice: { ...practice, status: ended ? "ended" : "in_progress" },
         attempt,
         parent: null,
@@ -71,7 +70,7 @@ function render(ended = false) {
         onStop: () => undefined,
         onAsk: () => undefined,
       }),
-    ),
+    }),
   );
 }
 

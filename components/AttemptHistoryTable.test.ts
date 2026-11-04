@@ -30,15 +30,14 @@ const attempt: SessionRow = {
 describe("AttemptHistoryTable", () => {
   it("offers progressive disclosure for long coaching on narrow screens", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(AttemptHistoryTable, {
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(AttemptHistoryTable, {
           attempts: [attempt],
           playingId: null,
           onPlay: () => undefined,
         }),
-      ),
+      }),
     );
 
     expect(markup).toContain("Your notes are landing hundreds of cents away");

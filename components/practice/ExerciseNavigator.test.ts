@@ -36,10 +36,9 @@ const recordedThread: ExerciseThread = {
 describe("ExerciseNavigator", () => {
   const renderNavigator = (variant: "desktop" | "mobile") =>
     renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(ExerciseNavigator, {
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(ExerciseNavigator, {
           variant,
           threads: [recordedThread],
           selectedExerciseId: recordedThread.id,
@@ -49,7 +48,7 @@ describe("ExerciseNavigator", () => {
           disabled: false,
           ended: false,
         }),
-      ),
+      }),
     );
 
   it("renders direct exercise buttons only in the desktop variant", () => {
@@ -85,10 +84,9 @@ describe("ExerciseNavigator", () => {
 
   it("shows only recorded exercise navigation when an ended practice receives a draft", () => {
     const markup = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        { value: system },
-        React.createElement(ExerciseNavigator, {
+      React.createElement(ChakraProvider, {
+        value: system,
+        children: React.createElement(ExerciseNavigator, {
           variant: "desktop",
           threads: [recordedThread],
           selectedExerciseId: recordedThread.id,
@@ -98,7 +96,7 @@ describe("ExerciseNavigator", () => {
           disabled: false,
           ended: true,
         }),
-      ),
+      }),
     );
 
     expect(markup).toContain("Recorded exercise");
