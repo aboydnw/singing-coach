@@ -45,7 +45,7 @@ injected in `next.config.ts` from Vercel's `VERCEL_GIT_COMMIT_SHA`).
 | `PracticeComposer`         | Provisional | Exercise-scoped question entry, retry, and new-exercise shortcuts         |
 | `ExerciseNavigator`        | Established | Exercise-thread selection, summaries, draft state, and new exercise entry |
 | `PlasticityLoop`           | Candidate   | Parent/retry relationship currently represented by attempt metadata       |
-| `Recorder`                 | Established | Microphone, encoding, upload, retry, and error lifecycle                  |
+| `Recorder`                 | Established | Cancellable microphone request, recording, encoding, upload, and recovery                  |
 | `PendingAttempt`           | Provisional | Persisted upload, analysis, coaching, and retry status                    |
 | `PracticeActionWorkspace`  | Provisional | Coaching focus, reference, recording, and practice exit actions           |
 | `AttemptSummaryCard`       | Provisional | Compact attempt index entry linking to dedicated review                   |
@@ -65,6 +65,10 @@ Different exercise, and End practice. `AttemptSummaryCard` entries follow below,
 
 `AttemptDetail` owns full analysis and conversation for exactly one attempt. Its sticky navigation
 returns to the practice or deep-links that attempt into the retry-ready workspace.
+
+`RecorderControls` renders the shared recorder states without requesting a microphone, so its
+Storybook fixtures are safe to inspect. `Recorder` connects those controls to the tested lifecycle
+in `lib/recorder.ts`; permission cancellation and teardown invalidate late async results.
 
 `PendingAttempt` replaces the recorder inside the action workspace while durable work runs. It may
 say navigation is safe only after the durable endpoint acknowledges the uploaded recording. Its
