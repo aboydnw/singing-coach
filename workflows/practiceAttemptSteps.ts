@@ -1,9 +1,15 @@
-import { analyzeResponseSchema, coachingResponseSchema, exerciseSpecSchema, learningContractSchema } from "@/lib/schema";
+import {
+  analyzeResponseSchema,
+  coachingResponseSchema,
+  exerciseSpecSchema,
+  learningContractSchema,
+} from "@/lib/schema";
 import type { AnalyzeResponse, CoachingResponse } from "@/lib/schema";
 import type { AttemptJobRow } from "@/lib/attemptJobs";
 import { attemptJobResumePoint, type AttemptJobResumePoint } from "@/lib/attemptJobs";
 import { serviceSupabase } from "@/lib/serverSupabase";
-import { signJobAssertion } from "@/lib/jobAssertion";
+import { FatalError } from "workflow";
+import { assertJobSigningConfigured, signJobAssertion } from "@/lib/jobAssertion";
 import { generateCoaching } from "@/lib/coachService";
 import { contractFromAttempt } from "@/lib/practice";
 import { coachingToMarkdown, toHistory, type SessionRow } from "@/lib/sessions";
@@ -39,9 +45,7 @@ async function transition(
   }
 }
 
-export async function claimAttemptWork(
-  jobId: string,
-): Promise<AttemptJobResumePoint> {
+export async function claimAttemptWork(jobId: string): Promise<AttemptJobResumePoint> {
   "use step";
   const job = await loadJob(jobId);
   const resumePoint = attemptJobResumePoint(job);
@@ -55,8 +59,20 @@ export async function claimAttemptWork(
 
 export async function analyzeAttempt(jobId: string): Promise<AnalyzeResponse> {
   "use step";
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // Configuration cannot recover through retries on an immutable deployment.
+  // Fail immediately so the workflow persists a recoverable failed job.
+  try {
+    assertJobSigningConfigured();
+  } catch {
+    throw new FatalError(
+      "Recording processing is temporarily unavailable. Your recording is saved. Please retry later.",
+    );
+  }
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
   const response = await fetch(`${origin}/api/analyze`, {
     method: "POST",
     headers: {
@@ -161,14 +177,16 @@ export async function completeAttempt(
       service.from("sessions").select("*").eq("id", attemptId).single(),
       service.from("practice_attempt_jobs").select("*").eq("id", jobId).single(),
     ]);
-  if (loadAttemptError || !attempt) throw new Error(loadAttemptError?.message ?? "Attempt missing.");
+  if (loadAttemptError || !attempt)
+    throw new Error(loadAttemptError?.message ?? "Attempt missing.");
   if (jobError || !job) throw new Error(jobError?.message ?? "Attempt job missing.");
   const { data: practice, error: practiceError } = await service
     .from("practice_sessions")
     .select("learning_contract_json")
     .eq("id", job.practice_session_id)
     .single();
-  if (practiceError || !practice) throw new Error(practiceError?.message ?? "Practice missing.");
+  if (practiceError || !practice)
+    throw new Error(practiceError?.message ?? "Practice missing.");
   const prior = learningContractSchema.parse(practice.learning_contract_json);
   const next = contractFromAttempt(prior, attempt as SessionRow);
   const { error: contractError } = await service

@@ -64,3 +64,19 @@ in-flight work and old application versions remain safe; do not delete queued jo
 migration may remove the durable schema only after no deployed version uses it and all active jobs
 are terminal. Rotating the signing secret invalidates outstanding assertions, so do that only after
 allowing active jobs to finish or accepting that they will need an explicit retry.
+
+### Missing signing configuration
+
+If production logs report `ATTEMPT_JOB_SIGNING_SECRET must be at least 32 bytes`,
+the upload may already be stored, but analysis cannot authenticate. Check environment
+variable metadata without printing secret values. With operator approval, configure a
+cryptographically random server-only value of at least 32 bytes as a sensitive Vercel
+variable, then redeploy so both Node and Python functions receive the same value.
+Configure preview and production deliberately; never commit the secret or return it to clients.
+
+The attempt create and retry endpoints reject missing/short configuration with a clear
+503 before changing the job ledger. Analysis also treats this as non-retryable within
+the current deployment, so the workflow records failure promptly rather than spending
+automatic retries on immutable configuration. After the corrected deployment, use
+Retry processing on the existing failed job. Its audio and analysis checkpoints are
+preserved. Do not create duplicate attempts or delete recordings to recover.

@@ -46,10 +46,16 @@ export function verifyJobAssertion(
   return result;
 }
 
-function signature(payload: string): string {
+export function assertJobSigningConfigured(): void {
   const secret = process.env.ATTEMPT_JOB_SIGNING_SECRET ?? "";
   if (Buffer.byteLength(secret) < 32) {
     throw new Error("ATTEMPT_JOB_SIGNING_SECRET must be at least 32 bytes");
   }
-  return createHmac("sha256", secret).update(payload).digest("base64url");
+}
+
+function signature(payload: string): string {
+  assertJobSigningConfigured();
+  return createHmac("sha256", process.env.ATTEMPT_JOB_SIGNING_SECRET!)
+    .update(payload)
+    .digest("base64url");
 }
