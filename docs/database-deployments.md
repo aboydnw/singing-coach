@@ -74,8 +74,9 @@ cryptographically random server-only value of at least 32 bytes as a sensitive V
 variable, then redeploy so both Node and Python functions receive the same value.
 Configure preview and production deliberately; never commit the secret or return it to clients.
 
-The attempt create and retry endpoints reject missing/short configuration with a clear
-503 before changing the job ledger. Analysis also treats this as non-retryable within
+The create endpoint saves an already-uploaded recording as a failed durable job when
+configuration is missing/short, so refresh does not lose its retry handle. The retry
+endpoint returns a clear 503 without changing that failed job until configuration is repaired. Analysis also treats this as non-retryable within
 the current deployment, so the workflow records failure promptly rather than spending
 automatic retries on immutable configuration. After the corrected deployment, use
 Retry processing on the existing failed job. Its audio and analysis checkpoints are
