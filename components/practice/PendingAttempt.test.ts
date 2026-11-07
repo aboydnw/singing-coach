@@ -53,6 +53,28 @@ function render(status: AttemptJobRow["status"]) {
 }
 
 describe("PendingAttempt", () => {
+  it.each(["queued", "analyzing", "coaching"] as const)(
+    "shows visible motion and a polite text status while %s",
+    (status) => {
+      const markup = render(status);
+      expect(markup).toContain('data-testid="processing-indicator"');
+      expect(markup).toContain('aria-hidden="true"');
+      expect(markup).toContain('role="status"');
+      expect(markup).toContain('aria-live="polite"');
+      expect(markup).toContain("prefers-reduced-motion: reduce");
+      expect(markup).toContain("animation:none");
+    },
+  );
+
+  it.each(["failed", "completed", "abandoned"] as const)(
+    "does not imply ongoing work for %s",
+    (status) => {
+      const markup = render(status);
+      expect(markup).not.toContain('data-testid="processing-indicator"');
+      expect(markup).not.toContain("Attempt in progress");
+    },
+  );
+
   it("says leaving is safe once a durable job is queued", () => {
     const markup = render("queued");
     expect(markup).toContain("Recording uploaded");

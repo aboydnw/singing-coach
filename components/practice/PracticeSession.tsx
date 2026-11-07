@@ -89,6 +89,8 @@ import {
 import { parseStoredJson } from "@/lib/storedJson";
 import {
   attemptsNewestFirst,
+  completedWorkspaceAttempt,
+  workspaceCompletionPending,
   generalPracticeMessages,
   practiceWorkspaceSummary,
   retryProposalForAttempt,
@@ -348,9 +350,33 @@ export function PracticeSession() {
     (workspaceTarget ? attemptExerciseName(workspaceTarget) : "First exercise");
   const generalMessages = generalPracticeMessages(bundle?.messages ?? []);
 
-  usePracticeJobRefresh(Boolean(activeJob), async () => {
+  const completionPending = workspaceCompletionPending(
+    bundle?.jobs ?? [],
+    bundle?.attempts ?? [],
+  );
+  usePracticeJobRefresh(Boolean(activeJob) || completionPending, async () => {
     await refresh();
   });
+
+  // Upload acknowledgement clears setup. Restore it when the persisted job
+  // and saved attempt are ready, without replacing an existing user choice.
+  useEffect(() => {
+    if (
+      !bundle ||
+      ended ||
+      processing ||
+      proposalLoading ||
+      proposal ||
+      activeJob ||
+      visibleJob
+    )
+      return;
+    const completed = completedWorkspaceAttempt(bundle.jobs, bundle.attempts);
+    if (!completed) return;
+    setReferenceFallback(false);
+    setProposal(retryProposalForAttempt(completed));
+    setSetupOpen(true);
+  }, [bundle, ended, processing, proposalLoading, proposal, activeJob, visibleJob]);
 
   const askAbout = (
     label: string,

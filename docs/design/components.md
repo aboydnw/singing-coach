@@ -73,6 +73,10 @@ in `lib/recorder.ts`; permission cancellation and teardown invalidate late async
 `PendingAttempt` replaces the recorder inside the action workspace while durable work runs. It may
 say navigation is safe only after the durable endpoint acknowledges the uploaded recording. Its
 waiting guidance is short, comes from saved practice context, and never invites another recording.
+Queued, analyzing, and coaching stages show a decorative spinner beside the polite text status.
+Reduced-motion preferences stop the animation without removing the readable stage. Failed and
+terminal states do not animate. On completion, the workspace restores reference and recording
+controls for a retry of the saved attempt; a completed attempt must not leave a permanent skeleton.
 
 `MobileTabBar` uses text plus line icons for four equal-width destinations. Targets are at least
 48 CSS pixels high, account for the device safe area, and expose the active destination with a
