@@ -74,6 +74,10 @@ export function Recorder({
       }}
       onStop={() => controllerRef.current?.stop()}
       onCancelRequest={() => controllerRef.current?.cancelRequest()}
+      onDiscard={() => controllerRef.current?.discard()}
+      onSubmit={() => {
+        if (!disabled) void controllerRef.current?.submit();
+      }}
     />
   );
 }
@@ -86,6 +90,8 @@ export function RecorderControls({
   onStart,
   onStop,
   onCancelRequest,
+  onDiscard,
+  onSubmit,
 }: {
   label?: string;
   state: RecorderState;
@@ -93,16 +99,21 @@ export function RecorderControls({
   onStart: () => void;
   onStop: () => void;
   onCancelRequest: () => void;
+  onDiscard: () => void;
+  onSubmit: () => void;
 }) {
   const recordButtonRef = useRef<HTMLButtonElement | null>(null);
   const restoreFocusRef = useRef(false);
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const [requestCancelled, setRequestCancelled] = useState(false);
+  const [discarded, setDiscarded] = useState(false);
 
   useEffect(() => {
     if (state.phase === "idle" && restoreFocusRef.current) {
       restoreFocusRef.current = false;
       recordButtonRef.current?.focus();
     }
+    if (state.phase === "review") submitButtonRef.current?.focus();
   }, [state.phase]);
 
   return (
@@ -118,6 +129,16 @@ export function RecorderControls({
             <Button minH="12" colorPalette="coral" onClick={onStop}>
               ⏹ Stop
             </Button>
+          ) : state.phase === "review" ? (
+            <Button
+              ref={submitButtonRef}
+              minH="12"
+              colorPalette="coral"
+              disabled={disabled}
+              onClick={onSubmit}
+            >
+              Send for analysis
+            </Button>
           ) : (
             <Button
               ref={recordButtonRef}
@@ -126,16 +147,31 @@ export function RecorderControls({
               variant="outline"
               onClick={() => {
                 setRequestCancelled(false);
+                setDiscarded(false);
                 onStart();
               }}
               disabled={
                 disabled ||
                 state.phase === "encoding" ||
+                state.phase === "stopping" ||
                 state.phase === "uploading" ||
                 state.phase === "requesting"
               }
             >
               🎙 {state.phase === "done" ? "Re-record" : "Record"}
+            </Button>
+          )}
+          {["recording", "stopping", "review"].includes(state.phase) && (
+            <Button
+              minH="12"
+              variant="outline"
+              onClick={() => {
+                restoreFocusRef.current = true;
+                setDiscarded(true);
+                onDiscard();
+              }}
+            >
+              Discard take
             </Button>
           )}
           {state.phase === "requesting" && (
@@ -152,12 +188,23 @@ export function RecorderControls({
             </Button>
           )}
           <Box role="status" aria-live="polite" aria-atomic="true">
+            {state.phase === "idle" && discarded && (
+              <Text color="fg.muted">
+                Take discarded. Nothing was sent. Ready to record again.
+              </Text>
+            )}
             {state.phase === "idle" && requestCancelled && (
               <Text color="fg.muted">
                 Microphone request cancelled. Ready when you are.
               </Text>
             )}
             {state.phase === "recording" && <Text color="coral.600">Recording…</Text>}
+            {state.phase === "stopping" && (
+              <Text color="fg.muted">Stopping recording…</Text>
+            )}
+            {state.phase === "review" && (
+              <Text color="fg.muted">Take ready. Nothing sent yet.</Text>
+            )}
             {state.phase === "requesting" && (
               <Text color="fg.muted">Waiting for microphone…</Text>
             )}
@@ -177,6 +224,13 @@ export function RecorderControls({
             {state.phase === "done" && <Text color="teal.600">✓ Uploaded</Text>}
           </Box>
         </Flex>
+        {["idle", "recording", "review"].includes(state.phase) && (
+          <Text color="fg.muted" fontSize="sm" lineHeight="1.6">
+            {state.phase === "review"
+              ? "Send this take for analysis, or discard it and record again. Sending uploads the audio to your private recordings."
+              : "Stop to review your take before sending it for analysis. You can discard it and start over."}
+          </Text>
+        )}
         {state.phase === "requesting" && (
           <Text color="fg.muted" fontSize="sm" lineHeight="1.6">
             Allow microphone access in your browser to begin. No prompt? Cancel, check

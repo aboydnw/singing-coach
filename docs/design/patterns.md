@@ -2,7 +2,20 @@
 
 ## Attempt lifecycle
 
-`ready → recording → encoding → uploading → queued → analyzing → coaching → completed`
+`ready → recording → stopping → review → encoding → uploading → queued → analyzing → coaching → completed`
+
+Stop ends capture and releases the microphone; it does not upload or analyze. Review offers
+Send for analysis and Discard take. Audio stays in browser memory until Send for analysis.
+Discard is also available while recording or waiting for the final audio chunk, immediately
+releases the microphone and returns focus to Record. It creates no stored recording or attempt.
+Late recorder events cannot resurrect a discarded take. Review focuses Send for analysis;
+controls wrap on narrow screens and status changes are announced politely.
+
+The shared recorder applies this confirmation to practice, free singing, and calibration.
+While reviewing, competing practice actions remain locked until Send or Discard. Sending is
+the upload boundary: once confirmed, show preparation/upload progress rather than a discard
+action that could falsely promise to retract transmitted audio. Leaving before confirmation
+loses the local take. Errors permit a new recording without submitting failed audio.
 
 Every async stage is visible in the existing artifact. A failure preserves the last recoverable
 state and offers a specific retry. Only one attempt may record or process at a time.

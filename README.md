@@ -29,10 +29,15 @@ Inspired by [Vocal Range Explorer](https://github.com/dannybauman/Vocal-Range-Ex
 
 5. **Progress.** Trends across sessions with the healthy zone shaded on each panel: pitch accuracy, jitter, shimmer, HNR, vibrato rate and depth. Play back any stored recording.
 
+Before sending a recording, choose **Send for analysis** or **Discard take**. Stop only
+ends capture: nothing is uploaded until you send. You can also discard while recording
+and immediately try again. Unsent takes stay in browser memory and are lost on leaving
+or refreshing. This applies to practice, free singing, and calibration.
+
 ## How it works
 
 ```
-browser: record -> encode WAV -> upload to Supabase Storage
+browser: record -> stop -> confirm Send for analysis -> encode WAV -> upload to Supabase Storage
    -> POST /api/practice/attempt-jobs (acknowledge durable work)
    -> Workflow: analyze   (Python: torchcrepe + Praat, unchanged DSP)
    -> Workflow: coach     (TypeScript: OpenRouter, structured output)
