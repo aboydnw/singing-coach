@@ -2,6 +2,7 @@
 
 import { Button, Center, Field, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { useState } from "react";
+import { WelcomePage } from "@/components/auth/WelcomePage";
 import { AppFooter } from "@/components/AppFooter";
 import { AppNotice } from "@/components/ui/AppNotice";
 import { Surface } from "@/components/ui/Surface";
@@ -66,16 +67,21 @@ export function SignInPanel({
   onEmailSignIn?: (email: string, password: string) => void;
 }) {
   return (
-    <AuthCard
-      heading="Welcome"
-      lead="Sign in to practice. Your recordings and progress stay private to you."
-    >
-      <Button colorPalette="coral" onClick={onGoogle} loading={busy}>
+    <WelcomePage>
+      <Notice notice={notice} />
+      <Button
+        colorPalette="coral"
+        onClick={onGoogle}
+        loading={busy}
+        disabled={busy}
+        size="lg"
+        w="full"
+        focusVisibleRing="outside"
+      >
         Continue with Google
       </Button>
       {onEmailSignIn ? <EmailSignInForm busy={busy} onSubmit={onEmailSignIn} /> : null}
-      <Notice notice={notice} />
-    </AuthCard>
+    </WelcomePage>
   );
 }
 

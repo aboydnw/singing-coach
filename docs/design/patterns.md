@@ -99,3 +99,18 @@ with a specific next step. Announce lifecycle status politely and errors as aler
 controls-first layout and allow another take after an error. After cancellation, return keyboard
 focus to Record and announce readiness. Record and Stop must remain safe under
 repeated activation, and unmounting must close audio tracks and abort any pending upload.
+
+## Signed-out welcome (established)
+
+`WelcomePage` introduces the existing practice loop before asking a new singer to
+sign in. `SignInPanel` owns the same Google action, optional email fallback, busy
+state, and account/auth notices. Notices appear immediately before the controls.
+Authenticated routes and OAuth callbacks are unchanged. The welcome is shared by
+all signed-out protected routes, including the home-to-Practice redirect.
+
+Use the semantic theme, a single page heading, a skip link, a stacked phone layout,
+and visible keyboard focus. The page requests no microphone access and plays no
+audio. Copy must distinguish private account storage from audio processing, describe
+AI uncertainty, and avoid pricing, guaranteed improvement, or available vocal-example
+claims. The existing Auth/SignInPanel stories cover default, busy, cancelled, deleted,
+and email-fallback states.
