@@ -4,6 +4,9 @@ import { initialContract } from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 import {
   activeAttemptJob,
+  restoredAttemptJob,
+  visibleAttemptJob,
+  selectedJobExerciseAfterRefresh,
   attemptJobResumePoint,
   jobExerciseId,
   pendingGuidance,
@@ -124,5 +127,45 @@ describe("attempt jobs", () => {
     expect(attemptJobResumePoint(job({ status: "failed" }))).toEqual({
       stage: "analysis",
     });
+  });
+});
+
+describe("practice hydration selection", () => {
+  it("selects the failed first upload instead of opening a new draft", () => {
+    const jobs = [job({ status: "failed" })];
+    const threads = groupExerciseThreads([]);
+    const restored = restoredAttemptJob(jobs);
+    const selected = restored ? jobExerciseId(restored, threads) : null;
+    expect(selected).toBe("job-job-1");
+    expect(visibleAttemptJob(jobs, threads, selected)).toBe(jobs[0]);
+    // Polling must not erase the synthetic job selection while no attempt exists.
+    expect(selectedJobExerciseAfterRefresh(selected, jobs, threads)).toBe(selected);
+  });
+
+  it("restores failure even when another exercise has recorded attempts", () => {
+    const jobs = [job({ status: "failed" })];
+    const threads = groupExerciseThreads([attempt()]);
+    const restored = restoredAttemptJob(jobs)!;
+    expect(visibleAttemptJob(jobs, threads, jobExerciseId(restored, threads))).toBe(
+      jobs[0],
+    );
+  });
+
+  it("prefers active work over older failed jobs and ignores terminal jobs", () => {
+    const failed = job({ status: "failed" });
+    const queued = job({ id: "queued", status: "queued" });
+    expect(restoredAttemptJob([failed, queued])).toBe(queued);
+    expect(
+      restoredAttemptJob([job({ status: "completed" }), job({ status: "abandoned" })]),
+    ).toBeNull();
+  });
+
+  it("moves a selected job to its recorded exercise when analysis completes", () => {
+    const saved = attempt({ id: "new-attempt", parent_attempt_id: null });
+    const threads = groupExerciseThreads([saved]);
+    const jobs = [job({ status: "completed", attempt_id: saved.id })];
+    const selected = selectedJobExerciseAfterRefresh("job-job-1", jobs, threads);
+    expect(selected).toBe(threads[0].id);
+    expect(visibleAttemptJob(jobs, threads, selected)).toBeNull();
   });
 });

@@ -45,7 +45,13 @@ import {
   startAttemptJob,
   streamPracticeCoach,
 } from "@/lib/api";
-import { activeAttemptJob, jobExerciseId } from "@/lib/attemptJobs";
+import {
+  activeAttemptJob,
+  jobExerciseId,
+  restoredAttemptJob,
+  visibleAttemptJob,
+  selectedJobExerciseAfterRefresh,
+} from "@/lib/attemptJobs";
 import { skipFromCursor } from "@/lib/exercises";
 import { selectVariedExercise } from "@/lib/exerciseSelection";
 import {
@@ -186,7 +192,13 @@ export function PracticeSession() {
         selectedExerciseId:
           (newlyCreatedId
             ? recordedExerciseIdForAttempt(threads, newlyCreatedId)
-            : null) ?? selectedExerciseAfterRefresh(current.selectedExerciseId, threads),
+            : null) ??
+          selectedJobExerciseAfterRefresh(
+            current.selectedExerciseId,
+            loaded.jobs,
+            threads,
+          ) ??
+          selectedExerciseAfterRefresh(current.selectedExerciseId, threads),
       }));
       return loaded;
     },
@@ -197,6 +209,21 @@ export function PracticeSession() {
     refresh()
       .then(async (loaded) => {
         if (loaded.practice.status === "ended") return;
+        const restoredJob = restoredAttemptJob(loaded.jobs);
+        if (restoredJob) {
+          setExerciseSelection({
+            selectedExerciseId: jobExerciseId(
+              restoredJob,
+              groupExerciseThreads(loaded.attempts),
+            ),
+            draftExerciseId: null,
+            previousRecordedExerciseId: null,
+          });
+          setProposal(null);
+          setDraftProposal(null);
+          setSetupOpen(false);
+          return;
+        }
         if (loaded.attempts.length > 0) {
           const requestedRetryId = searchParams.get("retry");
           const target = workspaceAttempt(loaded.attempts, requestedRetryId);
@@ -301,11 +328,11 @@ export function PracticeSession() {
   const pendingJobSpec = activeJob
     ? parseStoredJson(activeJob.exercise_spec_json, exerciseSpecSchema)
     : null;
-  const visibleJob =
-    (bundle?.jobs ?? []).toReversed().find((job) => {
-      if (job.status === "completed" || job.status === "abandoned") return false;
-      return jobExerciseId(job, exerciseThreads) === selectedExerciseId;
-    }) ?? null;
+  const visibleJob = visibleAttemptJob(
+    bundle?.jobs ?? [],
+    exerciseThreads,
+    selectedExerciseId,
+  );
   const unsavedExerciseId = unsavedAttempt?.parent_attempt_id
     ? recordedExerciseIdForAttempt(exerciseThreads, unsavedAttempt.parent_attempt_id)
     : draftExerciseId;

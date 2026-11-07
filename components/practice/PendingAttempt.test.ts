@@ -3,7 +3,12 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PendingAttempt } from "@/components/practice/PendingAttempt";
-import type { AttemptJobRow } from "@/lib/attemptJobs";
+import {
+  restoredAttemptJob,
+  jobExerciseId,
+  visibleAttemptJob,
+  type AttemptJobRow,
+} from "@/lib/attemptJobs";
 import { initialContract } from "@/lib/practice";
 import { system } from "@/lib/theme";
 
@@ -66,4 +71,26 @@ describe("PendingAttempt", () => {
     expect(markup).toContain("Retry processing");
     expect(markup).toContain("Try a new attempt");
   });
+});
+
+it("renders Retry processing from the hydrated initial-job selection", () => {
+  const jobs = [job("failed")];
+  const restored = restoredAttemptJob(jobs)!;
+  const selected = jobExerciseId(restored, []);
+  const visible = visibleAttemptJob(jobs, [], selected);
+  const markup = renderToStaticMarkup(
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: visible
+        ? React.createElement(PendingAttempt, {
+            job: visible,
+            contract: null,
+            onRetry: () => undefined,
+            onNewAttempt: () => undefined,
+          })
+        : null,
+    }),
+  );
+  expect(markup).toContain("Retry processing");
+  expect(markup).not.toContain("Start recording");
 });
