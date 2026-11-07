@@ -126,12 +126,14 @@ export const DiscardAndConfirm: Story = {
     await expect(canvas.getByRole("button", { name: /Record/ })).toHaveFocus();
     await expect(canvas.getByRole("status")).toHaveTextContent("Nothing was sent");
     await userEvent.keyboard("{Enter}");
-    await userEvent.click(canvas.getByRole("button", { name: /Stop/ }));
+    await userEvent.dblClick(canvas.getByRole("button", { name: /Stop/ }));
     await expect(canvas.getByRole("button", { name: "Send for analysis" })).toHaveFocus();
     await userEvent.click(canvas.getByRole("button", { name: "Discard take" }));
     await expect(canvas.getByRole("button", { name: /Record/ })).toHaveFocus();
     await userEvent.keyboard("{Enter}");
-    await userEvent.click(canvas.getByRole("button", { name: /Stop/ }));
+    canvas.getByRole("button", { name: /Stop/ }).focus();
+    await userEvent.keyboard("{Enter>3/}");
+    await expect(canvas.getByRole("status")).toHaveTextContent("Nothing sent yet");
     await userEvent.keyboard("{Enter}");
     await expect(canvas.getByRole("status")).toHaveTextContent("Uploading");
     await expect(

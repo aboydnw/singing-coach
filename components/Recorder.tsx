@@ -135,7 +135,15 @@ export function RecorderControls({
               minH="12"
               colorPalette="coral"
               disabled={disabled}
-              onClick={onSubmit}
+              onClick={(event) => {
+                // Stop and Send share a position. The second click of a double-click
+                // on Stop must not become consent to upload when review appears.
+                if (event.detail <= 1) onSubmit();
+              }}
+              onKeyDown={(event) => {
+                // Focus moves here from Stop. Require a fresh key press to send.
+                if (event.repeat) event.preventDefault();
+              }}
             >
               Send for analysis
             </Button>
