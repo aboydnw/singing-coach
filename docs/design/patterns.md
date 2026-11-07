@@ -86,3 +86,16 @@ retry controls and receive no artificial coach sign-off.
 
 Desktop and mobile preserve the same controls-first hierarchy. Full analysis remains collapsed by
 default and opens on the attempt detail route.
+
+## Microphone recovery
+
+A microphone request must not trap the singer while a browser prompt is unanswered. Keep Record
+locked during the request, offer Cancel microphone request, and restore the ready controls on
+cancellation. Cancellation invalidates this attempt; the browser may still show its own prompt,
+but any late stream is immediately closed and never recorded or uploaded.
+
+Distinguish blocked permission, missing input, busy/unavailable input, and unsupported recording
+with a specific next step. Announce lifecycle status politely and errors as alerts. Keep the same
+controls-first layout and allow another take after an error. After cancellation, return keyboard
+focus to Record and announce readiness. Record and Stop must remain safe under
+repeated activation, and unmounting must close audio tracks and abort any pending upload.

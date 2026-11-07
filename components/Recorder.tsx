@@ -1,25 +1,15 @@
 "use client";
 
-import { Box, Button, Flex, Progress, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Progress, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
+import { AppNotice } from "@/components/ui/AppNotice";
 import { uploadRecording } from "@/lib/api";
+import { createRecorderController, type RecorderState } from "@/lib/recorder";
 import { blobToWav } from "@/lib/wav";
 
-export type RecorderState =
-  | { phase: "idle" }
-  | { phase: "requesting" }
-  | { phase: "recording" }
-  | { phase: "encoding" }
-  | { phase: "uploading"; fraction: number }
-  | { phase: "done"; storageKey: string }
-  | { phase: "error"; message: string };
+export { isRecorderBusy, type RecorderState } from "@/lib/recorder";
 
-export function isRecorderBusy(state: RecorderState): boolean {
-  return ["requesting", "recording", "encoding", "uploading"].includes(state.phase);
-}
-
-/** Record -> WAV -> Supabase Storage. Used by calibrate, exercise and
- * free-sing; hands the storage key back once the upload lands. */
+/** Record -> native-rate WAV -> private storage; durable processing is owned by the parent. */
 export function Recorder({
   label,
   onUploaded,
@@ -32,22 +22,34 @@ export function Recorder({
   disabled?: boolean;
 }) {
   const [state, setState] = useState<RecorderState>({ phase: "idle" });
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const disposedRef = useRef(false);
-  const uploadAbortRef = useRef<AbortController | null>(null);
-  const operationRef = useRef(0);
+  const controllerRef = useRef<ReturnType<typeof createRecorderController> | null>(null);
+  const uploadedRef = useRef(onUploaded);
+  uploadedRef.current = onUploaded;
 
   useEffect(() => {
-    disposedRef.current = false;
+    const controller = createRecorderController({
+      getUserMedia: () => {
+        if (!window.isSecureContext) {
+          throw new DOMException("Secure context required", "SecurityError");
+        }
+        if (
+          !navigator.mediaDevices?.getUserMedia ||
+          typeof MediaRecorder === "undefined"
+        ) {
+          throw new DOMException("Recording unavailable", "NotSupportedError");
+        }
+        return navigator.mediaDevices.getUserMedia({ audio: true });
+      },
+      createRecorder: (stream) => new MediaRecorder(stream),
+      encode: blobToWav,
+      upload: uploadRecording,
+      onState: setState,
+      onUploaded: (key) => uploadedRef.current(key),
+    });
+    controllerRef.current = controller;
     return () => {
-      // Ending the tracks fires the recorder's stop event, so onstop must
-      // know this is teardown - not a take to encode and upload.
-      disposedRef.current = true;
-      operationRef.current += 1;
-      uploadAbortRef.current?.abort();
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      controller.dispose();
+      controllerRef.current = null;
     };
   }, []);
 
@@ -62,70 +64,46 @@ export function Recorder({
     [onStateChange],
   );
 
-  const start = async () => {
-    let stream: MediaStream | null = null;
-    const operationId = ++operationRef.current;
-    try {
-      setState({ phase: "requesting" });
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (disposedRef.current || operationId !== operationRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      streamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (event) => chunksRef.current.push(event.data);
-      recorder.onstop = async () => {
-        streamRef.current = null;
-        stream?.getTracks().forEach((track) => track.stop());
-        if (disposedRef.current || operationId !== operationRef.current) return;
-        try {
-          setState({ phase: "encoding" });
-          const blob = new Blob(chunksRef.current, {
-            type: recorder.mimeType || "audio/webm",
-          });
-          const wav = await blobToWav(blob);
-          if (disposedRef.current || operationId !== operationRef.current) return;
-          setState({ phase: "uploading", fraction: 0 });
-          const uploadController = new AbortController();
-          uploadAbortRef.current = uploadController;
-          const key = await uploadRecording(
-            wav,
-            (fraction) => {
-              if (!disposedRef.current && operationId === operationRef.current) {
-                setState({ phase: "uploading", fraction });
-              }
-            },
-            uploadController.signal,
-          );
-          uploadAbortRef.current = null;
-          if (disposedRef.current || operationId !== operationRef.current) return;
-          setState({ phase: "done", storageKey: key });
-          onUploaded(key);
-        } catch (error) {
-          uploadAbortRef.current = null;
-          if (disposedRef.current || operationId !== operationRef.current) return;
-          setState({
-            phase: "error",
-            message: error instanceof Error ? error.message : "recording failed",
-          });
-        }
-      };
-      recorderRef.current = recorder;
-      recorder.start();
-      setState({ phase: "recording" });
-    } catch {
-      stream?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      if (disposedRef.current || operationId !== operationRef.current) return;
-      setState({ phase: "error", message: "microphone access was denied" });
-    }
-  };
+  return (
+    <RecorderControls
+      label={label}
+      state={state}
+      disabled={disabled}
+      onStart={() => {
+        if (!disabled) void controllerRef.current?.start();
+      }}
+      onStop={() => controllerRef.current?.stop()}
+      onCancelRequest={() => controllerRef.current?.cancelRequest()}
+    />
+  );
+}
 
-  const stop = () => {
-    recorderRef.current?.stop();
-  };
+/** Presentational states are safe to preview without requesting a microphone. */
+export function RecorderControls({
+  label,
+  state,
+  disabled = false,
+  onStart,
+  onStop,
+  onCancelRequest,
+}: {
+  label?: string;
+  state: RecorderState;
+  disabled?: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  onCancelRequest: () => void;
+}) {
+  const recordButtonRef = useRef<HTMLButtonElement | null>(null);
+  const restoreFocusRef = useRef(false);
+  const [requestCancelled, setRequestCancelled] = useState(false);
+
+  useEffect(() => {
+    if (state.phase === "idle" && restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      recordButtonRef.current?.focus();
+    }
+  }, [state.phase]);
 
   return (
     <Box>
@@ -134,46 +112,83 @@ export function Recorder({
           {label}
         </Text>
       )}
-      <Flex align="center" gap={3} wrap="wrap">
-        {state.phase === "recording" ? (
-          <Button colorPalette="coral" onClick={stop}>
-            ⏹ Stop
-          </Button>
-        ) : (
-          <Button
-            colorPalette="coral"
-            variant="outline"
-            onClick={start}
-            disabled={
-              disabled ||
-              state.phase === "encoding" ||
-              state.phase === "uploading" ||
-              state.phase === "requesting"
-            }
-          >
-            🎙 {state.phase === "done" ? "Re-record" : "Record"}
-          </Button>
-        )}
-        {state.phase === "recording" && <Text color="coral.600">Recording…</Text>}
+      <Stack gap={3}>
+        <Flex align="center" gap={3} wrap="wrap">
+          {state.phase === "recording" ? (
+            <Button minH="12" colorPalette="coral" onClick={onStop}>
+              ⏹ Stop
+            </Button>
+          ) : (
+            <Button
+              ref={recordButtonRef}
+              minH="12"
+              colorPalette="coral"
+              variant="outline"
+              onClick={() => {
+                setRequestCancelled(false);
+                onStart();
+              }}
+              disabled={
+                disabled ||
+                state.phase === "encoding" ||
+                state.phase === "uploading" ||
+                state.phase === "requesting"
+              }
+            >
+              🎙 {state.phase === "done" ? "Re-record" : "Record"}
+            </Button>
+          )}
+          {state.phase === "requesting" && (
+            <Button
+              minH="12"
+              variant="ghost"
+              onClick={() => {
+                restoreFocusRef.current = true;
+                setRequestCancelled(true);
+                onCancelRequest();
+              }}
+            >
+              Cancel microphone request
+            </Button>
+          )}
+          <Box role="status" aria-live="polite" aria-atomic="true">
+            {state.phase === "idle" && requestCancelled && (
+              <Text color="fg.muted">
+                Microphone request cancelled. Ready when you are.
+              </Text>
+            )}
+            {state.phase === "recording" && <Text color="coral.600">Recording…</Text>}
+            {state.phase === "requesting" && (
+              <Text color="fg.muted">Waiting for microphone…</Text>
+            )}
+            {state.phase === "encoding" && <Text color="fg.muted">Preparing audio…</Text>}
+            {state.phase === "uploading" && (
+              <Flex align="center" gap={2} minW="40">
+                <Progress.Root value={state.fraction * 100} flex="1" size="sm" w="32">
+                  <Progress.Track aria-label="Recording upload">
+                    <Progress.Range />
+                  </Progress.Track>
+                </Progress.Root>
+                <Text color="fg.muted" fontSize="sm">
+                  Uploading…
+                </Text>
+              </Flex>
+            )}
+            {state.phase === "done" && <Text color="teal.600">✓ Uploaded</Text>}
+          </Box>
+        </Flex>
         {state.phase === "requesting" && (
-          <Text color="cream.600">Waiting for microphone…</Text>
+          <Text color="fg.muted" fontSize="sm" lineHeight="1.6">
+            Allow microphone access in your browser to begin. No prompt? Cancel, check
+            this site's microphone settings, then try again.
+          </Text>
         )}
-        {state.phase === "encoding" && <Text color="cream.600">Encoding…</Text>}
-        {state.phase === "uploading" && (
-          <Flex align="center" gap={2} minW="40">
-            <Progress.Root value={state.fraction * 100} flex="1" size="sm" w="32">
-              <Progress.Track>
-                <Progress.Range />
-              </Progress.Track>
-            </Progress.Root>
-            <Text color="cream.600" fontSize="sm">
-              Uploading…
-            </Text>
-          </Flex>
+        {state.phase === "error" && (
+          <AppNotice tone="danger" title="Recording needs attention">
+            {state.message}
+          </AppNotice>
         )}
-        {state.phase === "done" && <Text color="teal.600">✓ Uploaded</Text>}
-        {state.phase === "error" && <Text color="coral.600">⚠️ {state.message}</Text>}
-      </Flex>
+      </Stack>
     </Box>
   );
 }
