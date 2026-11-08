@@ -28,6 +28,19 @@ function renderPanel({
 }
 
 describe("SignInPanel", () => {
+  it("introduces the practice journey without overstating privacy or pricing", () => {
+    const html = renderPanel();
+    expect(html).toContain("Your voice is worth practicing.");
+    expect(html).toContain("One attempt at a time.");
+    expect(html).toContain("not your audio");
+    expect(html).toContain("learning your baseline");
+    expect(html).toContain('href="#start-practicing"');
+    expect(html).toContain('href="#how-it-works"');
+    expect(html).toContain('id="welcome-content"');
+    expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+    expect(html).not.toContain("Free forever");
+  });
+
   it("offers only Google by default", () => {
     const html = renderPanel();
     expect(html).toContain("Continue with Google");
