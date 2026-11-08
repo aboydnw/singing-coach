@@ -2,6 +2,7 @@
 
 import { Box, Button, Stack, Text } from "@chakra-ui/react";
 import Link from "next/link";
+import { CoachMarkdown } from "@/components/practice/CoachMarkdown";
 import { CoachingText } from "@/components/practice/CoachingText";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
@@ -31,14 +32,28 @@ export function CoachSnapshot({ latest }: { latest: PracticeSessionRow | null })
             />
           </Box>
         </Box>
-        {contract?.tryCue ? (
+        {contract?.tryCue || contract?.avoid ? (
           <Box borderTopWidth="1px" borderColor="cream.700" pt={4}>
-            <Text color="coral.200" fontSize="xs" fontWeight="semibold">
-              Try next
-            </Text>
-            <Box mt={1}>
-              <CoachingText text={contract.tryCue} label="cue" inverse />
-            </Box>
+            {contract.tryCue ? (
+              <Box>
+                <Text color="coral.200" fontSize="xs" fontWeight="semibold">
+                  Try next
+                </Text>
+                <Box mt={1}>
+                  <CoachingText text={contract.tryCue} label="cue" inverse />
+                </Box>
+              </Box>
+            ) : null}
+            {contract.avoid ? (
+              <Box mt={contract.tryCue ? 3 : 0}>
+                <Text color="coral.200" fontSize="xs" fontWeight="semibold">
+                  Keep in mind
+                </Text>
+                <Box mt={1}>
+                  <CoachMarkdown>{contract.avoid}</CoachMarkdown>
+                </Box>
+              </Box>
+            ) : null}
           </Box>
         ) : null}
         <Box>
