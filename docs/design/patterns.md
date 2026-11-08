@@ -127,3 +127,19 @@ audio. Copy must distinguish private account storage from audio processing, desc
 AI uncertainty, and avoid pricing, guaranteed improvement, or available vocal-example
 claims. The existing Auth/SignInPanel stories cover default, busy, cancelled, deleted,
 and email-fallback states.
+
+## Scannable coaching (established)
+
+Coach snapshot and attempt feedback have a short reading layer: focus/observation,
+a next cue, and a separate strength. Attempt explanations have their own labeled
+section; the whole observation is never styled as a headline. Next cues and cautions
+come from the stored contract or server-resolved technique, not a new generated drill.
+
+Long fields show a plain-text excerpt and a native, keyboard-accessible disclosure
+containing the complete original guidance. Excerpts are previews, not rewritten
+diagnoses. Short fields need no disclosure. Do not clamp away content or hide a
+canonical caution. Full measurements remain behind the existing analysis control.
+The shared Markdown renderer preserves paragraphs, lists and emphasis, wraps long
+tokens, uses body-sized text, and does not execute raw HTML or fetch generated images.
+Test both inverse snapshot and light attempt surfaces at narrow phone widths and
+with enlarged text. CoachingReading stories use synthetic data only.
