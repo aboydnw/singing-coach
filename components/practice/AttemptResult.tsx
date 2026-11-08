@@ -1,5 +1,7 @@
 import { Badge, Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import { memo, useMemo } from "react";
+import { CoachingText } from "@/components/practice/CoachingText";
+import { CoachMarkdown } from "@/components/practice/CoachMarkdown";
 import { Drill } from "@/components/Drill";
 import { HearItRight } from "@/components/HearItRight";
 import { PitchChart } from "@/components/PitchChart";
@@ -91,12 +93,9 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
               rounded="inner"
             >
               <Eyebrow>One thing to notice</Eyebrow>
-              <Text mt={1} fontWeight="semibold" fontSize="lg">
-                {coaching.top_issue}
-              </Text>
-              <Text mt={2} color="fg.default" lineHeight="1.7">
-                {coaching.why}
-              </Text>
+              <Box mt={2}>
+                <CoachingText text={coaching.top_issue} label="observation" />
+              </Box>
               {props.onAsk ? (
                 <ContextAction
                   onClick={() =>
@@ -109,8 +108,31 @@ export const AttemptResult = memo(function AttemptResult(props: AttemptResultPro
               ) : null}
             </Box>
             <Box>
+              <Eyebrow tone="agency">Try next</Eyebrow>
+              <Box mt={2}>
+                <CoachingText
+                  text={coaching.resolved.cues[0] ?? coaching.resolved.drill.instructions}
+                  label="practice cue"
+                />
+              </Box>
+              {coaching.resolved.caution ? (
+                <Box mt={2} fontSize="sm">
+                  <Text fontWeight="medium">Keep in mind</Text>
+                  <CoachMarkdown>{coaching.resolved.caution}</CoachMarkdown>
+                </Box>
+              ) : null}
+            </Box>
+            <Box borderTopWidth="1px" borderColor="border.default" pt={4}>
+              <Eyebrow>Why this matters</Eyebrow>
+              <Box mt={2}>
+                <CoachingText text={coaching.why} label="explanation" />
+              </Box>
+            </Box>
+            <Box>
               <Eyebrow tone="agency">Strength</Eyebrow>
-              <Text mt={1}>{coaching.encouragement}</Text>
+              <Box mt={2}>
+                <CoachingText text={coaching.encouragement} label="strength" />
+              </Box>
             </Box>
           </Stack>
         ) : null}

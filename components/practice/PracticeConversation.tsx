@@ -1,41 +1,9 @@
 import { Box, Text } from "@chakra-ui/react";
-import ReactMarkdown from "react-markdown";
+import { CoachMarkdown } from "@/components/practice/CoachMarkdown";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Surface } from "@/components/ui/Surface";
 import type { PracticeMessageRow } from "@/lib/practice";
 import type { ContextAnchor } from "@/lib/schema";
-
-function CoachMarkdown({ children }: { children: string }) {
-  return (
-    <Box
-      lineHeight="1.7"
-      css={{
-        "& > * + *": { marginTop: "0.8em" },
-        "& strong": { fontWeight: "700" },
-        "& em": { fontStyle: "italic" },
-        "& ul, & ol": { paddingInlineStart: "1.4em" },
-        "& ul": { listStyleType: "disc" },
-        "& ol": { listStyleType: "decimal" },
-        "& li + li": { marginTop: "0.35em" },
-        "& blockquote": {
-          borderInlineStartWidth: "3px",
-          borderInlineStartColor: "singer.agency",
-          paddingInlineStart: "1em",
-          color: "fg.muted",
-        },
-        "& code": {
-          fontFamily: "mono",
-          fontSize: "0.9em",
-          background: "bg.subtle",
-          borderRadius: "sm",
-          paddingInline: "0.25em",
-        },
-      }}
-    >
-      <ReactMarkdown>{children}</ReactMarkdown>
-    </Box>
-  );
-}
 
 export function PracticeMessage({ message }: { message: PracticeMessageRow }) {
   if (!message.content_json?.text) return null;
