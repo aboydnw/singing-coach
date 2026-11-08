@@ -5,6 +5,8 @@ describe("isRecorderBusy", () => {
   it("keeps navigation locked while a recording is being produced", () => {
     expect(isRecorderBusy({ phase: "requesting" })).toBe(true);
     expect(isRecorderBusy({ phase: "recording" })).toBe(true);
+    expect(isRecorderBusy({ phase: "stopping" })).toBe(true);
+    expect(isRecorderBusy({ phase: "review" })).toBe(true);
     expect(isRecorderBusy({ phase: "encoding" })).toBe(true);
     expect(isRecorderBusy({ phase: "uploading", fraction: 0.5 })).toBe(true);
   });
@@ -37,12 +39,31 @@ function renderControl(state: RecorderState, disabled = false) {
         onStart: () => undefined,
         onStop: () => undefined,
         onCancelRequest: () => undefined,
+        onDiscard: () => undefined,
+        onSubmit: () => undefined,
       }),
     }),
   );
 }
 
 describe("RecorderControls", () => {
+  it.each(["recording", "stopping", "review"] as const)(
+    "keeps discard available during %s even when parent disables recording",
+    (phase) => {
+      const markup = renderControl({ phase }, true);
+      expect(markup).toMatch(/<button(?![^>]*disabled)[^>]*>Discard take/);
+    },
+  );
+
+  it("requires an explicit send from review and explains privacy", () => {
+    const markup = renderControl({ phase: "review" });
+    expect(markup).toContain("Send for analysis");
+    expect(markup).toContain("Nothing sent yet");
+    expect(markup).toContain("private recordings");
+    expect(markup).not.toContain("🎙 Record");
+    const disabled = renderControl({ phase: "review" }, true);
+    expect(disabled).toMatch(/<button[^>]*disabled[^>]*>Send for analysis/);
+  });
   it("offers an enabled cancellation action while recording is locked", () => {
     const markup = renderControl({ phase: "requesting" });
     expect(markup).toMatch(/<button[^>]*disabled[^>]*>🎙 Record/);

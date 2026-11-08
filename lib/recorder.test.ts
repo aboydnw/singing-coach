@@ -41,6 +41,7 @@ function harness() {
     const pending = controller.start();
     permission.resolve(stream);
     await pending;
+    recorder.ondataavailable?.call(recorder, { data: new Blob(["take"]) } as BlobEvent);
   };
   return {
     controller,
@@ -77,6 +78,86 @@ describe("microphoneErrorMessage", () => {
 });
 
 describe("recorder lifecycle", () => {
+  it("keeps stopped audio local until explicit confirmation", async () => {
+    const h = harness();
+    await h.start();
+    h.controller.stop();
+    await h.finish();
+    expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "review" });
+    expect(h.stopTrack).toHaveBeenCalled();
+    await h.controller.start();
+    expect(h.deps.getUserMedia).toHaveBeenCalledOnce();
+    expect(h.deps.encode).not.toHaveBeenCalled();
+    expect(h.deps.upload).not.toHaveBeenCalled();
+    expect(h.deps.onUploaded).not.toHaveBeenCalled();
+  });
+
+  it.each(["recording", "stopping", "review"])(
+    "discards %s without any upload or analysis callback",
+    async (phase) => {
+      const h = harness();
+      await h.start();
+      const oldStop = h.recorder.onstop!;
+      const oldData = h.recorder.ondataavailable!;
+      if (phase !== "recording") h.controller.stop();
+      if (phase === "review") await h.finish();
+      h.controller.discard();
+      h.controller.discard();
+      await h.controller.submit();
+      expect(h.stopTrack).toHaveBeenCalled();
+      expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "idle" });
+      await h.controller.start();
+      oldData.call(h.recorder, { data: new Blob(["late old audio"]) } as BlobEvent);
+      oldStop.call(h.recorder, new Event("stop"));
+      expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "recording" });
+      expect(h.deps.encode).not.toHaveBeenCalled();
+      expect(h.deps.upload).not.toHaveBeenCalled();
+      expect(h.deps.onUploaded).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not submit on an unexpected stop or after review teardown", async () => {
+    const h = harness();
+    await h.start();
+    await h.finish();
+    expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "review" });
+    h.controller.dispose();
+    await h.controller.submit();
+    expect(h.deps.encode).not.toHaveBeenCalled();
+    expect(h.deps.upload).not.toHaveBeenCalled();
+  });
+
+  it("recovers from an empty take without upload", async () => {
+    const h = harness();
+    const pending = h.controller.start();
+    h.permission.resolve(h.stream);
+    await pending;
+    h.controller.stop();
+    await h.finish();
+    await h.controller.submit();
+    expect(h.deps.onState).toHaveBeenLastCalledWith({
+      phase: "error",
+      message: expect.stringContaining("No audio"),
+    });
+    expect(h.deps.upload).not.toHaveBeenCalled();
+  });
+
+  it("releases the microphone if stop throws", async () => {
+    const h = harness();
+    await h.start();
+    vi.mocked(h.recorder.stop).mockImplementation(() => {
+      throw new Error("inactive");
+    });
+    h.controller.stop();
+    await h.finish();
+    expect(h.stopTrack).toHaveBeenCalled();
+    expect(h.deps.onState).toHaveBeenLastCalledWith({
+      phase: "error",
+      message: expect.stringContaining("could not stop"),
+    });
+    expect(h.deps.upload).not.toHaveBeenCalled();
+  });
+
   it("cancels a pending request and closes a late grant without recording or uploading", async () => {
     const h = harness();
     const pending = h.controller.start();
@@ -127,18 +208,17 @@ describe("recorder lifecycle", () => {
     h.controller.stop();
     h.controller.stop();
     expect(h.recorder.stop).toHaveBeenCalledOnce();
-    expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "encoding" });
+    expect(h.deps.onState).toHaveBeenLastCalledWith({ phase: "stopping" });
   });
 
   it("encodes once, forwards the WAV unchanged, and reports upload before handing off", async () => {
     const h = harness();
     await h.start();
-    h.recorder.ondataavailable?.call(h.recorder, {
-      data: new Blob(["take"]),
-    } as BlobEvent);
     h.controller.stop();
     await h.finish();
     await h.finish();
+    await h.controller.submit();
+    await h.controller.submit();
     expect(await h.deps.encode.mock.calls[0][0].text()).toBe("take");
     expect(h.deps.encode).toHaveBeenCalledOnce();
     expect(h.deps.upload.mock.calls[0][0]).toBe(h.wav);
@@ -219,7 +299,8 @@ describe("recorder lifecycle", () => {
     h.deps.encode.mockReturnValue(encoding.promise);
     await h.start();
     h.controller.stop();
-    const pending = h.finish();
+    await h.finish();
+    const pending = h.controller.submit();
     h.controller.dispose();
     encoding.resolve(h.wav);
     await pending;
@@ -232,7 +313,8 @@ describe("recorder lifecycle", () => {
     h.deps.upload.mockReturnValue(upload.promise);
     await h.start();
     h.controller.stop();
-    const pending = h.finish();
+    await h.finish();
+    const pending = h.controller.submit();
     await Promise.resolve();
     const [, progress, signal] = h.deps.upload.mock.calls[0];
     progress(0.5);
@@ -256,6 +338,7 @@ describe("recorder lifecycle", () => {
     await h.start();
     h.controller.stop();
     await h.finish();
+    await h.controller.submit();
     expect(h.deps.onState).toHaveBeenLastCalledWith({
       phase: "error",
       message: "upload timed out",

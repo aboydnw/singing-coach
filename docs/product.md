@@ -33,6 +33,8 @@ would require a fresh rights review.
 - **Make the next attempt.** The active practice opens with a short progress/focus
   recap, the exercise, reference playback, and recording controls. Different exercise
   and End practice stay nearby. There is no separate proposal-acceptance click.
+  Stop keeps the take local and asks the singer to Send for analysis or Discard take.
+  Discard also works during recording, returns to the same exercise, and sends nothing.
 - **Recover safely.** Stay through recording, encoding, upload, and durable job
   acknowledgement. After “Recording uploaded,” persisted work owns analysis and
   coaching. Returning restores its stage or recovery action. Only one attempt may
