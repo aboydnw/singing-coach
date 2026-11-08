@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Spinner, Stack, Text } from "@chakra-ui/react";
 import type { AttemptJobRow } from "@/lib/attemptJobs";
 import { pendingGuidance } from "@/lib/attemptJobs";
 import type { LearningContract } from "@/lib/schema";
@@ -45,13 +45,26 @@ export function PendingAttempt({
   onNewAttempt: () => void;
 }) {
   const stage = STAGES[job.status];
+  const busy = ["queued", "analyzing", "coaching"].includes(job.status);
   return (
     <Surface variant="raised" px={{ base: 4, md: 5 }} py={5}>
       <Stack gap={4}>
         <Box role="status" aria-live="polite">
-          <Text color="singer.agency" fontWeight="semibold" fontSize="sm">
-            Attempt in progress
-          </Text>
+          <Flex align="center" gap={3}>
+            {busy ? (
+              <Spinner
+                data-testid="processing-indicator"
+                aria-hidden="true"
+                size="sm"
+                color="singer.agency"
+                flexShrink={0}
+                _motionReduce={{ animation: "none" }}
+              />
+            ) : null}
+            <Text color="singer.agency" fontWeight="semibold" fontSize="sm">
+              {busy ? "Attempt in progress" : "Attempt status"}
+            </Text>
+          </Flex>
           <Heading mt={1} size="lg" letterSpacing="-0.02em">
             {stage.title}
           </Heading>

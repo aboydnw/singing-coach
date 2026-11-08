@@ -1,3 +1,4 @@
+import { assertJobSigningConfigured } from "@/lib/jobAssertion";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
@@ -50,6 +51,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "parent attempt not found" }, { status: 400 });
   }
 
+  // The audio is already uploaded. Preserve a durable retry handle even when
+  // this deployment cannot analyze it, rather than orphaning the recording.
+  let configurationError: string | null = null;
+  try {
+    assertJobSigningConfigured();
+  } catch {
+    configurationError =
+      "Recording processing is temporarily unavailable. Your recording is saved. Please retry later.";
+  }
   const service = serviceSupabase();
   const jobId = crypto.randomUUID();
   const { data: job, error: insertError } = await service
@@ -59,7 +69,9 @@ export async function POST(request: Request) {
       user_id: auth.userId,
       practice_session_id: practice.id,
       audio_key: parsed.data.audio_key,
-      status: "queued",
+      status: configurationError ? "failed" : "queued",
+      error_code: configurationError ? "analysis_configuration_unavailable" : null,
+      error_message: configurationError,
       exercise_spec_json: parsed.data.exercise_spec
         ? JSON.stringify(parsed.data.exercise_spec)
         : null,
@@ -75,6 +87,10 @@ export async function POST(request: Request) {
       { error: duplicate ? "an attempt is already processing" : insertError.message },
       { status: duplicate ? 409 : 500 },
     );
+  }
+
+  if (configurationError) {
+    return NextResponse.json(job as AttemptJobRow, { status: 202 });
   }
 
   try {

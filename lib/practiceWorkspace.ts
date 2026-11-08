@@ -1,3 +1,4 @@
+import type { AttemptJobRow } from "@/lib/attemptJobs";
 import type { PracticeMessageRow } from "@/lib/practice";
 import {
   coachingResponseSchema,
@@ -49,6 +50,35 @@ export function retryProposalForAttempt(attempt: SessionRow) {
     parentAttemptId: attempt.id,
     retry: true,
   };
+}
+
+/** Restore only a completed durable job with a saved attempt.
+ * A session can already exist while coaching is running or has failed. */
+export function completedWorkspaceAttempt(
+  jobs: AttemptJobRow[],
+  attempts: SessionRow[],
+): SessionRow | null {
+  const latestJob = jobs.toSorted((left, right) =>
+    right.created_at.localeCompare(left.created_at),
+  )[0];
+  if (latestJob?.status !== "completed" || !latestJob.attempt_id) return null;
+  return attempts.find((attempt) => attempt.id === latestJob.attempt_id) ?? null;
+}
+
+/** Jobs and attempts are fetched independently; a completed job can arrive
+ * one refresh before its attempt. Keep polling until that snapshot catches up. */
+export function workspaceCompletionPending(
+  jobs: AttemptJobRow[],
+  attempts: SessionRow[],
+): boolean {
+  const latestJob = jobs.toSorted((left, right) =>
+    right.created_at.localeCompare(left.created_at),
+  )[0];
+  return Boolean(
+    latestJob?.status === "completed" &&
+    latestJob.attempt_id &&
+    !attempts.some((attempt) => attempt.id === latestJob.attempt_id),
+  );
 }
 
 export function attemptsNewestFirst(attempts: SessionRow[]): SessionRow[] {

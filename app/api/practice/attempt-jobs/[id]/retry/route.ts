@@ -1,3 +1,4 @@
+import { assertJobSigningConfigured } from "@/lib/jobAssertion";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { authenticateRequest } from "@/lib/serverAuth";
@@ -12,6 +13,18 @@ export async function POST(
   if (!auth)
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
   const { id } = await context.params;
+  // Reject before creating/re-queuing work that this deployment cannot process.
+  try {
+    assertJobSigningConfigured();
+  } catch {
+    return NextResponse.json(
+      {
+        error: "Recording processing is temporarily unavailable. Please try again later.",
+      },
+      { status: 503 },
+    );
+  }
+
   const service = serviceSupabase();
   const { data: job, error } = await service
     .from("practice_attempt_jobs")

@@ -3,7 +3,12 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PendingAttempt } from "@/components/practice/PendingAttempt";
-import type { AttemptJobRow } from "@/lib/attemptJobs";
+import {
+  restoredAttemptJob,
+  jobExerciseId,
+  visibleAttemptJob,
+  type AttemptJobRow,
+} from "@/lib/attemptJobs";
 import { initialContract } from "@/lib/practice";
 import { system } from "@/lib/theme";
 
@@ -48,6 +53,28 @@ function render(status: AttemptJobRow["status"]) {
 }
 
 describe("PendingAttempt", () => {
+  it.each(["queued", "analyzing", "coaching"] as const)(
+    "shows visible motion and a polite text status while %s",
+    (status) => {
+      const markup = render(status);
+      expect(markup).toContain('data-testid="processing-indicator"');
+      expect(markup).toContain('aria-hidden="true"');
+      expect(markup).toContain('role="status"');
+      expect(markup).toContain('aria-live="polite"');
+      expect(markup).toContain("prefers-reduced-motion: reduce");
+      expect(markup).toContain("animation:none");
+    },
+  );
+
+  it.each(["failed", "completed", "abandoned"] as const)(
+    "does not imply ongoing work for %s",
+    (status) => {
+      const markup = render(status);
+      expect(markup).not.toContain('data-testid="processing-indicator"');
+      expect(markup).not.toContain("Attempt in progress");
+    },
+  );
+
   it("says leaving is safe once a durable job is queued", () => {
     const markup = render("queued");
     expect(markup).toContain("Recording uploaded");
@@ -66,4 +93,26 @@ describe("PendingAttempt", () => {
     expect(markup).toContain("Retry processing");
     expect(markup).toContain("Try a new attempt");
   });
+});
+
+it("renders Retry processing from the hydrated initial-job selection", () => {
+  const jobs = [job("failed")];
+  const restored = restoredAttemptJob(jobs)!;
+  const selected = jobExerciseId(restored, []);
+  const visible = visibleAttemptJob(jobs, [], selected);
+  const markup = renderToStaticMarkup(
+    React.createElement(ChakraProvider, {
+      value: system,
+      children: visible
+        ? React.createElement(PendingAttempt, {
+            job: visible,
+            contract: null,
+            onRetry: () => undefined,
+            onNewAttempt: () => undefined,
+          })
+        : null,
+    }),
+  );
+  expect(markup).toContain("Retry processing");
+  expect(markup).not.toContain("Start recording");
 });

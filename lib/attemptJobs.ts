@@ -46,6 +46,48 @@ export function activeAttemptJob(jobs: AttemptJobRow[]): AttemptJobRow | null {
   );
 }
 
+/** Restore durable work before offering a fresh exercise after page hydration. */
+export function restoredAttemptJob(jobs: AttemptJobRow[]): AttemptJobRow | null {
+  return (
+    activeAttemptJob(jobs) ??
+    jobs
+      .filter((job) => job.status === "failed")
+      .toSorted((left, right) => right.created_at.localeCompare(left.created_at))[0] ??
+    null
+  );
+}
+
+export function visibleAttemptJob(
+  jobs: AttemptJobRow[],
+  threads: ExerciseThread[],
+  selectedExerciseId: string | null,
+): AttemptJobRow | null {
+  return (
+    jobs
+      .toReversed()
+      .find(
+        (job) =>
+          job.status !== "completed" &&
+          job.status !== "abandoned" &&
+          jobExerciseId(job, threads) === selectedExerciseId,
+      ) ?? null
+  );
+}
+
+export function selectedJobExerciseAfterRefresh(
+  currentId: string | null,
+  jobs: AttemptJobRow[],
+  threads: ExerciseThread[],
+): string | null {
+  if (!currentId) return null;
+  const selected = jobs.find(
+    (job) => currentId === `job-${job.id}` || jobExerciseId(job, threads) === currentId,
+  );
+  return selected && selected.status !== "abandoned"
+    ? jobExerciseId(selected, threads)
+    : null;
+}
+
 export type AttemptJobResumePoint =
   { stage: "analysis" } | { stage: "coaching"; attemptId: string };
 

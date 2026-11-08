@@ -262,7 +262,16 @@ describe("recorder lifecycle", () => {
   it("does not encode or upload after an interrupted recorder", async () => {
     const h = harness();
     await h.start();
-    h.recorder.onerror?.call(h.recorder, new Event("error"));
+    h.recorder.onerror?.call(
+      h.recorder,
+      Object.assign(new Event("error"), {
+        message: "Recording interrupted",
+        filename: "",
+        lineno: 0,
+        colno: 0,
+        error: null,
+      }),
+    );
     await h.finish();
     expect(h.deps.onState).toHaveBeenLastCalledWith({
       phase: "error",

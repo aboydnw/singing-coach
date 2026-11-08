@@ -1,6 +1,9 @@
+import type { AttemptJobRow } from "@/lib/attemptJobs";
 import { describe, expect, it } from "vitest";
 import {
   attemptsNewestFirst,
+  completedWorkspaceAttempt,
+  workspaceCompletionPending,
   generalPracticeMessages,
   messagesForAttempt,
   practiceWorkspaceSummary,
@@ -118,5 +121,73 @@ describe("workspace message ownership", () => {
 
   it("keeps only unanchored legacy messages as general questions", () => {
     expect(generalPracticeMessages(messages).map((row) => row.id)).toEqual(["general"]);
+  });
+});
+
+describe("durable completion restores the next-attempt workspace", () => {
+  const saved = attempt("attempt-2", 2);
+  const completed = {
+    id: "job-2",
+    status: "completed",
+    attempt_id: saved.id,
+    created_at: "2026-11-07T12:00:00Z",
+  } as AttemptJobRow;
+
+  it("transitions from coaching with a saved session to retry-ready controls", () => {
+    expect(
+      completedWorkspaceAttempt([{ ...completed, status: "coaching" }], [saved]),
+    ).toBeNull();
+    const ready = completedWorkspaceAttempt([completed], [saved]);
+    expect(ready).toBe(saved);
+    const proposal = retryProposalForAttempt(ready!);
+    expect(proposal.parentAttemptId).toBe(saved.id);
+    expect(proposal.retry).toBe(true);
+    expect(proposal.spec?.display_name).toBe("Five-note scale");
+  });
+
+  it("restores after reopening and repeated completion refreshes", () => {
+    expect(completedWorkspaceAttempt([completed], [saved])).toBe(saved);
+    expect(completedWorkspaceAttempt([completed], [saved])).toBe(saved);
+  });
+
+  it.each(["queued", "analyzing", "coaching", "failed", "abandoned"] as const)(
+    "never replaces the newer %s job with an older completed attempt",
+    (status) => {
+      const newer = {
+        ...completed,
+        id: "job-3",
+        status,
+        created_at: "2026-11-07T12:05:00Z",
+      };
+      expect(completedWorkspaceAttempt([newer, completed], [saved])).toBeNull();
+    },
+  );
+
+  it("waits for the completed job's exact saved attempt", () => {
+    expect(completedWorkspaceAttempt([completed], [attempt("other", 1)])).toBeNull();
+    expect(
+      completedWorkspaceAttempt([{ ...completed, attempt_id: null }], [saved]),
+    ).toBeNull();
+    expect(completedWorkspaceAttempt([], [saved])).toBeNull();
+  });
+
+  it("keeps reconciliation polling through a completed job with a stale attempt snapshot", () => {
+    expect(workspaceCompletionPending([{ ...completed, status: "coaching" }], [])).toBe(
+      false,
+    );
+    expect(workspaceCompletionPending([completed], [])).toBe(true);
+    expect(completedWorkspaceAttempt([completed], [])).toBeNull();
+    expect(workspaceCompletionPending([completed], [saved])).toBe(false);
+    expect(completedWorkspaceAttempt([completed], [saved])).toBe(saved);
+    expect(workspaceCompletionPending([{ ...completed, status: "failed" }], [])).toBe(
+      false,
+    );
+  });
+
+  it("restores free singing without inventing a scored exercise", () => {
+    const free = { ...saved, exercise_spec_json: null };
+    expect(
+      retryProposalForAttempt(completedWorkspaceAttempt([completed], [free])!).spec,
+    ).toBeNull();
   });
 });
