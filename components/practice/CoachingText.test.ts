@@ -61,6 +61,47 @@ describe("scannable coaching", () => {
     expect(html).toContain("<strong>What to listen for</strong>");
     expect(html).toContain('href="/progress"');
   });
+  it("keeps the snapshot caution visible outside all disclosures", () => {
+    const html = render(React.createElement(CoachSnapshot, { latest: coachingPractice }));
+    const visible = html.replace(/<details\b[\s\S]*?<\/details>/g, "");
+    expect(visible).toContain("Keep in mind");
+    expect(visible).toContain("Do not push for volume.");
+    expect(visible.indexOf("Do not push for volume.")).toBeLessThan(
+      visible.indexOf(">Strength<"),
+    );
+  });
+  it("never truncates or collapses a long caution, even without a next cue", () => {
+    const avoid =
+      "Keep it **comfortable**. " +
+      "Do not push for volume. ".repeat(12) +
+      "Stop if you feel strain.";
+    const latest = {
+      ...coachingPractice,
+      learning_contract_json: {
+        ...coachingPractice.learning_contract_json!,
+        tryCue: "",
+        avoid,
+      },
+    };
+    const html = render(React.createElement(CoachSnapshot, { latest }));
+    const visible = html.replace(/<details\b[\s\S]*?<\/details>/g, "");
+    expect(visible).toContain("<strong>comfortable</strong>");
+    expect(visible).toContain("Stop if you feel strain.");
+    expect(visible.match(/Do not push for volume\./g)).toHaveLength(12);
+    expect(visible).not.toContain("Try next");
+  });
+  it("omits the caution section when the contract has no caution", () => {
+    const latest = {
+      ...coachingPractice,
+      learning_contract_json: {
+        ...coachingPractice.learning_contract_json!,
+        avoid: null,
+      },
+    };
+    expect(render(React.createElement(CoachSnapshot, { latest }))).not.toContain(
+      "Keep in mind",
+    );
+  });
   it("separates observation, next cue, explanation and strength on attempt detail", () => {
     const html = render(
       React.createElement(AttemptResult, {
