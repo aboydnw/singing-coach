@@ -344,7 +344,11 @@ export function PracticeSession() {
     (proposal?.parentAttemptId
       ? bundle?.attempts.find((attempt) => attempt.id === proposal.parentAttemptId)
       : null) ?? workspaceAttempt(bundle?.attempts ?? [], null);
-  const workspaceSummary = practiceWorkspaceSummary(workspaceTarget, contract ?? null);
+  const workspaceSummary = practiceWorkspaceSummary(
+    workspaceTarget,
+    contract ?? null,
+    proposal?.spec ?? pendingJobSpec,
+  );
   const workspaceExerciseName =
     proposal?.spec?.display_name ??
     (workspaceTarget ? attemptExerciseName(workspaceTarget) : "First exercise");

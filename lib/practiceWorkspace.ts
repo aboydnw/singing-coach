@@ -4,6 +4,7 @@ import {
   coachingResponseSchema,
   exerciseSpecSchema,
   type LearningContract,
+  type ExerciseSpec,
 } from "@/lib/schema";
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
@@ -18,13 +19,16 @@ const FALLBACK_FOCUS = "Listen for one clear, comfortable change.";
 export function practiceWorkspaceSummary(
   attempt: SessionRow | null,
   contract: LearningContract | null,
+  currentSpec: ExerciseSpec | null = null,
 ): WorkspaceSummary {
   const coaching = attempt
     ? parseStoredJson(attempt.coaching_json, coachingResponseSchema)
     : null;
   const encouragement = conciseText(coaching?.encouragement || contract?.strength || "");
   const focus = conciseText(
-    contract?.tryCue || coaching?.top_issue || contract?.focus || FALLBACK_FOCUS,
+    currentSpec?.range_fallback
+      ? "Use a comfortable sustained note on 'ah' because the requested pattern does not fit your calibrated range."
+      : contract?.tryCue || coaching?.top_issue || contract?.focus || FALLBACK_FOCUS,
   );
   return {
     encouragement: encouragement || undefined,

@@ -64,6 +64,7 @@ export const exerciseSpecSchema = z.object({
   duration_per_note_s: z.number(),
   vowel: z.string(),
   display_name: z.string(),
+  range_fallback: z.boolean().optional(),
   activity_kind: z.enum(["technical", "song_passage", "guided_free_sing"]).optional(),
   activity_id: z.string().min(1).optional(),
   activity_version: z.number().int().positive().optional(),

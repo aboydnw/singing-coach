@@ -126,3 +126,21 @@ describe("selectVariedExercise", () => {
     expect(selected.spec.target_notes_midi).not.toEqual(generated.target_notes_midi);
   });
 });
+
+it("replaces an incompatible canonical octave drill with an unlinked safe note", () => {
+  const selected = selectVariedExercise({
+    calibration: { range_low_midi: 57, range_high_midi: 60 },
+    cursor: 0,
+    focusArea: "range",
+    preferredType: "siren",
+    preferredDrillId: "octave_ooh_slide",
+    drillName: "Octave slide on 'ooh'",
+    history: [],
+  });
+  expect(selected.spec.type).toBe("sustained");
+  expect(selected.spec.display_name).not.toContain("drill:");
+  expect(selected.spec.range_fallback).toBe(true);
+  expect(selected.spec.activity_id).toBeUndefined();
+  expect(selected.spec.instructions).toContain("sustained note instead");
+  expect(selected.spec.target_notes_midi).toEqual([57]);
+});

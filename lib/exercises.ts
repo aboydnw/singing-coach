@@ -1,5 +1,6 @@
 /** Deterministic exercise generation, ported from exercises.py. Pure functions;
- * behaviour is pinned to the Python original by the shared parity fixture. */
+ * compatible-range behaviour is pinned to the retired Python original by the
+ * shared parity fixture. Shapes that cannot fit use an existing sustained note. */
 
 import type { Calibration, ExerciseSpec, FocusArea } from "@/lib/schema";
 
@@ -75,8 +76,9 @@ export function isSameExercise(a: ExerciseSpec, b: ExerciseSpec): boolean {
  *
  * The coach's focus area is dropped on purpose. It pins the exercise type, so
  * honouring it here would keep handing back the drill the singer just asked to
- * skip. Stepping through TYPE_ROTATION covers every type, and only one of them
- * can match `current`, so a different exercise is always found. */
+ * skip. Stepping through TYPE_ROTATION covers every type. A narrow range may
+ * reduce every type to the same sustained note; the bounded walk then returns
+ * a safe repeat rather than leaving the range to force variety. */
 export function skipExercise(
   calibration: Calibration,
   fromIndex: number,
@@ -120,20 +122,34 @@ function buildSpec(
   exerciseType: ExerciseType,
   suffix: string,
 ): ExerciseSpec {
+  const rangeLow = calibration.range_low_midi;
+  const rangeHigh = calibration.range_high_midi;
+  const availableSpan = Math.max(0, rangeHigh - rangeLow);
+  const rangeFallback = Math.max(...SHAPES[exerciseType]) > availableSpan;
+  // Preserve the original intervals whenever they fit. A sustained note is the
+  // existing safe alternative; compressing intervals would invent a new drill.
+  if (rangeFallback) exerciseType = "sustained";
   const shape = SHAPES[exerciseType];
+  if (rangeFallback && suffix.startsWith(" (drill:")) suffix = "";
   const span = Math.max(...shape);
 
   const tessituraLow = calibration.tessitura_low_midi ?? calibration.range_low_midi;
   const tessituraHigh = calibration.tessitura_high_midi ?? calibration.range_high_midi;
-  const rangeHigh = calibration.range_high_midi;
-
-  const maxStarting = Math.min(tessituraHigh, rangeHigh - span);
-  const minStarting = Math.min(tessituraLow, maxStarting);
+  const maxStarting = Math.max(rangeLow, Math.min(tessituraHigh, rangeHigh - span));
+  const minStarting = Math.max(rangeLow, Math.min(tessituraLow, maxStarting));
   const startingOptions = Math.max(1, maxStarting - minStarting + 1);
   const walkPosition = Math.floor(sessionIndex / TYPE_ROTATION.length) % startingOptions;
   const startingNote = minStarting + walkPosition;
 
   return {
+    ...(rangeFallback
+      ? {
+          range_fallback: true,
+          instructions:
+            "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+          primary_cue: "Follow this comfortable sustained note on 'ah'.",
+        }
+      : {}),
     type: exerciseType,
     target_notes_midi: shape.map((offset) => startingNote + offset),
     duration_per_note_s: DURATIONS[exerciseType],

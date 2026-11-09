@@ -10,7 +10,12 @@ import {
   retryProposalForAttempt,
   workspaceAttempt,
 } from "@/lib/practiceWorkspace";
-import { initialContract, type PracticeMessageRow } from "@/lib/practice";
+import { exerciseForDrill } from "@/lib/exercises";
+import {
+  contractFromAttempt,
+  initialContract,
+  type PracticeMessageRow,
+} from "@/lib/practice";
 import type { SessionRow } from "@/lib/sessions";
 
 function attempt(
@@ -59,6 +64,38 @@ function message(id: string, attemptId: string | null): PracticeMessageRow {
 }
 
 describe("practiceWorkspaceSummary", () => {
+  it("uses the current safe fallback cue after persistence without rewriting legacy coaching or cautions", () => {
+    const prior = attempt("attempt-1", 1, {
+      drill: "Slide up an octave on ooh and back down.",
+      resolved: { caution: "Stop if uncomfortable." },
+    });
+    const contract = contractFromAttempt(initialContract("coach_pick"), prior);
+    const originalContract = JSON.stringify(contract);
+    const originalCoaching = prior.coaching_json;
+    const spec = exerciseForDrill(
+      { range_low_midi: 57, range_high_midi: 60 },
+      0,
+      "siren",
+      "Octave slide on 'ooh'",
+    );
+    const saved = {
+      ...attempt("attempt-2", 2),
+      exercise_spec_json: JSON.stringify(spec),
+    };
+    const retry = retryProposalForAttempt(saved);
+    expect(retry.spec?.range_fallback).toBe(true);
+    expect(retry.spec).toEqual(spec);
+    expect(practiceWorkspaceSummary(prior, contract, retry.spec).focus).toBe(
+      "Use a comfortable sustained note on 'ah' because the requested pattern does not fit your calibrated range.",
+    );
+    expect(practiceWorkspaceSummary(prior, contract).focus).toBe(
+      "Slide up an octave on ooh and back down.",
+    );
+    expect(contract.avoid).toBe("Stop if uncomfortable.");
+    expect(JSON.stringify(contract)).toBe(originalContract);
+    expect(prior.coaching_json).toBe(originalCoaching);
+  });
+
   it("uses concise structured coaching and strips formatting", () => {
     const contract = {
       ...initialContract("coach_pick"),
