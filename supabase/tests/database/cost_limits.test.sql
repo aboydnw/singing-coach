@@ -12,7 +12,13 @@ select ok(not has_table_privilege('authenticated', 'public.cost_limit_policy', '
 select is((select count(*)::integer from pg_class where relname in ('cost_limit_policy','cost_entitlements','cost_usage_buckets') and relrowsecurity), 3, 'RLS is enabled on all new tables');
 
 insert into auth.users (id) values ('f1000000-0000-4000-8000-000000000001'), ('f1000000-0000-4000-8000-000000000002'), ('f1000000-0000-4000-8000-000000000003');
-update public.cost_limit_policy set free_monthly = 1, paid_monthly = 2, user_per_minute = 5;
+-- This suite also runs against the linked DB after migrations. Isolate fixture
+-- budgets from existing usage/operator policy, and restore both on ROLLBACK.
+-- Hold the policy lock before clearing counters, so live admission waits for
+-- this short test transaction rather than observing the synthetic allowance.
+update public.cost_limit_policy set enabled = true, free_monthly = 1, paid_monthly = 2,
+  user_per_minute = 5, global_per_minute = 30, global_per_day = 100, global_per_month = 1000;
+delete from public.cost_usage_buckets;
 select is(public.consume_cost_operation('f1000000-0000-4000-8000-000000000001', 'coach')->>'allowed', 'true', 'free account gets its first allowance');
 select is(public.consume_cost_operation('f1000000-0000-4000-8000-000000000001', 'analyze')->>'allowed', 'false', 'different endpoints share one monthly allowance');
 select is((select operations from public.cost_usage_buckets where scope='global:month'), 1, 'denial does not consume global allowance');
