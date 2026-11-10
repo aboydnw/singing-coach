@@ -47,3 +47,26 @@ jobs:
       - run: supabase db reset --local --no-seed
       - run: supabase db lint --local --fail-on error
       - run: supabase test db supabase/tests/database --local
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn install --immutable
+        working-directory: mobile
+      - run: yarn verify
+        working-directory: mobile
+      - run: yarn expo install --check
+        working-directory: mobile
+      - name: Bundle iOS JavaScript with synthetic public configuration
+        run: yarn export:ios
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_API_BASE_URL: https://example.invalid
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_synthetic_test_only

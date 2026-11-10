@@ -27,6 +27,16 @@ export function renderTimedSequenceWav(
   events: TimedToneEvent[],
   sampleRate = DEFAULT_SAMPLE_RATE,
 ): Blob {
+  return new Blob([renderTimedSequenceWavBytes(events, sampleRate)], {
+    type: "audio/wav",
+  });
+}
+
+/** Portable PCM bytes, including native clients without Blob ArrayBuffer support. */
+export function renderTimedSequenceWavBytes(
+  events: TimedToneEvent[],
+  sampleRate = DEFAULT_SAMPLE_RATE,
+): Uint8Array<ArrayBuffer> {
   validate(events, sampleRate);
   const eventLengths = events.map((event) => Math.round(event.duration_s * sampleRate));
   const sampleCount = eventLengths.reduce((total, length) => total + length, 0);
@@ -63,7 +73,7 @@ export function renderTimedSequenceWav(
     }
   });
 
-  return new Blob([buffer], { type: "audio/wav" });
+  return new Uint8Array(buffer);
 }
 
 function validate(events: TimedToneEvent[], sampleRate: number): void {
