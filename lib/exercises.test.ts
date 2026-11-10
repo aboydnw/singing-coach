@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import cases from "../tests/fixtures/exercise_parity.json";
 import {
+  exerciseForDrill,
+  TYPE_ROTATION,
   isSameExercise,
   midiToName,
   nextExercise,
@@ -9,7 +11,7 @@ import {
 } from "./exercises";
 import type { Calibration, ExerciseSpec, FocusArea } from "./schema";
 
-describe("nextExercise parity with exercises.py", () => {
+describe("nextExercise historical parity and safe narrow-range fixtures", () => {
   it.each(cases.map((c, i) => [i, c] as const))("case %i", (_i, c) => {
     const spec = nextExercise(
       c.calibration,
@@ -128,5 +130,88 @@ describe("midiToName", () => {
     expect(midiToName(57)).toBe("A3");
     expect(midiToName(69)).toBe("A4");
     expect(midiToName(61)).toBe("C#4");
+  });
+});
+
+describe("calibrated range boundaries", () => {
+  it.each([0, 1, 3, 7, 11])(
+    "keeps repeated skips bounded and safe for span %i",
+    (width) => {
+      const calibration = { range_low_midi: 57, range_high_midi: 57 + width };
+      let current = nextExercise(calibration, 0);
+      let cursor = 0;
+      for (let step = 0; step < 32; step++) {
+        const selected = skipFromCursor(calibration, cursor, current);
+        expect(selected.index).toBeGreaterThan(cursor);
+        expect(selected.index).toBeLessThanOrEqual(cursor + TYPE_ROTATION.length);
+        expect(
+          selected.spec.target_notes_midi.every(
+            (note) => note >= 57 && note <= 57 + width,
+          ),
+        ).toBe(true);
+        current = selected.spec;
+        cursor = selected.index;
+      }
+    },
+  );
+
+  it("fits every requested drill or uses an unlinked sustained fallback", () => {
+    for (let width = 0; width <= 24; width++) {
+      const calibration = { range_low_midi: 57, range_high_midi: 57 + width };
+      for (const type of TYPE_ROTATION) {
+        for (let index = 0; index < 32; index++) {
+          const spec = exerciseForDrill(calibration, index, type, "Curated drill");
+          const requiredSpan = { sustained: 0, scale: 7, arpeggio: 12, siren: 12 }[type];
+          const fits = width >= requiredSpan;
+          expect(spec.type).toBe(fits ? type : "sustained");
+          if (fits) {
+            expect(spec.display_name).toContain("(drill: Curated drill)");
+            expect(spec.range_fallback).toBeUndefined();
+          } else {
+            expect(spec.display_name).not.toContain("Curated drill");
+            expect(spec.range_fallback).toBe(true);
+            expect(spec.target_notes_midi).toHaveLength(1);
+            expect(spec.duration_per_note_s).toBe(3);
+          }
+          expect(
+            spec.target_notes_midi.every(
+              (n) => Number.isInteger(n) && n >= 57 && n <= 57 + width,
+            ),
+          ).toBe(true);
+          if (type === "siren" && fits) {
+            const notes = spec.target_notes_midi;
+            expect(notes[0]).toBe(notes[4]);
+            expect(notes[1]).toBe(notes[3]);
+            expect(notes[2]).toBeGreaterThanOrEqual(notes[1]);
+            expect(notes[1]).toBeGreaterThanOrEqual(notes[0]);
+          }
+        }
+      }
+    }
+  });
+
+  it("uses a sustained note instead of singing below range", () => {
+    expect(
+      nextExercise({ range_low_midi: 57, range_high_midi: 60 }, 3).target_notes_midi,
+    ).toEqual([57]);
+  });
+
+  it("clamps stale tessitura to the absolute range", () => {
+    for (const tessitura of [
+      [30, 40],
+      [80, 90],
+    ]) {
+      const spec = nextExercise(
+        {
+          range_low_midi: 57,
+          range_high_midi: 60,
+          tessitura_low_midi: tessitura[0],
+          tessitura_high_midi: tessitura[1],
+        },
+        0,
+      );
+      expect(spec.target_notes_midi[0]).toBeGreaterThanOrEqual(57);
+      expect(spec.target_notes_midi[0]).toBeLessThanOrEqual(60);
+    }
   });
 });

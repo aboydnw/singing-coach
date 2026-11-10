@@ -13,12 +13,13 @@ const noOp = () => undefined;
 function renderPanel({
   notice = null,
   emailFallback = false,
-}: { notice?: AuthNotice; emailFallback?: boolean } = {}) {
+  busy = false,
+}: { notice?: AuthNotice; emailFallback?: boolean; busy?: boolean } = {}) {
   return renderToStaticMarkup(
     React.createElement(ChakraProvider, {
       value: system,
       children: React.createElement(SignInPanel, {
-        busy: false,
+        busy,
         notice,
         onGoogle: noOp,
         onEmailSignIn: emailFallback ? noOp : undefined,
@@ -30,15 +31,34 @@ function renderPanel({
 describe("SignInPanel", () => {
   it("introduces the practice journey without overstating privacy or pricing", () => {
     const html = renderPanel();
-    expect(html).toContain("Your voice is worth practicing.");
-    expect(html).toContain("One attempt at a time.");
-    expect(html).toContain("not your audio");
+    expect(html).toContain("Singing practice with a clear next step.");
+    expect(html).toContain("The Sing Coach combines vocal exercises");
+    expect(html).toContain("not audio");
     expect(html).toContain("learning your baseline");
+    expect(html).toContain("Stop if singing hurts.");
+    expect(html).toContain("cannot replace a voice teacher or medical advice.");
     expect(html).toContain('href="#start-practicing"');
-    expect(html).toContain('href="#how-it-works"');
     expect(html).toContain('id="welcome-content"');
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).not.toContain("Free forever");
+  });
+
+  it("labels the static illustration without implying a real result or playback", () => {
+    const html = renderPanel();
+    expect(html).toContain("Illustrated pitch feedback");
+    expect(html).toContain('role="img"');
+    expect(html).toContain("This is not a recording or result.");
+    expect(html).not.toContain("<audio");
+    expect(html).not.toContain("<canvas");
+  });
+
+  it("keeps the welcome copy concise", () => {
+    const text = renderPanel()
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/g, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#x27;|&#39;|&apos;|&quot;|&amp;/g, " ");
+    const words = text.match(/[\p{L}\p{N}]+(?:[’'-][\p{L}\p{N}]+)*/gu) ?? [];
+    expect(words.length).toBeLessThanOrEqual(150);
   });
 
   it("offers only Google by default", () => {
@@ -47,6 +67,12 @@ describe("SignInPanel", () => {
     expect(html).not.toContain("<form");
     expect(html).not.toContain('name="password"');
     expect(html).toContain('href="/privacy"');
+  });
+
+  it("keeps sign-in disabled while busy", () => {
+    const html = renderPanel({ busy: true });
+    expect(html).toMatch(/<button[^>]*disabled/);
+    expect(html).toContain("Continue with Google");
   });
 
   it("adds a password manager friendly email form for the fallback", () => {
@@ -63,5 +89,6 @@ describe("SignInPanel", () => {
     });
     expect(html).toContain('role="alert"');
     expect(html).toContain("Try again.");
+    expect(html.indexOf('role="alert"')).toBeLessThan(html.indexOf("<button"));
   });
 });

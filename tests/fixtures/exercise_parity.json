@@ -2376,17 +2376,16 @@
     "session_index": 1,
     "focus_area": null,
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3"
+      "display_name": "sustained on 'ah', starting A3"
     }
   },
   {
@@ -2399,16 +2398,16 @@
     "session_index": 2,
     "focus_area": null,
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3"
+      "display_name": "sustained on 'ah', starting A3"
     }
   },
   {
@@ -2421,17 +2420,16 @@
     "session_index": 3,
     "focus_area": null,
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3"
+      "display_name": "sustained on 'ah', starting A3"
     }
   },
   {
@@ -2463,17 +2461,16 @@
     "session_index": 5,
     "focus_area": null,
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3"
+      "display_name": "sustained on 'ah', starting A#3"
     }
   },
   {
@@ -2486,16 +2483,16 @@
     "session_index": 6,
     "focus_area": null,
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3"
+      "display_name": "sustained on 'ah', starting A#3"
     }
   },
   {
@@ -2508,17 +2505,16 @@
     "session_index": 7,
     "focus_area": null,
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3"
+      "display_name": "sustained on 'ah', starting A#3"
     }
   },
   {
@@ -2683,17 +2679,16 @@
     "session_index": 0,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2706,17 +2701,16 @@
     "session_index": 1,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2729,17 +2723,16 @@
     "session_index": 2,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2752,17 +2745,16 @@
     "session_index": 3,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2775,17 +2767,16 @@
     "session_index": 4,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2798,17 +2789,16 @@
     "session_index": 5,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2821,17 +2811,16 @@
     "session_index": 6,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: pitch accuracy)"
     }
   },
   {
@@ -2844,17 +2833,16 @@
     "session_index": 7,
     "focus_area": "pitch_accuracy",
     "expected": {
-      "type": "scale",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        53,
-        55,
-        57,
-        58,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "scale on 'ah', starting F3 (focus: pitch accuracy)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: pitch accuracy)"
     }
   },
   {
@@ -3171,17 +3159,16 @@
     "session_index": 0,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A3 (focus: range)"
     }
   },
   {
@@ -3194,17 +3181,16 @@
     "session_index": 1,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A3 (focus: range)"
     }
   },
   {
@@ -3217,17 +3203,16 @@
     "session_index": 2,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A3 (focus: range)"
     }
   },
   {
@@ -3240,17 +3225,16 @@
     "session_index": 3,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A3 (focus: range)"
     }
   },
   {
@@ -3263,17 +3247,16 @@
     "session_index": 4,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: range)"
     }
   },
   {
@@ -3286,17 +3269,16 @@
     "session_index": 5,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: range)"
     }
   },
   {
@@ -3309,17 +3291,16 @@
     "session_index": 6,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: range)"
     }
   },
   {
@@ -3332,17 +3313,16 @@
     "session_index": 7,
     "focus_area": "range",
     "expected": {
-      "type": "siren",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        53,
-        60,
-        53,
-        48
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "siren on 'ah', starting C3 (focus: range)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: range)"
     }
   },
   {
@@ -3355,16 +3335,16 @@
     "session_index": 0,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A3 (focus: agility)"
     }
   },
   {
@@ -3377,16 +3357,16 @@
     "session_index": 1,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A3 (focus: agility)"
     }
   },
   {
@@ -3399,16 +3379,16 @@
     "session_index": 2,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A3 (focus: agility)"
     }
   },
   {
@@ -3421,16 +3401,16 @@
     "session_index": 3,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        57
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A3 (focus: agility)"
     }
   },
   {
@@ -3443,16 +3423,16 @@
     "session_index": 4,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: agility)"
     }
   },
   {
@@ -3465,16 +3445,16 @@
     "session_index": 5,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: agility)"
     }
   },
   {
@@ -3487,16 +3467,16 @@
     "session_index": 6,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: agility)"
     }
   },
   {
@@ -3509,16 +3489,16 @@
     "session_index": 7,
     "focus_area": "agility",
     "expected": {
-      "type": "arpeggio",
+      "range_fallback": true,
+      "instructions": "The requested pattern does not fit your calibrated range. Use this sustained note instead.",
+      "primary_cue": "Follow this comfortable sustained note on 'ah'.",
+      "type": "sustained",
       "target_notes_midi": [
-        48,
-        52,
-        55,
-        60
+        58
       ],
-      "duration_per_note_s": 0.5,
+      "duration_per_note_s": 3.0,
       "vowel": "ah",
-      "display_name": "arpeggio on 'ah', starting C3 (focus: agility)"
+      "display_name": "sustained on 'ah', starting A#3 (focus: agility)"
     }
   }
 ]

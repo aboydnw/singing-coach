@@ -5,6 +5,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { AttemptSummaryCard } from "@/components/practice/AttemptSummaryCard";
 import { BackToPracticeControls } from "@/components/practice/BackToPracticeControls";
 import { PracticeActionWorkspace } from "@/components/practice/PracticeActionWorkspace";
+import { exerciseForDrill } from "@/lib/exercises";
+import { initialContract } from "@/lib/practice";
+import { practiceWorkspaceSummary } from "@/lib/practiceWorkspace";
 import { system } from "@/lib/theme";
 import type { SessionRow } from "@/lib/sessions";
 
@@ -40,6 +43,32 @@ const attempt: SessionRow = {
 };
 
 describe("PracticeActionWorkspace", () => {
+  it("shows the safe replacement rather than a prior octave cue", () => {
+    const spec = exerciseForDrill(
+      { range_low_midi: 57, range_high_midi: 60 },
+      0,
+      "siren",
+      "Octave slide on 'ooh'",
+    );
+    const html = render(
+      React.createElement(PracticeActionWorkspace, {
+        summary: practiceWorkspaceSummary(
+          attempt,
+          { ...initialContract("coach_pick"), tryCue: "Slide up an octave." },
+          spec,
+        ),
+        exerciseName: spec.display_name,
+        onDifferent: () => undefined,
+        onEnd: () => undefined,
+        actionsDisabled: false,
+        children: React.createElement("div", null, "Recorder"),
+      }),
+    );
+    expect(html).toContain("Use a comfortable sustained note");
+    expect(html).toContain("requested pattern does not fit your calibrated range");
+    expect(html).not.toContain("octave");
+  });
+
   it("puts concise coaching before controls and keeps exit actions together", () => {
     const html = render(
       React.createElement(PracticeActionWorkspace, {
