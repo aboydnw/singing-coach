@@ -45,7 +45,12 @@ const attempt: SessionRow = {
 describe("PracticeActionWorkspace", () => {
   it("shows the safe replacement rather than a prior octave cue", () => {
     const spec = exerciseForDrill(
-      { range_low_midi: 57, range_high_midi: 60 },
+      {
+        range_low_midi: 57,
+        range_high_midi: 60,
+        tessitura_low_midi: null,
+        tessitura_high_midi: null,
+      },
       0,
       "siren",
       "Octave slide on 'ooh'",

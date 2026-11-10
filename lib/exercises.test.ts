@@ -137,7 +137,12 @@ describe("calibrated range boundaries", () => {
   it.each([0, 1, 3, 7, 11])(
     "keeps repeated skips bounded and safe for span %i",
     (width) => {
-      const calibration = { range_low_midi: 57, range_high_midi: 57 + width };
+      const calibration: Calibration = {
+        range_low_midi: 57,
+        range_high_midi: 57 + width,
+        tessitura_low_midi: null,
+        tessitura_high_midi: null,
+      };
       let current = nextExercise(calibration, 0);
       let cursor = 0;
       for (let step = 0; step < 32; step++) {
@@ -157,7 +162,12 @@ describe("calibrated range boundaries", () => {
 
   it("fits every requested drill or uses an unlinked sustained fallback", () => {
     for (let width = 0; width <= 24; width++) {
-      const calibration = { range_low_midi: 57, range_high_midi: 57 + width };
+      const calibration: Calibration = {
+        range_low_midi: 57,
+        range_high_midi: 57 + width,
+        tessitura_low_midi: null,
+        tessitura_high_midi: null,
+      };
       for (const type of TYPE_ROTATION) {
         for (let index = 0; index < 32; index++) {
           const spec = exerciseForDrill(calibration, index, type, "Curated drill");
@@ -192,7 +202,15 @@ describe("calibrated range boundaries", () => {
 
   it("uses a sustained note instead of singing below range", () => {
     expect(
-      nextExercise({ range_low_midi: 57, range_high_midi: 60 }, 3).target_notes_midi,
+      nextExercise(
+        {
+          range_low_midi: 57,
+          range_high_midi: 60,
+          tessitura_low_midi: null,
+          tessitura_high_midi: null,
+        },
+        3,
+      ).target_notes_midi,
     ).toEqual([57]);
   });
 
