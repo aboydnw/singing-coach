@@ -71,6 +71,8 @@ export function SignInPanel({
       <Notice notice={notice} />
       <Button
         colorPalette="coral"
+        bg="action.primary"
+        _hover={{ bg: "coral.700" }}
         onClick={onGoogle}
         loading={busy}
         disabled={busy}

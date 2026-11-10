@@ -6,18 +6,83 @@ import { Surface } from "@/components/ui/Surface";
 
 const STEPS = [
   {
-    title: "Listen, then give it a try",
-    body: "Hear a pitch guide and record a short exercise. You don’t need to read music or sound polished.",
+    title: "Record an exercise",
+    body: "Follow a pitch guide and record.",
   },
   {
-    title: "Find one thing to work on",
-    body: "See your pitch and get measurement-backed AI feedback, with a specific focus for your next attempt.",
+    title: "Review your singing",
+    body: "Get feedback with one focus to practice.",
   },
   {
-    title: "Try again. Listen back.",
-    body: "Put the feedback into practice and revisit your recordings. Compare with your own history, at your own pace.",
+    title: "Try again",
+    body: "Listen back and compare your takes.",
   },
 ];
+
+/** An illustration, not a recording, measurement, or promise of improvement.
+ * The static paths deliberately have no scores, axes, or playback controls. */
+function PracticeIllustration() {
+  return (
+    <Surface as="figure" variant="inverse" m={0} p={{ base: 5, md: 8 }} overflow="hidden">
+      <Flex as="figcaption" align="center" gap={3}>
+        <Box w="2" h="2" rounded="full" bg="coral.300" aria-hidden="true" />
+        <Text fontSize="sm" fontWeight="medium">
+          Illustrated pitch feedback
+        </Text>
+      </Flex>
+      <Box color="cream.200" my={{ base: 6, md: 10 }}>
+        <svg
+          viewBox="0 0 480 330"
+          width="100%"
+          role="img"
+          aria-label="Illustration of a sung pitch line following a stepped pitch guide. This is not a recording or result."
+          focusable="false"
+        >
+          <g fill="none" stroke="currentColor" opacity="0.12">
+            <circle cx="240" cy="165" r="148" />
+            <circle cx="240" cy="165" r="108" />
+            <path d="M20 80H460M20 165H460M20 250H460" />
+          </g>
+          <g
+            fill="none"
+            stroke="var(--chakra-colors-teal-300)"
+            strokeWidth="12"
+            strokeLinecap="round"
+            opacity="0.7"
+          >
+            <path d="M28 250H102M116 165H190M204 80H278M292 165H366M380 250H452" />
+          </g>
+          <path
+            d="M28 274C42 268 41 240 56 246S78 257 96 248S111 175 131 170S160 154 181 165S198 94 221 84S241 91 253 82S276 77 285 103S291 174 313 169S336 155 357 165S370 239 395 250S423 241 452 254"
+            fill="none"
+            stroke="var(--chakra-colors-coral-300)"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+          <circle cx="253" cy="82" r="10" fill="var(--chakra-colors-coral-300)" />
+          <circle
+            cx="253"
+            cy="82"
+            r="21"
+            fill="none"
+            stroke="var(--chakra-colors-coral-300)"
+            opacity="0.35"
+          />
+        </svg>
+      </Box>
+      <Flex gap={6} wrap="wrap" justify="center" fontSize="sm">
+        <Flex gap={2} align="center">
+          <Box w="6" h="2" rounded="full" bg="teal.300" aria-hidden="true" />
+          <Text>Pitch guide</Text>
+        </Flex>
+        <Flex gap={2} align="center">
+          <Box w="6" h="1" rounded="full" bg="coral.300" aria-hidden="true" />
+          <Text>Sung pitch</Text>
+        </Flex>
+      </Flex>
+    </Surface>
+  );
+}
 
 /** Public introduction composed around the existing sign-in controls. No microphone
  * access, audio playback, or recording starts on this screen. */
@@ -47,7 +112,7 @@ export function WelcomePage({ children }: { children: React.ReactNode }) {
           align="center"
           justify="space-between"
           gap={4}
-          py={6}
+          py={5}
           borderBottomWidth="1px"
           borderColor="border.default"
         >
@@ -55,7 +120,7 @@ export function WelcomePage({ children }: { children: React.ReactNode }) {
             <Box as="span" color="action.primary" aria-hidden="true">
               ◉{" "}
             </Box>
-            Singing Coach
+            The Sing Coach
           </Text>
           <Link
             href="#start-practicing"
@@ -70,154 +135,121 @@ export function WelcomePage({ children }: { children: React.ReactNode }) {
         </Flex>
         <Box as="main" id="welcome-content" tabIndex={-1}>
           <Grid
-            templateColumns={{ base: "1fr", lg: "1.2fr 1fr" }}
-            gap={{ base: 8, lg: 14 }}
+            templateColumns={{ base: "minmax(0, 1fr)", lg: "1.1fr 1fr" }}
+            gap={{ base: 8, lg: 12 }}
             alignItems="center"
-            py={{ base: 10, md: 16 }}
+            py={{ base: 9, md: 14 }}
           >
-            <Stack gap={6}>
-              <Text color="action.secondary" fontWeight="semibold" fontSize="sm">
-                A little practice. A little more confidence.
-              </Text>
+            <Stack gap={6} minW={0}>
               <Heading
                 as="h1"
                 fontSize={{ base: "4xl", md: "6xl" }}
                 lineHeight="1.08"
                 letterSpacing="-0.045em"
-                maxW="12ch"
+                maxW="15ch"
               >
-                Your voice is worth practicing.
+                Singing practice with a clear next step.
               </Heading>
               <Text
                 fontSize={{ base: "lg", md: "xl" }}
                 color="fg.muted"
-                lineHeight="1.7"
-                maxW="48ch"
+                lineHeight="1.65"
+                maxW="43ch"
               >
-                Curious about singing, but nervous to start? Make room for a few notes, a
-                little feedback, and another try. No audience required.
+                The Sing Coach combines vocal exercises, pitch analysis and AI feedback to
+                help you understand your voice and guide your practice.
               </Text>
-              <Link
-                href="#how-it-works"
-                color="action.secondary"
-                fontWeight="semibold"
-                alignSelf="start"
-                minH="44px"
-                focusVisibleRing="outside"
+              <Box
+                as="section"
+                id="start-practicing"
+                aria-labelledby="start-heading"
+                scrollMarginTop="6"
+                maxW="sm"
+                mt={2}
               >
-                See how practice works ↓
-              </Link>
+                <Stack gap={4}>
+                  <Heading as="h2" id="start-heading" size="md">
+                    Start practicing
+                  </Heading>
+                  {children}
+                </Stack>
+              </Box>
             </Stack>
-            <Surface
-              as="section"
-              variant="raised"
-              id="start-practicing"
-              aria-labelledby="start-heading"
-              scrollMarginTop="6"
-              p={{ base: 6, md: 8 }}
-            >
-              <Stack gap={5}>
-                <Text color="action.secondary" fontSize="sm" fontWeight="semibold">
-                  A space to find your voice
-                </Text>
-                <Heading as="h2" id="start-heading" size="2xl" letterSpacing="tight">
-                  Start where you are.
-                </Heading>
-                <Text color="fg.muted" lineHeight="1.7">
-                  Sign in to start a practice or pick up where you left off. Your
-                  recordings and progress belong to your account.
-                </Text>
-                {children}
-                <Text fontSize="sm" color="fg.muted" lineHeight="1.6">
-                  All you need is a microphone, a quiet spot, and a willingness to try.
-                  You choose when to record.
-                </Text>
-              </Stack>
-            </Surface>
+            <PracticeIllustration />
           </Grid>
-          <Box
-            as="section"
-            id="how-it-works"
-            aria-labelledby="how-heading"
-            py={{ base: 8, md: 12 }}
-            borderTopWidth="1px"
-            borderColor="border.default"
-          >
-            <Text color="action.secondary" fontSize="sm" fontWeight="semibold" mb={3}>
-              Small steps, not a performance
-            </Text>
-            <Heading as="h2" id="how-heading" size="3xl" letterSpacing="tight" mb={8}>
-              One attempt at a time.
-            </Heading>
+          <Box as="section" aria-label="How practice works" pb={{ base: 9, md: 12 }}>
             <Grid
               as="ol"
               listStyleType="none"
               m={0}
               p={0}
-              templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }}
-              gap={{ base: 7, md: 8 }}
+              templateColumns={{ base: "minmax(0, 1fr)", md: "repeat(3, 1fr)" }}
+              gap={4}
             >
               {STEPS.map((step, index) => (
-                <Stack as="li" key={step.title} gap={3}>
-                  <Text
-                    aria-hidden="true"
-                    color="action.primary"
-                    fontSize="sm"
-                    fontWeight="bold"
-                  >
-                    0{index + 1}
-                  </Text>
-                  <Heading as="h3" size="lg">
-                    {step.title}
-                  </Heading>
+                <Surface as="li" key={step.title} p={{ base: 5, md: 6 }}>
+                  <Flex align="center" gap={3} mb={3}>
+                    <Flex
+                      aria-hidden="true"
+                      align="center"
+                      justify="center"
+                      w="10"
+                      h="10"
+                      flexShrink={0}
+                      rounded="full"
+                      bg="singer.surface"
+                      color="action.secondary"
+                      fontWeight="semibold"
+                    >
+                      {index + 1}
+                    </Flex>
+                    <Heading as="h2" size="lg">
+                      {step.title}
+                    </Heading>
+                  </Flex>
                   <Text color="fg.muted" lineHeight="1.7">
                     {step.body}
                   </Text>
-                </Stack>
+                </Surface>
               ))}
             </Grid>
           </Box>
-          <Surface
-            as="section"
-            variant="inverse"
-            aria-labelledby="expect-heading"
-            p={{ base: 6, md: 9 }}
-            my={8}
+          <Grid
+            templateColumns={{ base: "minmax(0, 1fr)", md: "1fr 1fr" }}
+            gap={{ base: 7, md: 12 }}
+            borderTopWidth="1px"
+            borderColor="border.default"
+            py={8}
           >
-            <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={8}>
-              <Stack gap={3}>
-                <Heading as="h2" id="expect-heading" size="xl">
-                  Practice without an audience.
-                </Heading>
-                <Text lineHeight="1.7">
-                  Recordings are stored privately in your account for playback and
-                  processed to measure your singing. The AI coach receives measurements
-                  and coaching messages, not your audio.
-                </Text>
-                <Link
-                  href="/privacy"
-                  color="fg.inverse"
-                  textDecoration="underline"
-                  alignSelf="start"
-                  minH="44px"
-                  focusVisibleRing="outside"
-                >
-                  Read the privacy policy
-                </Link>
-              </Stack>
-              <Stack gap={3}>
-                <Heading as="h2" size="xl">
-                  Guidance, not a verdict.
-                </Heading>
-                <Text lineHeight="1.7">
-                  The coach is still learning your baseline in your early sessions. AI
-                  feedback can be imperfect, and this isn’t a substitute for a voice
-                  teacher or medical advice. Keep it comfortable and stop if singing
-                  hurts.
-                </Text>
-              </Stack>
-            </Grid>
-          </Surface>
+            <Stack gap={3}>
+              <Heading as="h2" size="md">
+                Your recordings
+              </Heading>
+              <Text color="fg.muted" fontSize="sm" lineHeight="1.7">
+                Recordings are stored privately in your account and processed to measure
+                your singing. The AI coach receives measurements and messages, not audio.
+              </Text>
+              <Link
+                href="/privacy"
+                color="action.secondary"
+                textDecoration="underline"
+                alignSelf="start"
+                minH="44px"
+                focusVisibleRing="outside"
+              >
+                Read the privacy policy
+              </Link>
+            </Stack>
+            <Stack gap={3}>
+              <Heading as="h2" size="md">
+                Practicing comfortably
+              </Heading>
+              <Text color="fg.muted" fontSize="sm" lineHeight="1.7">
+                AI feedback can be wrong, especially while learning your baseline. It
+                cannot replace a voice teacher or medical advice. Stop if singing hurts.
+              </Text>
+            </Stack>
+          </Grid>
         </Box>
       </Container>
       <AppFooter />

@@ -128,6 +128,14 @@ AI uncertainty, and avoid pricing, guaranteed improvement, or available vocal-ex
 claims. The existing Auth/SignInPanel stories cover default, busy, cancelled, deleted,
 and email-fallback states.
 
+Keep the welcome concise: a direct product pitch, a static pitch illustration, and
+three short steps describing the existing practice loop. The illustration must be
+labeled as such, with an accessible description; it is not a user's recording or
+an analysis result. Do not add invented scores, improvement claims, or decorative
+playback controls. Sign-in remains before the illustration in the phone layout.
+Preserve the short privacy, AI uncertainty, and singing-comfort notes when editing
+the marketing copy.
+
 ## Scannable coaching (established)
 
 Coach snapshot and attempt feedback have a short reading layer: focus/observation,
