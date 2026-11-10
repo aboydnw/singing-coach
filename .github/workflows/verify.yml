@@ -47,6 +47,8 @@ jobs:
       - run: supabase db reset --local --no-seed
       - run: supabase db lint --local --fail-on error
       - run: supabase test db supabase/tests/database --local
+      - name: Verify concurrent quota admission
+        run: node scripts/test-cost-limit-concurrency.mjs
 
   mobile:
     runs-on: ubuntu-latest

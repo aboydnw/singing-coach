@@ -1,3 +1,5 @@
+import { CostLimitError, consumeCostOperation, costLimitResponse } from "@/lib/costGuard";
+import { readBoundedJson } from "@/lib/requestLimits";
 import { assertJobSigningConfigured } from "@/lib/jobAssertion";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
   const parsed = attemptJobRequestSchema.safeParse(
-    await request.json().catch(() => null),
+    await readBoundedJson(request).catch(() => null),
   );
   if (!parsed.success)
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
@@ -59,6 +61,12 @@ export async function POST(request: Request) {
   } catch {
     configurationError =
       "Recording processing is temporarily unavailable. Your recording is saved. Please retry later.";
+  }
+  try {
+    await consumeCostOperation(auth.userId, "job_start");
+  } catch (error) {
+    if (error instanceof CostLimitError) return costLimitResponse(error);
+    throw error;
   }
   const service = serviceSupabase();
   const jobId = crypto.randomUUID();

@@ -12,6 +12,14 @@ import { describeError, isTimeout, truncate } from "@/lib/openrouter";
 import type { SessionRow } from "@/lib/sessions";
 import { parseStoredJson } from "@/lib/storedJson";
 
+import { CostLimitError, consumeCostOperation, costLimitResponse } from "@/lib/costGuard";
+import {
+  assertModelInputBounded,
+  MAX_CHAT_OUTPUT_TOKENS,
+  readBoundedJson,
+  RequestSizeError,
+} from "@/lib/requestLimits";
+
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
@@ -23,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid or missing token" }, { status: 401 });
 
   const parsed = practiceChatRequestSchema.safeParse(
-    await request.json().catch(() => null),
+    await readBoundedJson(request).catch(() => null),
   );
   if (!parsed.success)
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
@@ -115,26 +123,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const assistantId = crypto.randomUUID();
-  const { error: messageError } = await client.from("practice_messages").insert({
-    id: assistantId,
-    practice_session_id: practice.id,
-    attempt_id: attempt.id,
-    user_id: auth.userId,
-    role: "assistant",
-    content_json: { text: "" },
-    context_anchor_json: parsed.data.context_anchor,
-    status: "streaming",
-    client_request_id: parsed.data.client_request_id,
-    completed_at: null,
-  });
-  if (messageError && messageError.code !== "23505") {
-    return NextResponse.json(
-      { error: "could not start the coach response" },
-      { status: 500 },
-    );
-  }
-
   const history = buildExerciseChatHistory(
     messagesResult.data ?? [],
     new Set(exercise.attemptIds),
@@ -152,6 +140,54 @@ export async function POST(request: Request) {
     selected_context: parsed.data.context_anchor,
   };
 
+  try {
+    assertModelInputBounded([context, history, parsed.data.message]);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestSizeError ? error.message : "invalid context" },
+      { status: 413 },
+    );
+  }
+
+  const assistantId = crypto.randomUUID();
+  const { error: messageError } = await client.from("practice_messages").insert({
+    id: assistantId,
+    practice_session_id: practice.id,
+    attempt_id: attempt.id,
+    user_id: auth.userId,
+    role: "assistant",
+    content_json: { text: "" },
+    context_anchor_json: parsed.data.context_anchor,
+    status: "streaming",
+    client_request_id: parsed.data.client_request_id,
+    completed_at: null,
+  });
+  if (messageError?.code === "23505") {
+    return NextResponse.json(
+      { error: "This response has already been requested." },
+      { status: 409 },
+    );
+  }
+  if (messageError) {
+    return NextResponse.json(
+      { error: "could not start the coach response" },
+      { status: 500 },
+    );
+  }
+
+  try {
+    await consumeCostOperation(auth.userId, "chat");
+  } catch (error) {
+    await markMessageFailed(
+      client,
+      practice.id,
+      attempt.id,
+      parsed.data.client_request_id,
+    );
+    if (error instanceof CostLimitError) return costLimitResponse(error);
+    throw error;
+  }
+
   const upstreamController = new AbortController();
   let upstream: Response;
   try {
@@ -166,6 +202,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: process.env.COACH_MODEL,
         stream: true,
+        max_tokens: MAX_CHAT_OUTPUT_TOKENS,
+        provider: { require_parameters: true },
         messages: [
           {
             role: "system",

@@ -4,6 +4,10 @@ const state = vi.hoisted(() => ({
   jobs: [] as Record<string, unknown>[],
   authenticated: true,
 }));
+vi.mock("@/lib/costGuard", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/costGuard")>()),
+  consumeCostOperation: vi.fn(async () => undefined),
+}));
 vi.mock("@/lib/serverAuth", () => ({
   authenticateRequest: vi.fn(async () =>
     state.authenticated ? { userId: "user", token: "test" } : null,
@@ -67,6 +71,8 @@ vi.mock("@/workflows/processPracticeAttempt", () => ({
   processPracticeAttempt: vi.fn(),
 }));
 
+import { consumeCostOperation, CostLimitError } from "@/lib/costGuard";
+
 import { POST as create } from "@/app/api/practice/attempt-jobs/route";
 import { POST as retry } from "@/app/api/practice/attempt-jobs/[id]/retry/route";
 import { serviceSupabase } from "@/lib/serverSupabase";
@@ -95,6 +101,7 @@ const SECRET = "test-only-signing-secret-at-least-32-bytes";
 beforeEach(() => {
   state.jobs = [];
   state.authenticated = true;
+  vi.mocked(consumeCostOperation).mockResolvedValue(undefined);
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -142,6 +149,38 @@ describe("attempt configuration recovery", () => {
       },
     );
   }
+  it("does not create work when the shared allowance is exhausted", async () => {
+    vi.stubEnv("ATTEMPT_JOB_SIGNING_SECRET", SECRET);
+    vi.mocked(consumeCostOperation).mockRejectedValueOnce(new CostLimitError(429, 60));
+    const response = await create(request());
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect(state.jobs).toHaveLength(0);
+    expect(start).not.toHaveBeenCalled();
+  });
+  it("does not requeue a failed job if quota storage is unavailable", async () => {
+    vi.stubEnv("ATTEMPT_JOB_SIGNING_SECRET", SECRET);
+    const job = {
+      id: "failed",
+      user_id: "user",
+      status: "failed",
+      audio_key: payload.audio_key,
+    };
+    state.jobs.push(job);
+    vi.mocked(consumeCostOperation).mockRejectedValueOnce(new CostLimitError(503));
+    const response = await retryRequest("failed");
+    expect(response.status).toBe(503);
+    expect(state.jobs[0]).toBe(job);
+    expect(job.status).toBe("failed");
+    expect(start).not.toHaveBeenCalled();
+  });
+  it("does not consume allowance for a nonexistent retry target", async () => {
+    vi.stubEnv("ATTEMPT_JOB_SIGNING_SECRET", SECRET);
+    const response = await retryRequest("nonexistent");
+    expect(response.status).toBe(404);
+    expect(consumeCostOperation).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+  });
   it("starts normally with valid configuration", async () => {
     vi.stubEnv("ATTEMPT_JOB_SIGNING_SECRET", SECRET);
     const response = await create(request());

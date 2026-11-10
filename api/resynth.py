@@ -23,6 +23,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from _cost_guard import (
+    CostGuardUnavailable, CostLimitExceeded, consume_operation, validate_audio_duration,
+)
+
 import httpx
 import jwt
 
@@ -101,6 +105,7 @@ def run_resynth(storage_key: str, correction: str, uid: str) -> dict:
     src, out = Path(src_name), Path(out_name)
     try:
         _download(storage_key, src)
+        validate_audio_duration(src)
         resynth.save(resynth.correct(resynth.load(src), correction), out)
         corrected_key = f"{uid}/{uuid.uuid4()}-{correction.replace('_', '-')}.wav"
         _upload(out, corrected_key)
@@ -111,10 +116,12 @@ def run_resynth(storage_key: str, correction: str, uid: str) -> dict:
 
 
 class handler(BaseHTTPRequestHandler):
-    def _reply(self, status: int, payload: dict) -> None:
+    def _reply(self, status: int, payload: dict, retry_after: int | None = None) -> None:
         body = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         self.wfile.write(body)
 
@@ -148,6 +155,8 @@ class handler(BaseHTTPRequestHandler):
                 self._reply(413, {"error": "request body too large"})
                 return
             body = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError("body must be an object")
         except (ValueError, json.JSONDecodeError):
             self._reply(400, {"error": "invalid JSON body"})
             return
@@ -160,8 +169,17 @@ class handler(BaseHTTPRequestHandler):
             return
 
         correction = body.get("correction", "")
-        if correction not in resynth.CORRECTIONS:
+        if not isinstance(correction, str) or correction not in resynth.CORRECTIONS:
             self._reply(400, {"error": "unknown correction"})
+            return
+
+        try:
+            consume_operation(uid, "resynth", SUPABASE_URL, SERVICE_ROLE_KEY)
+        except CostLimitExceeded as exc:
+            self._reply(429, {"error": "usage limit reached; try again later"}, exc.retry_after)
+            return
+        except CostGuardUnavailable:
+            self._reply(503, {"error": "resynthesis temporarily unavailable"})
             return
 
         try:

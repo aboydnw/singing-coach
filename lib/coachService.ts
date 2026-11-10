@@ -9,6 +9,9 @@ import {
 import { DRILL_IDS, STATE_IDS, renderCatalogue, resolveCoaching } from "@/lib/pedagogy";
 import { OpenRouterError, callOpenRouter } from "@/lib/openrouter";
 
+import { CostLimitError, consumeCostOperation } from "@/lib/costGuard";
+import { assertModelInputBounded } from "@/lib/requestLimits";
+
 const CALIBRATION_SESSIONS = 3;
 const ROUTE_BUDGET_MS = 105_000;
 const FIRST_ATTEMPT_MS = 70_000;
@@ -97,18 +100,21 @@ function responseSchema() {
 export async function generateCoaching(
   body: CoachRequest,
   sessionCount: number | null,
+  userId: string,
 ): Promise<CoachingResponse> {
   if (!process.env.OPENROUTER_API_KEY || !process.env.COACH_MODEL) {
     throw new Error("coaching is not configured on the server");
   }
   const calibrating = isCalibratingSinger(sessionCount);
   const userMessage = formatCoachUserMessage(body, calibrating);
+  assertModelInputBounded([coaching.system_prompt, userMessage, responseSchema()]);
   const deadline = Date.now() + ROUTE_BUDGET_MS;
   let lastError = "coaching failed";
   for (let attempt = 0; attempt < 2; attempt++) {
     const remaining = deadline - Date.now();
     if (remaining < MIN_ATTEMPT_MS) break;
     try {
+      await consumeCostOperation(userId, "coach");
       const raw = await callOpenRouter({
         apiKey: process.env.OPENROUTER_API_KEY,
         model: process.env.COACH_MODEL,
@@ -144,6 +150,7 @@ export async function generateCoaching(
         },
       };
     } catch (error) {
+      if (error instanceof CostLimitError) throw error;
       lastError = error instanceof Error ? error.message : "unknown error";
       if (error instanceof OpenRouterError && !error.retryable) break;
     }
