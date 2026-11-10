@@ -16,6 +16,19 @@
 Shared components own repeated accessibility, state, and visual behavior. Page-specific grid and
 composition stay local.
 
+`AppNotice` announces errors as alerts and other feedback as status by default. Set
+`announce={false}` only when a persistent parent live region already owns that announcement;
+do not nest live regions for the same message.
+
+## Calibration feedback
+
+`CalibrationFeedback` keeps separate alert and polite status regions mounted before validation,
+analysis, or save results arrive. It uses `AppNotice` for the existing message without moving
+keyboard focus. `CalibrationPitchStatus` keeps each slot's detection/result in a polite, atomic
+region with its prompt label included for screen readers. Only changes to that slot's result
+are announced; unrelated slot updates do not repeat the other notes. Calibration feedback
+stories use synthetic states and never request a microphone, authentication, or analysis.
+
 ## Auth components
 
 | Component              | Status      | Supported responsibility                                          |
