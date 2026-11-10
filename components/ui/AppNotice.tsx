@@ -43,16 +43,19 @@ export function AppNotice({
   title,
   children,
   action,
+  announce = true,
 }: {
   tone?: AppNoticeTone;
   title: string;
   children?: React.ReactNode;
   action?: { label: string; onClick: () => void };
+  /** Disable only when a persistent parent live region owns the announcement. */
+  announce?: boolean;
 }) {
   const style = TONES[tone];
   return (
     <Box
-      role={tone === "danger" ? "alert" : "status"}
+      role={announce ? (tone === "danger" ? "alert" : "status") : undefined}
       bg={style.surface}
       borderLeftWidth="3px"
       borderColor={style.border}

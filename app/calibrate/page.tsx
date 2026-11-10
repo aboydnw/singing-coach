@@ -4,6 +4,11 @@ import { Box, Button, Heading, SimpleGrid, Stack, Text } from "@chakra-ui/react"
 import { useEffect, useState } from "react";
 import { Recorder } from "@/components/Recorder";
 import { Shell } from "@/components/Shell";
+import {
+  CalibrationFeedback,
+  CalibrationPitchStatus,
+  type CalibrationNotice,
+} from "@/components/calibration/CalibrationFeedback";
 import { analyze } from "@/lib/api";
 import { midiToName } from "@/lib/exercises";
 import { latestCalibration, saveCalibration } from "@/lib/sessions";
@@ -29,7 +34,7 @@ export default function CalibratePage() {
     highEdge: null,
   });
   const [detecting, setDetecting] = useState<SlotId | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<CalibrationNotice | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -55,14 +60,20 @@ export default function CalibratePage() {
     try {
       const result = await analyze(storageKey, null, "pitch_only");
       if (result.pitch_median_midi === null) {
-        setStatus(`No clear pitch detected for "${slotLabel(slot)}" — try again.`);
+        setStatus({
+          tone: "danger",
+          message: `No clear pitch detected for "${slotLabel(slot)}" — try again.`,
+        });
         setTakes((prev) => ({ ...prev, [slot]: null }));
       } else {
         const midi = Math.round(result.pitch_median_midi);
         setTakes((prev) => ({ ...prev, [slot]: { storageKey, midi } }));
       }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "analysis failed");
+      setStatus({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "analysis failed",
+      });
       setTakes((prev) => ({ ...prev, [slot]: null }));
     } finally {
       setDetecting(null);
@@ -73,9 +84,10 @@ export default function CalibratePage() {
     const { lowComf, highComf, lowEdge, highEdge } = takes;
     const missing = SLOTS.filter((slot) => takes[slot.id] === null);
     if (missing.length > 0) {
-      setStatus(
-        `Still need a clear recording for: ${missing.map((s) => s.label).join(", ")}.`,
-      );
+      setStatus({
+        tone: "danger",
+        message: `Still need a clear recording for: ${missing.map((s) => s.label).join(", ")}.`,
+      });
       return;
     }
     if (!(
@@ -83,7 +95,10 @@ export default function CalibratePage() {
       lowComf!.midi <= highComf!.midi &&
       highComf!.midi <= highEdge!.midi
     )) {
-      setStatus("Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge.");
+      setStatus({
+        tone: "danger",
+        message: "Expected: low edge ≤ low comfortable ≤ high comfortable ≤ high edge.",
+      });
       return;
     }
     setSaving(true);
@@ -94,12 +109,17 @@ export default function CalibratePage() {
         tessitura_low_midi: lowComf!.midi,
         tessitura_high_midi: highComf!.midi,
       });
-      setStatus(
-        `Saved. Range: ${midiToName(lowEdge!.midi)}–${midiToName(highEdge!.midi)}; ` +
+      setStatus({
+        tone: "success",
+        message:
+          `Saved. Range: ${midiToName(lowEdge!.midi)}–${midiToName(highEdge!.midi)}; ` +
           `tessitura: ${midiToName(lowComf!.midi)}–${midiToName(highComf!.midi)}.`,
-      );
+      });
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "save failed");
+      setStatus({
+        tone: "danger",
+        message: error instanceof Error ? error.message : "save failed",
+      });
     } finally {
       setSaving(false);
     }
@@ -138,13 +158,11 @@ export default function CalibratePage() {
                 onUploaded={(key) => onUploaded(slot.id, key)}
                 disabled={detecting !== null}
               />
-              <Text mt={3} color={takes[slot.id] ? "teal.600" : "cream.600"}>
-                {detecting === slot.id
-                  ? "Detecting…"
-                  : takes[slot.id]
-                    ? `${midiToName(takes[slot.id]!.midi)}  (MIDI ${takes[slot.id]!.midi})`
-                    : "Not recorded yet"}
-              </Text>
+              <CalibrationPitchStatus
+                label={slot.label}
+                detecting={detecting === slot.id}
+                midi={takes[slot.id]?.midi ?? null}
+              />
             </Box>
           ))}
         </SimpleGrid>
@@ -152,11 +170,7 @@ export default function CalibratePage() {
           <Button colorPalette="coral" onClick={save} loading={saving}>
             Save calibration
           </Button>
-          {status && (
-            <Text mt={3} color="coral.600">
-              {status}
-            </Text>
-          )}
+          <CalibrationFeedback notice={status} />
         </Box>
       </Stack>
     </Shell>
