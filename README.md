@@ -62,6 +62,12 @@ Two things replace prose where a sound or a picture teaches better. **Ghost raci
 
 The UI is Next.js with Chakra UI. Exercise generation and reference tones run in the browser (`lib/exercises.ts`, `lib/toneGen.ts`); a 168-case parity fixture pins the exercise port to the Python original. Recordings are encoded to WAV in the browser at the microphone's native sample rate — the server's librosa remains the only resampler in the chain, exactly as before the rewrite.
 
+## Native iOS beta
+
+The first Expo/React Native client is in [mobile/](mobile/README.md). It reuses the
+existing backend for a native practice loop. Signing, physical-iPhone acceptance,
+and TestFlight distribution remain separate gates in [the beta checklist](docs/ios-beta.md).
+
 ## Development
 
 You'll need [uv](https://docs.astral.sh/uv/), Node 22+, and yarn.

@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">=16.0.0",
+    "appVersionSource": "local",
+    "requireCommit": true
+  },
+  "build": {
+    "simulator": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "beta": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": false,
+      "credentialsSource": "local"
+    }
+  },
+  "submit": {
+    "beta": {
+      "ios": {
+        "ascAppId": "REPLACE_WITH_CONFIRMED_APP_STORE_CONNECT_ID"
+      }
+    }
+  }
+}
