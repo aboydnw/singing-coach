@@ -52,7 +52,6 @@ declare
   starts timestamptz[];
   limits integer[];
   ends timestamptz[];
-  i integer;
   used integer;
 begin
   if p_operation not in ('analyze', 'resynth', 'coach', 'chat', 'job_start') or p_operation is null then

@@ -171,13 +171,13 @@ def test_missing_config_makes_no_network_call(monkeypatch, url, key):
 
 @pytest.mark.parametrize("seconds", [0, 120.01, 10000])
 def test_duration_limits_before_decode(monkeypatch, seconds):
-    monkeypatch.setattr(guard.sf, "info", lambda _: SimpleNamespace(frames=int(seconds * 48000), samplerate=48000))
+    monkeypatch.setattr(guard.sf, "info", lambda _: audio_info(frames=int(seconds * 48000)))
     with pytest.raises(ValueError):
         guard.validate_audio_duration("unused.wav")
 
 
 def test_duration_boundary_allowed_without_resampling(monkeypatch):
-    monkeypatch.setattr(guard.sf, "info", lambda _: SimpleNamespace(frames=120 * 48000, samplerate=48000))
+    monkeypatch.setattr(guard.sf, "info", lambda _: audio_info(frames=120 * 48000))
     guard.validate_audio_duration("unused.wav")
 
 
@@ -231,3 +231,55 @@ def test_rpc_non_quota_denials_are_unavailable(monkeypatch, reason):
     client.post.return_value.json.return_value = {"allowed": False, "reason": reason, "retry_after": 60}
     with pytest.raises(guard.CostGuardUnavailable):
         guard.consume_operation("user-1", "analyze", "https://example.test", "key")
+
+
+
+def audio_info(**overrides):
+    values = {"format": "WAV", "subtype": "PCM_16", "channels": 1, "samplerate": 48000, "frames": 48000}
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+@pytest.mark.parametrize("overrides", [
+    {"format": "FLAC"}, {"format": "OGG"}, {"format": "MPEG"},
+    {"format": None}, {"subtype": "IMA_ADPCM"}, {"subtype": "GSM610"},
+    {"subtype": None}, {"channels": 0}, {"channels": 3}, {"channels": 65535},
+    {"channels": True}, {"channels": 1.0}, {"samplerate": 7999},
+    {"samplerate": 192001}, {"samplerate": 2147483647}, {"samplerate": 0},
+    {"samplerate": float("nan")}, {"samplerate": float("inf")},
+    {"frames": -1}, {"frames": None}, {"frames": float("nan")},
+    {"frames": float("inf")}, {"frames": True},
+])
+def test_unsafe_audio_metadata_rejected(monkeypatch, overrides):
+    monkeypatch.setattr(guard.sf, "info", lambda _: audio_info(**overrides))
+    with pytest.raises(ValueError):
+        guard.validate_audio_duration("disguised.wav")
+
+
+@pytest.mark.parametrize("rate", [8000, 16000, 44100, 48000, 96000, 192000])
+@pytest.mark.parametrize("channels", [1, 2])
+@pytest.mark.parametrize("format", ["WAV", "WAVEX"])
+def test_native_rate_wav_metadata_accepted(monkeypatch, rate, channels, format):
+    monkeypatch.setattr(guard.sf, "info", lambda _: audio_info(
+        samplerate=rate, frames=120 * rate, channels=channels, format=format,
+    ))
+    guard.validate_audio_duration("native.wav")
+
+
+def test_unreadable_audio_is_rejected_without_fallback(monkeypatch):
+    monkeypatch.setattr(guard.sf, "info", Mock(side_effect=RuntimeError("bad header")))
+    with pytest.raises(ValueError, match="invalid recording"):
+        guard.validate_audio_duration("broken.wav")
+
+
+def test_real_container_inspection_ignores_wav_extension(tmp_path):
+    import numpy as np
+    path = tmp_path / "recording.wav"
+    guard.sf.write(path, np.zeros(100), 48000, format="FLAC")
+    with pytest.raises(ValueError, match="unsupported"):
+        guard.validate_audio_duration(path)
+    guard.sf.write(path, np.zeros((100, 3)), 48000, format="WAV", subtype="PCM_16")
+    with pytest.raises(ValueError, match="unsupported"):
+        guard.validate_audio_duration(path)
+    guard.sf.write(path, np.zeros(100), 48000, format="WAV", subtype="PCM_16")
+    guard.validate_audio_duration(path)

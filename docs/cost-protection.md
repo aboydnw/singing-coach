@@ -42,7 +42,7 @@ not a long-running worker semaphore.
 Guards cover direct `/api/coach`, streaming `/api/practice/chat`, `/api/analyze`
 (including signed internal jobs), `/api/resynth`, and durable job creation/retry.
 The coaching service charges every actual provider attempt, including its automatic
-retry and Workflow retries. Quota/configuration failures in workflow steps are fatal
+retry and Workflow retries. Quota/configuration failures and rejected 4xx analysis inputs in workflow steps are fatal
 to automatic retry and leave a durable failed job for explicit recovery. Chat request
 IDs do not start a second generation on a duplicate insert. A client can delete its
 own chat row, but it cannot refund or reset the protected usage counter.
@@ -50,7 +50,9 @@ own chat row, but it cannot refund or reset the protected usage counter.
 Provider requests are limited to 2,048 output tokens for assessments and 1,024 for
 chat, with a 96 KiB serialized input cap. JSON requests are bounded before parsing.
 Audio work rejects files beyond the existing 25 MiB cap or 120-second duration cap
-before expensive pitch/resynthesis. The byte/duration ceilings apply to admin too.
+before expensive pitch/resynthesis. Actual audio metadata must describe an uncompressed
+WAV/WAVEX, one or two channels, and 8–192 kHz sample rate, so compressed content or
+extreme headers cannot amplify decode work. These ceilings apply to admin too.
 Usage storage outages, malformed RPC replies, or a missing migration fail closed;
 there is no process-local fallback or allow-on-error mode.
 

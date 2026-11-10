@@ -1,8 +1,8 @@
 begin;
 select plan(26);
-select has_table('public', 'cost_limit_policy');
-select has_table('public', 'cost_entitlements');
-select has_table('public', 'cost_usage_buckets');
+select has_table('public', 'cost_limit_policy', 'cost_limit_policy exists');
+select has_table('public', 'cost_entitlements', 'cost_entitlements exists');
+select has_table('public', 'cost_usage_buckets', 'cost_usage_buckets exists');
 select ok(not has_function_privilege('anon', 'public.consume_cost_operation(uuid,text)', 'EXECUTE'), 'anonymous cannot call quota RPC');
 select ok(not has_function_privilege('authenticated', 'public.consume_cost_operation(uuid,text)', 'EXECUTE'), 'signed-in clients cannot consume/reset quotas or impersonate owners');
 select ok(has_function_privilege('service_role', 'public.consume_cost_operation(uuid,text)', 'EXECUTE'), 'server can consume quota');

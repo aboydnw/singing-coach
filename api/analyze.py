@@ -286,6 +286,6 @@ class handler(BaseHTTPRequestHandler):
         except FileNotFoundError:
             self._reply(404, {"error": "recording not found"})
         except ValueError:
-            self._reply(413, {"error": "recording exceeds the size or duration limit"})
+            self._reply(413, {"error": "recording format, size, or duration is not supported"})
         except Exception as exc:
             self._reply(500, {"error": f"{type(exc).__name__} during analysis"})

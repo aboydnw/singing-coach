@@ -86,7 +86,7 @@ export async function analyzeAttempt(jobId: string): Promise<AnalyzeResponse> {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    if (response.status === 429 || response.status === 503) {
+    if ((response.status >= 400 && response.status < 500) || response.status === 503) {
       throw new FatalError(body.error ?? "Processing is temporarily unavailable.");
     }
     throw new Error(body.error ?? `Analysis failed with status ${response.status}.`);
