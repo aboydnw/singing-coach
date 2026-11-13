@@ -14,6 +14,9 @@ import { generateCoaching } from "@/lib/coachService";
 import { contractFromAttempt } from "@/lib/practice";
 import { coachingToMarkdown, toHistory, type SessionRow } from "@/lib/sessions";
 
+import { CostLimitError } from "@/lib/costGuard";
+import { RequestSizeError } from "@/lib/requestLimits";
+
 async function loadJob(jobId: string): Promise<AttemptJobRow> {
   const { data, error } = await serviceSupabase()
     .from("practice_attempt_jobs")
@@ -83,6 +86,9 @@ export async function analyzeAttempt(jobId: string): Promise<AnalyzeResponse> {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
+    if ((response.status >= 400 && response.status < 500) || response.status === 503) {
+      throw new FatalError(body.error ?? "Processing is temporarily unavailable.");
+    }
     throw new Error(body.error ?? `Analysis failed with status ${response.status}.`);
   }
   return analyzeResponseSchema.parse(await response.json());
@@ -145,15 +151,23 @@ export async function coachAttempt(
   const exerciseSpec = job.exercise_spec_json
     ? exerciseSpecSchema.parse(JSON.parse(job.exercise_spec_json))
     : null;
-  return generateCoaching(
-    {
-      exercise_spec: exerciseSpec,
-      measurements,
-      current_practice_session_id: job.practice_session_id,
-      history: toHistory((attempts ?? []) as SessionRow[], 30),
-    },
-    countError ? null : count,
-  );
+  try {
+    return await generateCoaching(
+      {
+        exercise_spec: exerciseSpec,
+        measurements,
+        current_practice_session_id: job.practice_session_id,
+        history: toHistory((attempts ?? []) as SessionRow[], 30),
+      },
+      countError ? null : count,
+      job.user_id,
+    );
+  } catch (error) {
+    if (error instanceof CostLimitError || error instanceof RequestSizeError) {
+      throw new FatalError(error.message);
+    }
+    throw error;
+  }
 }
 
 export async function completeAttempt(

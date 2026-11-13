@@ -1,3 +1,4 @@
+import { CostLimitError, consumeCostOperation, costLimitResponse } from "@/lib/costGuard";
 import { assertJobSigningConfigured } from "@/lib/jobAssertion";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
@@ -26,6 +27,21 @@ export async function POST(
   }
 
   const service = serviceSupabase();
+  const { data: failedJob, error: loadError } = await service
+    .from("practice_attempt_jobs")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", auth.userId)
+    .eq("status", "failed")
+    .maybeSingle();
+  if (loadError || !failedJob)
+    return NextResponse.json({ error: "failed job not found" }, { status: 404 });
+  try {
+    await consumeCostOperation(auth.userId, "job_start");
+  } catch (error) {
+    if (error instanceof CostLimitError) return costLimitResponse(error);
+    throw error;
+  }
   const { data: job, error } = await service
     .from("practice_attempt_jobs")
     .update({

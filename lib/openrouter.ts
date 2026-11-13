@@ -1,3 +1,5 @@
+import { MAX_COACH_OUTPUT_TOKENS } from "@/lib/requestLimits";
+
 /** The OpenRouter call, split out of the route so its failure modes can be
  * tested without standing up auth and Supabase.
  *
@@ -155,6 +157,7 @@ async function fetchCompletion(args: CallArgs): Promise<Response> {
       signal: AbortSignal.timeout(args.timeoutMs),
       body: JSON.stringify({
         model: args.model,
+        max_tokens: MAX_COACH_OUTPUT_TOKENS,
         messages: [
           { role: "system", content: args.systemPrompt },
           { role: "user", content: args.userMessage },

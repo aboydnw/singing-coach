@@ -81,3 +81,13 @@ the current deployment, so the workflow records failure promptly rather than spe
 automatic retries on immutable configuration. After the corrected deployment, use
 Retry processing on the existing failed job. Its audio and analysis checkpoints are
 preserved. Do not create duplicate attempts or delete recordings to recover.
+
+## Cost-operation gate rollout
+
+`20261110201513_cost_operation_limits.sql` is additive and must be deployed before
+application code using `consume_cost_operation`. Missing/unavailable quota storage
+fails closed with 503. Deploy the Next.js and Python guards together and remove access
+to unguarded older deployments before public sharing. See [cost protection](cost-protection.md)
+for provisional limits, the owner exemption, global emergency controls, and outstanding
+provider/storage protections. This migration creates no paid subscriptions and assigns
+no owner/admin entitlement automatically.

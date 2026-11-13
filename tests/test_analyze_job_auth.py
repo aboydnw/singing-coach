@@ -29,6 +29,8 @@ def test_internal_job_uses_persisted_audio_key(monkeypatch):
         "_load_attempt_job",
         lambda job_id: {
             "id": job_id,
+            "user_id": "user-1",
+            "status": "analyzing",
             "audio_key": "user-1/owned.wav",
             "exercise_spec_json": None,
         },

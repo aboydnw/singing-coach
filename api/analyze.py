@@ -28,6 +28,10 @@ import _librosa_stubs
 
 _librosa_stubs.install()
 
+from _cost_guard import (
+    CostGuardUnavailable, CostLimitExceeded, consume_operation, validate_audio_duration,
+)
+
 import httpx
 import jwt
 import numpy as np
@@ -42,6 +46,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 BUCKET = "recordings"
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
+MAX_BODY_BYTES = 16 * 1024
 
 # The function reads Storage with the service role, so this check replaces RLS.
 # One filename segment under the caller's own uid - no dots, no slashes, no
@@ -86,7 +91,7 @@ def _load_attempt_job(job_id: str) -> dict | None:
     }
     params = {
         "id": f"eq.{job_id}",
-        "select": "id,audio_key,exercise_spec_json",
+        "select": "id,user_id,status,audio_key,exercise_spec_json",
         "limit": "1",
     }
     with httpx.Client(timeout=15) as client:
@@ -101,11 +106,18 @@ def _resolve_internal_job(token: str) -> tuple[dict, ExerciseSpec | None]:
     job = _load_attempt_job(job_id)
     if not job:
         raise FileNotFoundError("attempt job not found")
+    uid = job.get("user_id")
+    if job.get("status") != "analyzing":
+        raise PermissionError("attempt job is not active for analysis")
+    if not isinstance(uid, str) or not uid or not isinstance(job.get("audio_key"), str):
+        raise ValueError("invalid attempt job owner")
+    if not _storage_key_owned_by(job["audio_key"], uid):
+        raise PermissionError("attempt job recording ownership mismatch")
     spec_json = job.get("exercise_spec_json")
     if isinstance(spec_json, str):
         spec_json = json.loads(spec_json)
     spec = ExerciseSpec(**spec_json) if spec_json else None
-    return {"storage_key": job["audio_key"], "mode": "full"}, spec
+    return {"storage_key": job["audio_key"], "mode": "full", "user_id": uid}, spec
 
 
 def _storage_key_owned_by(storage_key: str, uid: str) -> bool:
@@ -163,6 +175,7 @@ def run_analysis(body: dict, spec: ExerciseSpec | None) -> dict:
     tmp_path = Path(tmp_name)
     try:
         _download(storage_key, tmp_path)
+        validate_audio_duration(tmp_path)
         audio, sr = audio_io.load(tmp_path)
         times, f0, confidence = pitch.predict(audio, sr)
 
@@ -196,17 +209,27 @@ def run_analysis(body: dict, spec: ExerciseSpec | None) -> dict:
 
 
 class handler(BaseHTTPRequestHandler):
-    def _reply(self, status: int, payload: dict) -> None:
+    def _reply(self, status: int, payload: dict, retry_after: int | None = None) -> None:
         body = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        if retry_after is not None:
+            self.send_header("Retry-After", str(retry_after))
         self.end_headers()
         self.wfile.write(body)
 
     def do_POST(self):
         try:
             length = int(self.headers.get("Content-Length", 0))
+            if length < 0:
+                self._reply(400, {"error": "invalid Content-Length"})
+                return
+            if length > MAX_BODY_BYTES:
+                self._reply(413, {"error": "request body too large"})
+                return
             body = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError("body must be an object")
         except (ValueError, json.JSONDecodeError):
             self._reply(400, {"error": "invalid JSON body"})
             return
@@ -215,6 +238,7 @@ class handler(BaseHTTPRequestHandler):
         if job_assertion:
             try:
                 body, spec = _resolve_internal_job(job_assertion)
+                uid = body["user_id"]
             except PermissionError:
                 self._reply(401, {"error": "invalid or expired job assertion"})
                 return
@@ -223,6 +247,9 @@ class handler(BaseHTTPRequestHandler):
                 return
             except (TypeError, ValueError, json.JSONDecodeError):
                 self._reply(400, {"error": "invalid attempt job"})
+                return
+            except Exception:
+                self._reply(503, {"error": "analysis temporarily unavailable"})
                 return
         else:
             try:
@@ -246,10 +273,19 @@ class handler(BaseHTTPRequestHandler):
                 return
 
         try:
+            consume_operation(uid, "analyze", SUPABASE_URL, SERVICE_ROLE_KEY)
+        except CostLimitExceeded as exc:
+            self._reply(429, {"error": "usage limit reached; try again later"}, exc.retry_after)
+            return
+        except CostGuardUnavailable:
+            self._reply(503, {"error": "analysis temporarily unavailable"})
+            return
+
+        try:
             self._reply(200, run_analysis(body, spec))
         except FileNotFoundError:
             self._reply(404, {"error": "recording not found"})
         except ValueError:
-            self._reply(413, {"error": "recording exceeds the size limit"})
+            self._reply(413, {"error": "recording format, size, or duration is not supported"})
         except Exception as exc:
             self._reply(500, {"error": f"{type(exc).__name__} during analysis"})
