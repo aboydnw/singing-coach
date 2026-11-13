@@ -49,8 +49,9 @@ Install with `yarn install --immutable` and `uv sync`; see [README.md](README.md
 and [the environment example](.env.example). `yarn dev` does not run the Python
 Vercel function; use the documented preview or `vercel dev` workflow for analysis.
 
-- Run `yarn verify` for the application aggregate: formatting, design values, Vitest,
-  production build, and Storybook build.
+- Run `yarn verify` for the application aggregate: formatting, design values, TypeScript
+  (including test fixtures), Vitest, production build, and Storybook build.
+  Use `yarn typecheck` for the standalone TypeScript check.
 - Run `uv run pytest` for Python analysis, regression, parity, and prompt-sync checks.
 - Run `yarn activities:check` when changing activity/reference-audio content.
 - Run `yarn migrations:check` and the runbook's reset, lint, and database tests for
