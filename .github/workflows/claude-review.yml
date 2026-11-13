@@ -12,15 +12,14 @@ permissions:
   issues: write
   id-token: write
 
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     if: >-
       github.event_name == 'pull_request' ||
       (github.event.issue.pull_request && contains(github.event.comment.body, '@claude review'))
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +36,8 @@ jobs:
 
             Review this pull request. The PR branch is checked out in the working directory.
             Use `gh pr view` and `gh pr diff` to understand the change and its intent.
+            Read AGENTS.md (and CLAUDE.md, if present) first: they define this project's
+            conventions, and violations of them are review findings.
 
             Focus on, in order:
             - Correctness bugs and regressions
