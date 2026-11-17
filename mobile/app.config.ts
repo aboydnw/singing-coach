@@ -1,9 +1,10 @@
 import type { ExpoConfig } from "expo/config";
 
-const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
+const bundleIdentifier =
+  process.env.IOS_BUNDLE_IDENTIFIER || "com.anthonynboyd.singingcoach";
 const projectId = process.env.EAS_PROJECT_ID;
 
-// Identifiers are deliberately not guessed or provisioned by this repository.
+// The default iOS identifier is owner-approved. EAS project ownership remains explicit.
 const config: ExpoConfig = {
   name: "Singing Coach",
   slug: "singing-coach-beta",
