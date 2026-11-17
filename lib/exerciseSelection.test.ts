@@ -129,7 +129,12 @@ describe("selectVariedExercise", () => {
 
 it("replaces an incompatible canonical octave drill with an unlinked safe note", () => {
   const selected = selectVariedExercise({
-    calibration: { range_low_midi: 57, range_high_midi: 60 },
+    calibration: {
+      range_low_midi: 57,
+      range_high_midi: 60,
+      tessitura_low_midi: null,
+      tessitura_high_midi: null,
+    },
     cursor: 0,
     focusArea: "range",
     preferredType: "siren",
