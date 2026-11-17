@@ -1,9 +1,18 @@
 import type { ExpoConfig } from "expo/config";
 
-const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
+const releaseBundleIdentifier = "com.anthonynboyd.singingcoach";
+const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER || releaseBundleIdentifier;
+if (
+  process.env.EAS_BUILD_PROFILE === "beta" &&
+  bundleIdentifier !== releaseBundleIdentifier
+) {
+  throw new Error(
+    "The beta profile must use com.anthonynboyd.singingcoach. Unset IOS_BUNDLE_IDENTIFIER.",
+  );
+}
 const projectId = process.env.EAS_PROJECT_ID;
 
-// Identifiers are deliberately not guessed or provisioned by this repository.
+// The default iOS identifier is owner-approved. EAS project ownership remains explicit.
 const config: ExpoConfig = {
   name: "Singing Coach",
   slug: "singing-coach-beta",
@@ -13,7 +22,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: "light",
   platforms: ["ios"],
   ios: {
-    ...(bundleIdentifier ? { bundleIdentifier } : {}),
+    bundleIdentifier,
     buildNumber: "1",
     supportsTablet: false,
     infoPlist: {
