@@ -5,7 +5,8 @@
 - Display name: **Singing Coach**.
 - iOS bundle identifier: `com.anthonynboyd.singingcoach` (owner-approved November 17, 2026).
 - The app configuration uses this identifier by default; `IOS_BUNDLE_IDENTIFIER` remains
-  available for explicitly isolated build checks.
+  available for explicitly isolated build checks; the EAS `beta` profile rejects a
+  conflicting override.
 - This does not establish App Store Connect registration, provisioning, a signed build,
   or TestFlight availability. Those release gates still require verification below.
 
@@ -34,7 +35,10 @@ the backend, or invite testers without the owner's approval.
    Expo account/project (if using EAS), and signing ownership. The confirmed bundle
    identifier above is configured in source, but Apple resources are not provisioned by
    this branch.
-   Set `IOS_BUNDLE_IDENTIFIER` and `EAS_PROJECT_ID` only to confirmed existing IDs.
+   Leave `IOS_BUNDLE_IDENTIFIER` unset for release builds, including local Xcode
+   archives. Set `EAS_PROJECT_ID` only to a confirmed existing project ID when using
+   EAS. The `beta` profile rejects an alternate bundle identifier; other profiles may
+   use an explicit override only for isolated build checks.
    The EAS beta profile uses **local credentials** so it cannot silently generate new
    distribution credentials. Provide approved local credentials through EAS's
    documented credentials.json workflow. Do not commit them.
