@@ -1,4 +1,4 @@
-# Singing Coach iOS beta
+# Voice Up: Singing Coach iOS beta
 
 An Expo/React Native client for the existing Singing Coach backend. This is an
 implementation milestone, **not a signed or distributed TestFlight build**.

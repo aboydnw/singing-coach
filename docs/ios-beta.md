@@ -2,7 +2,9 @@
 
 ## Confirmed release identity
 
-- Display name: **Voice Up: Singing Coach**.
+- App Store Connect name: **Voice Up: Singing Coach**.
+- iPhone home-screen label: **Voice Up**, explicitly set independently of the store name.
+  Actual label rendering still needs a real-device check.
 - iOS bundle identifier: `com.anthonynboyd.singingcoach` (owner-approved November 17, 2026).
 - The app configuration uses this identifier by default; `IOS_BUNDLE_IDENTIFIER` remains
   available for explicitly isolated build checks; the EAS `beta` profile rejects a

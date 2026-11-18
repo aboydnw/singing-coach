@@ -26,6 +26,7 @@ const config: ExpoConfig = {
     buildNumber: "1",
     supportsTablet: false,
     infoPlist: {
+      CFBundleDisplayName: "Voice Up",
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: false,
         NSAllowsLocalNetworking: true,

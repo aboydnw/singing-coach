@@ -87,7 +87,7 @@ export default function App() {
           <AuthenticatedApp runtime={runtime.value} />
         ) : (
           <ScrollView contentContainerStyle={styles.content}>
-            <Heading>Singing Coach</Heading>
+            <Heading>Voice Up</Heading>
             <Notice error>{runtime.error ?? "This beta has not been configured."}</Notice>
             <Copy>
               Ask the beta owner for a configured build. No account or recording has been

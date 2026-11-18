@@ -16,6 +16,7 @@ describe("iOS release identity", () => {
   it("uses the App Store Connect name without changing the app identity", async () => {
     const config = await resolveConfig(undefined, "beta");
     expect(config.name).toBe("Voice Up: Singing Coach");
+    expect(config.ios?.infoPlist?.CFBundleDisplayName).toBe("Voice Up");
     expect(config.scheme).toBe("singingcoach");
     expect(config.ios?.bundleIdentifier).toBe(releaseId);
   });
