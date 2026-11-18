@@ -2,7 +2,7 @@
 
 ## Confirmed release identity
 
-- Display name: **Singing Coach**.
+- Display name: **Voice Up: Singing Coach**.
 - iOS bundle identifier: `com.anthonynboyd.singingcoach` (owner-approved November 17, 2026).
 - The app configuration uses this identifier by default; `IOS_BUNDLE_IDENTIFIER` remains
   available for explicitly isolated build checks; the EAS `beta` profile rejects a

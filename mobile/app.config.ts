@@ -14,7 +14,7 @@ const projectId = process.env.EAS_PROJECT_ID;
 
 // The default iOS identifier is owner-approved. EAS project ownership remains explicit.
 const config: ExpoConfig = {
-  name: "Singing Coach",
+  name: "Voice Up: Singing Coach",
   slug: "singing-coach-beta",
   version: "0.1.0",
   scheme: "singingcoach",
