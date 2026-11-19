@@ -42,3 +42,9 @@ describe("iOS release identity", () => {
     );
   });
 });
+
+it("protects the Google beta release identity too", async () => {
+  await expect(resolveConfig("com.example.other", "beta-google")).rejects.toThrow(
+    "Unset IOS_BUNDLE_IDENTIFIER",
+  );
+});

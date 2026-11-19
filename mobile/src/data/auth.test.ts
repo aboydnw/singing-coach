@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
+  storage: new Map<string, string>(),
   createClient: vi.fn(),
   signInWithPassword: vi.fn(),
   signInWithOAuth: vi.fn(),
@@ -17,15 +18,32 @@ vi.mock("react-native", () => ({
   AppState: { currentState: "inactive", addEventListener: vi.fn() },
 }));
 vi.mock("expo-web-browser", () => ({ openAuthSessionAsync: mocks.openAuthSessionAsync }));
-vi.mock("./secureStorage", () => ({ secureStorage: {} }));
+vi.mock("./secureStorage", () => ({
+  secureStorage: {
+    getItem: async (k: string) => mocks.storage.get(k) ?? null,
+    setItem: async (k: string, v: string) => {
+      mocks.storage.set(k, v);
+    },
+    removeItem: async (k: string) => {
+      mocks.storage.delete(k);
+    },
+  },
+}));
 vi.mock("./config", () => ({ getPublicConfig: () => mocks.config }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
   processLock: vi.fn(),
 }));
-import { signIn, signInWithGoogle, getNativeClient, AUTH_CALLBACK } from "./auth";
+import {
+  signIn,
+  signInWithGoogle,
+  getNativeClient,
+  completeGoogleCallback,
+  AUTH_CALLBACK,
+} from "./auth";
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.storage.clear();
   mocks.config.googleEnabled = true;
   mocks.createClient.mockReturnValue({
     auth: {
@@ -94,5 +112,48 @@ describe("native authentication", () => {
     mocks.openAuthSessionAsync.mockResolvedValue({ type: "cancel" });
     expect(await signInWithGoogle()).toBeNull();
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+});
+
+describe("Google callback recovery", () => {
+  it("recovers a cold-launch code using the persisted pending flow", async () => {
+    mocks.storage.set("voice-up-google-started", String(Date.now()));
+    const url = AUTH_CALLBACK + "?code=cold-code";
+    const [one, two] = await Promise.all([
+      completeGoogleCallback(url),
+      completeGoogleCallback(url),
+    ]);
+    expect(one).toEqual(two);
+    expect(mocks.exchangeCodeForSession).toHaveBeenCalledTimes(1);
+    expect(mocks.storage.size).toBe(0);
+    expect(await completeGoogleCallback(url)).toBeNull();
+  });
+  it("rejects expired and unsolicited callbacks", async () => {
+    await expect(
+      completeGoogleCallback(AUTH_CALLBACK + "?code=unsolicited"),
+    ).rejects.toThrow("expired");
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+  it("does not accept fragment tokens, credentials or wrong paths", async () => {
+    for (const url of [
+      AUTH_CALLBACK + "#access_token=no",
+      "singingcoach://user@auth/callback?code=no",
+      AUTH_CALLBACK + "/extra?code=no",
+    ])
+      expect(await completeGoogleCallback(url)).toBeNull();
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+  it("rejects provider errors without exposing their contents", async () => {
+    mocks.storage.set("voice-up-google-started", String(Date.now()));
+    await expect(
+      completeGoogleCallback(AUTH_CALLBACK + "?error=denied&error_description=private"),
+    ).rejects.toThrow("did not finish");
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+  it("serializes rapid starts so they cannot overwrite the PKCE verifier", async () => {
+    mocks.openAuthSessionAsync.mockResolvedValue({ type: "cancel" });
+    await Promise.all([signInWithGoogle(), signInWithGoogle()]);
+    expect(mocks.signInWithOAuth).toHaveBeenCalledTimes(1);
+    expect(mocks.storage.size).toBe(0);
   });
 });

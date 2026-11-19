@@ -16,6 +16,12 @@
       "environment": "preview",
       "autoIncrement": false,
       "credentialsSource": "local"
+    },
+    "beta-google": {
+      "extends": "beta",
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_AUTH_ENABLED": "true"
+      }
     }
   },
   "submit": {

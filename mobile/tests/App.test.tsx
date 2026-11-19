@@ -28,7 +28,11 @@ vi.mock("react-native", () => ({
   View: "View",
   Alert: { alert: h.alerts },
   Platform: { OS: "ios" },
-  Linking: { openURL: vi.fn() },
+  Linking: {
+    openURL: vi.fn(),
+    getInitialURL: vi.fn(async () => null),
+    addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+  },
   AppState: {
     currentState: "active",
     addEventListener: (_: string, listener: (s: string) => void) => {
@@ -65,6 +69,7 @@ vi.mock("../src/data", () => ({
   secureStorage: {},
   signIn: vi.fn(),
   signInWithGoogle: vi.fn(),
+  completeGoogleCallback: vi.fn(async () => null),
   signOut: vi.fn(),
   deleteAccount: vi.fn(),
 }));

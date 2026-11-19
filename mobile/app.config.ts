@@ -3,7 +3,7 @@ import type { ExpoConfig } from "expo/config";
 const releaseBundleIdentifier = "com.anthonynboyd.singingcoach";
 const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER || releaseBundleIdentifier;
 if (
-  process.env.EAS_BUILD_PROFILE === "beta" &&
+  ["beta", "beta-google"].includes(process.env.EAS_BUILD_PROFILE ?? "") &&
   bundleIdentifier !== releaseBundleIdentifier
 ) {
   throw new Error(
@@ -23,7 +23,7 @@ const config: ExpoConfig = {
   platforms: ["ios"],
   ios: {
     bundleIdentifier,
-    buildNumber: "1",
+    buildNumber: "2",
     supportsTablet: false,
     infoPlist: {
       CFBundleDisplayName: "Voice Up",
