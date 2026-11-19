@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     googleEnabled: true,
   },
 }));
+vi.mock("expo-crypto", () => ({ randomUUID: () => "test-flow" }));
 vi.mock("react-native-url-polyfill/auto", () => ({}));
 vi.mock("react-native", () => ({
   AppState: { currentState: "inactive", addEventListener: vi.fn() },
@@ -90,10 +91,10 @@ describe("native authentication", () => {
   it("exchanges only a code from the exact native callback", async () => {
     mocks.openAuthSessionAsync.mockResolvedValue({
       type: "success",
-      url: AUTH_CALLBACK + "?code=test-code",
+      url: AUTH_CALLBACK + "?flow=test-flow&code=test-code",
     });
     await signInWithGoogle();
-    expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith("test-code");
+    expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith("test-code", undefined);
   });
   it("rejects callback origins other than the registered app callback", async () => {
     mocks.openAuthSessionAsync.mockResolvedValue({
@@ -117,8 +118,11 @@ describe("native authentication", () => {
 
 describe("Google callback recovery", () => {
   it("recovers a cold-launch code using the persisted pending flow", async () => {
-    mocks.storage.set("voice-up-google-started", String(Date.now()));
-    const url = AUTH_CALLBACK + "?code=cold-code";
+    mocks.storage.set(
+      "voice-up-google-started",
+      JSON.stringify({ started: Date.now(), nonce: "test-flow" }),
+    );
+    const url = AUTH_CALLBACK + "?flow=test-flow&code=cold-code";
     const [one, two] = await Promise.all([
       completeGoogleCallback(url),
       completeGoogleCallback(url),
@@ -144,9 +148,14 @@ describe("Google callback recovery", () => {
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
   });
   it("rejects provider errors without exposing their contents", async () => {
-    mocks.storage.set("voice-up-google-started", String(Date.now()));
+    mocks.storage.set(
+      "voice-up-google-started",
+      JSON.stringify({ started: Date.now(), nonce: "test-flow" }),
+    );
     await expect(
-      completeGoogleCallback(AUTH_CALLBACK + "?error=denied&error_description=private"),
+      completeGoogleCallback(
+        AUTH_CALLBACK + "?flow=test-flow&error=denied&error_description=private",
+      ),
     ).rejects.toThrow("did not finish");
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
   });
@@ -156,4 +165,36 @@ describe("Google callback recovery", () => {
     expect(mocks.signInWithOAuth).toHaveBeenCalledTimes(1);
     expect(mocks.storage.size).toBe(0);
   });
+});
+
+it("ignores callbacks for a different flow without consuming the verifier", async () => {
+  mocks.storage.set(
+    "voice-up-google-started",
+    JSON.stringify({ started: Date.now(), nonce: "expected" }),
+  );
+  expect(
+    await completeGoogleCallback(AUTH_CALLBACK + "?flow=wrong&code=stray"),
+  ).toBeNull();
+  expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  expect(mocks.storage.has("voice-up-google-started")).toBe(true);
+});
+
+it("clears a failed cold-launch flow and forwards Supabase's verifier slot", async () => {
+  mocks.storage.set(
+    "voice-up-google-started",
+    JSON.stringify({ started: Date.now(), nonce: "test-flow" }),
+  );
+  mocks.exchangeCodeForSession.mockResolvedValueOnce({
+    data: { session: null },
+    error: new Error("expired"),
+  });
+  await expect(
+    completeGoogleCallback(
+      AUTH_CALLBACK + "?flow=test-flow&code=expired&sb_flow_id=abcdefgh",
+    ),
+  ).rejects.toThrow("Could not finish");
+  expect(mocks.exchangeCodeForSession).toHaveBeenCalledWith("expired", {
+    flowId: "abcdefgh",
+  });
+  expect(mocks.storage.size).toBe(0);
 });

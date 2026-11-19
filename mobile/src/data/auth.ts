@@ -6,6 +6,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { AppState } from "react-native";
+import { randomUUID } from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { getPublicConfig } from "./config";
 import { boundedFetch } from "./network";
@@ -69,16 +70,33 @@ export function completeGoogleCallback(raw: string): Promise<Session | null> {
   if (!getPublicConfig().googleEnabled) return Promise.resolve(null);
   if (completedCallback?.url === raw) return completedCallback.result;
   const result = (async () => {
-    const started = Number(await secureStorage.getItem(pendingGoogleKey));
-    if (!started || Date.now() - started > 10 * 60_000) {
+    const pending = JSON.parse(
+      (await secureStorage.getItem(pendingGoogleKey)) ?? "null",
+    ) as { started: number; nonce: string } | null;
+    if (!pending || Date.now() - pending.started > 10 * 60_000) {
+      await secureStorage.removeItem(pendingGoogleKey);
       throw new Error("This sign-in expired. Tap Continue with Google to try again.");
     }
+    if (
+      callback.searchParams.getAll("flow").length !== 1 ||
+      callback.searchParams.get("flow") !== pending.nonce
+    )
+      return null;
     const codes = callback.searchParams.getAll("code");
     if (callback.searchParams.has("error") || codes.length !== 1 || !codes[0]) {
       await secureStorage.removeItem(pendingGoogleKey);
       throw new Error("Google sign-in did not finish. Please try again.");
     }
-    const exchange = await getNativeClient().auth.exchangeCodeForSession(codes[0]);
+    let exchange;
+    try {
+      const flowId = callback.searchParams.get("sb_flow_id");
+      exchange = await getNativeClient().auth.exchangeCodeForSession(
+        codes[0],
+        flowId ? { flowId } : undefined,
+      );
+    } finally {
+      await secureStorage.removeItem(pendingGoogleKey);
+    }
     if (exchange.error || !exchange.data.session) {
       throw new Error(
         "Could not finish Google sign-in. Tap Continue with Google to try again.",
@@ -115,12 +133,16 @@ async function startGoogleSignIn(): Promise<Session | null> {
     throw new Error("Google sign-in is not enabled in this build yet.");
   completedCallback = undefined;
   const auth = getNativeClient().auth;
-  await secureStorage.setItem(pendingGoogleKey, String(Date.now()));
+  const nonce = randomUUID();
+  await secureStorage.setItem(
+    pendingGoogleKey,
+    JSON.stringify({ started: Date.now(), nonce }),
+  );
   try {
     const { data, error } = await auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: AUTH_CALLBACK,
+        redirectTo: `${AUTH_CALLBACK}?flow=${nonce}`,
         skipBrowserRedirect: true,
         queryParams: { prompt: "select_account" },
       },

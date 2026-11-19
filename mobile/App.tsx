@@ -147,7 +147,6 @@ function AuthenticatedApp({ runtime }: { runtime: Runtime }) {
       } catch (error) {
         if (current) {
           setAuthError(message(error));
-          setLoading(false);
         }
       }
     };
