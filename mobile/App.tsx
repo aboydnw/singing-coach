@@ -34,6 +34,7 @@ import {
   secureStorage,
   signIn,
   signInWithGoogle,
+  completeGoogleCallback,
   signOut,
   type Attempt,
   type Practice,
@@ -132,6 +133,36 @@ function AuthenticatedApp({ runtime }: { runtime: Runtime }) {
       data.subscription.unsubscribe();
     };
   }, [runtime]);
+  useEffect(() => {
+    let current = true;
+    const recover = async (url: string | null | undefined) => {
+      if (!url) return;
+      try {
+        const recovered = await completeGoogleCallback(url);
+        if (current && recovered) {
+          setSession(recovered);
+          setAuthError(null);
+          setLoading(false);
+        }
+      } catch (error) {
+        if (current) {
+          setAuthError(message(error));
+        }
+      }
+    };
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      void recover(url);
+    });
+    void Linking.getInitialURL()
+      .then(recover)
+      .catch(() => {
+        if (current) setAuthError("Could not restore sign-in. Please try again.");
+      });
+    return () => {
+      current = false;
+      subscription.remove();
+    };
+  }, []);
   if (loading)
     return (
       <View style={styles.content}>
@@ -162,6 +193,9 @@ function SignIn({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
   const action = async (google: boolean) => {
     if (busy) return;
     setBusy(true);
@@ -197,8 +231,8 @@ function SignIn({
         <Card>
           <Heading small>Welcome back</Heading>
           <Copy muted>
-            Sign in to your existing account to keep your practice and recordings
-            together.
+            Use the same Google account or email you use on the website to keep your
+            practice and recordings together.
           </Copy>
           {error && <Notice error>{error}</Notice>}
           {notice && <Notice>{notice}</Notice>}

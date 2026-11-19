@@ -1,6 +1,12 @@
 import "react-native-url-polyfill/auto";
-import { createClient, processLock, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient,
+  processLock,
+  type Session,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { AppState } from "react-native";
+import { randomUUID } from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { getPublicConfig } from "./config";
 import { boundedFetch } from "./network";
@@ -37,28 +43,119 @@ export async function signIn(email: string, password: string) {
   if (result.error) throw result.error;
   return result.data.session;
 }
-export async function signInWithGoogle() {
-  if (!getPublicConfig().googleEnabled)
-    throw new Error(
-      "Google sign-in is not enabled for this beta yet. Use your existing email account.",
-    );
-  const auth = getNativeClient().auth;
-  const { data, error } = await auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: AUTH_CALLBACK, skipBrowserRedirect: true },
+const pendingGoogleKey = "voice-up-google-started";
+let googleFlow: Promise<Session | null> | undefined;
+let completedCallback: { url: string; result: Promise<Session | null> } | undefined;
+
+function isGoogleCallback(url: URL) {
+  return (
+    `${url.protocol}//${url.host}${url.pathname}` === AUTH_CALLBACK &&
+    !url.username &&
+    !url.password &&
+    !url.port &&
+    !url.hash
+  );
+}
+
+// Shared by the browser result and native deep-link recovery. PKCE's verifier is
+// persisted in Keychain by Supabase; never accept access tokens from a URL.
+export function completeGoogleCallback(raw: string): Promise<Session | null> {
+  let callback: URL;
+  try {
+    callback = new URL(raw);
+  } catch {
+    return Promise.resolve(null);
+  }
+  if (!isGoogleCallback(callback)) return Promise.resolve(null);
+  if (!getPublicConfig().googleEnabled) return Promise.resolve(null);
+  if (completedCallback?.url === raw) return completedCallback.result;
+  const result = (async () => {
+    const pending = JSON.parse(
+      (await secureStorage.getItem(pendingGoogleKey)) ?? "null",
+    ) as { started: number; nonce: string } | null;
+    if (!pending || Date.now() - pending.started > 10 * 60_000) {
+      await secureStorage.removeItem(pendingGoogleKey);
+      throw new Error("This sign-in expired. Tap Continue with Google to try again.");
+    }
+    if (
+      callback.searchParams.getAll("flow").length !== 1 ||
+      callback.searchParams.get("flow") !== pending.nonce
+    )
+      return null;
+    const codes = callback.searchParams.getAll("code");
+    if (callback.searchParams.has("error") || codes.length !== 1 || !codes[0]) {
+      await secureStorage.removeItem(pendingGoogleKey);
+      throw new Error("Google sign-in did not finish. Please try again.");
+    }
+    let exchange;
+    try {
+      const flowId = callback.searchParams.get("sb_flow_id");
+      exchange = await getNativeClient().auth.exchangeCodeForSession(
+        codes[0],
+        flowId ? { flowId } : undefined,
+      );
+    } finally {
+      await secureStorage.removeItem(pendingGoogleKey);
+    }
+    if (exchange.error || !exchange.data.session) {
+      throw new Error(
+        "Could not finish Google sign-in. Tap Continue with Google to try again.",
+      );
+    }
+    await secureStorage.removeItem(pendingGoogleKey);
+    return exchange.data.session;
+  })();
+  completedCallback = { url: raw, result };
+  // Keep only a consumed marker, never a reusable session from an old link.
+  void result.then(
+    () => {
+      if (completedCallback?.url === raw)
+        completedCallback.result = Promise.resolve(null);
+    },
+    () => {
+      if (completedCallback?.url === raw)
+        completedCallback.result = Promise.resolve(null);
+    },
+  );
+  return result;
+}
+
+export function signInWithGoogle(): Promise<Session | null> {
+  // Protect the PKCE verifier even when two taps arrive before React rerenders.
+  if (googleFlow) return googleFlow;
+  googleFlow = startGoogleSignIn().finally(() => {
+    googleFlow = undefined;
   });
-  if (error) throw error;
-  const result = await WebBrowser.openAuthSessionAsync(data.url, AUTH_CALLBACK);
-  if (result.type !== "success") return null;
-  const callback = new URL(result.url);
-  if (`${callback.protocol}//${callback.host}${callback.pathname}` !== AUTH_CALLBACK)
-    throw new Error("Unexpected sign-in callback.");
-  const code = callback.searchParams.get("code");
-  if (!code || callback.searchParams.has("error"))
-    throw new Error("Sign-in did not finish. Try again.");
-  const exchange = await auth.exchangeCodeForSession(code);
-  if (exchange.error) throw exchange.error;
-  return exchange.data.session;
+  return googleFlow;
+}
+async function startGoogleSignIn(): Promise<Session | null> {
+  if (!getPublicConfig().googleEnabled)
+    throw new Error("Google sign-in is not enabled in this build yet.");
+  completedCallback = undefined;
+  const auth = getNativeClient().auth;
+  const nonce = randomUUID();
+  await secureStorage.setItem(
+    pendingGoogleKey,
+    JSON.stringify({ started: Date.now(), nonce }),
+  );
+  try {
+    const { data, error } = await auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${AUTH_CALLBACK}?flow=${nonce}`,
+        skipBrowserRedirect: true,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (error) throw error;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, AUTH_CALLBACK);
+    if (result.type !== "success") return null;
+    if (!isGoogleCallback(new URL(result.url)))
+      throw new Error("Unexpected sign-in callback.");
+    return await completeGoogleCallback(result.url);
+  } finally {
+    await secureStorage.removeItem(pendingGoogleKey);
+  }
 }
 export async function signOut() {
   const { error } = await getNativeClient().auth.signOut({ scope: "local" });
