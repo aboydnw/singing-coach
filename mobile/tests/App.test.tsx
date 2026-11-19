@@ -3,6 +3,8 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
+  initialURL: vi.fn<() => Promise<string | null>>(async () => null),
+  callback: vi.fn(async (_url: string) => null),
   service: {} as Record<string, ReturnType<typeof vi.fn>>,
   alerts: vi.fn(),
   listeners: [] as Array<(state: string) => void>,
@@ -28,7 +30,11 @@ vi.mock("react-native", () => ({
   View: "View",
   Alert: { alert: h.alerts },
   Platform: { OS: "ios" },
-  Linking: { openURL: vi.fn() },
+  Linking: {
+    openURL: vi.fn(),
+    getInitialURL: h.initialURL,
+    addEventListener: vi.fn(() => ({ remove: vi.fn() })),
+  },
   AppState: {
     currentState: "active",
     addEventListener: (_: string, listener: (s: string) => void) => {
@@ -65,6 +71,7 @@ vi.mock("../src/data", () => ({
   secureStorage: {},
   signIn: vi.fn(),
   signInWithGoogle: vi.fn(),
+  completeGoogleCallback: h.callback,
   signOut: vi.fn(),
   deleteAccount: vi.fn(),
 }));
@@ -253,5 +260,44 @@ describe("native practice UI safety boundaries", () => {
       finish({ id: "job" });
     });
     expect(h.release).toHaveBeenCalledOnce();
+  });
+});
+
+describe("native auth callback lifecycle", () => {
+  it("routes a cold launch URL through the callback verifier", async () => {
+    h.initialURL.mockResolvedValueOnce(
+      "singingcoach://auth/callback?flow=test&code=test",
+    );
+    await mount();
+    expect(h.callback).toHaveBeenCalledWith(
+      "singingcoach://auth/callback?flow=test&code=test",
+    );
+  });
+  it("does not end session restoration when an old callback fails", async () => {
+    let restore!: (value: {
+      data: { session: { user: { id: string; email: string } } };
+    }) => void;
+    h.client.auth.getSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          restore = resolve;
+        }),
+    );
+    h.initialURL.mockResolvedValueOnce("singingcoach://auth/callback?code=old");
+    h.callback.mockRejectedValueOnce(new Error("This sign-in expired."));
+    await mount();
+    expect(
+      tree.root.findAll((node) => String(node.type) === "ActivityIndicator"),
+    ).toHaveLength(1);
+    expect(buttons("Continue with Google")).toHaveLength(0);
+    await act(async () => {
+      restore({
+        data: { session: { user: { id: "owner", email: "owner@example.test" } } },
+      });
+    });
+    expect(buttons("Send for analysis")).toHaveLength(0);
+    expect(
+      tree.root.findAll((node) => String(node.type) === "ActivityIndicator"),
+    ).toHaveLength(0);
   });
 });

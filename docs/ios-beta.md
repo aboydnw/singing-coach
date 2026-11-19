@@ -2,7 +2,9 @@
 
 ## Confirmed release identity
 
-- Display name: **Singing Coach**.
+- App Store Connect name: **Voice Up: Singing Coach**.
+- iPhone home-screen label: **Voice Up**, explicitly set independently of the store name.
+  Actual label rendering still needs a real-device check.
 - iOS bundle identifier: `com.anthonynboyd.singingcoach` (owner-approved November 17, 2026).
 - The app configuration uses this identifier by default; `IOS_BUNDLE_IDENTIFIER` remains
   available for explicitly isolated build checks; the EAS `beta` profile rejects a
@@ -93,3 +95,54 @@ outcome. No row is passed merely because its unit test or bundle passes.
   removes recordings and data with explicit irreversible confirmation.
 - VoiceOver announcements/focus, largest Dynamic Type, narrow iPhone, keyboard and
   switch controls, readable long coaching text, 44pt+ tap targets.
+
+## Google sign-in beta (build 2)
+
+Only build/upload the Google-enabled variant as build 2. Do not upload both
+profiles with the same build number; increment the configured number for each
+subsequent upload. Build 1 compiled Google off. The opt-in `beta-google` EAS profile enables the
+existing browser-based Supabase Google provider, not a new Google client secret.
+For a local archive, set `EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true` in ignored
+`mobile/.env.local` before bundling. Both beta profiles enforce the approved bundle
+identifier. Default builds still leave Google off.
+
+Before distributing this build, verify **Authentication → URL Configuration →
+Redirect URLs** in the existing Supabase project contains the narrowly scoped pattern
+`singingcoach://auth/callback[?]flow=*` (query nonce only; no wildcard host/path).
+`[?]` matches a literal question mark. GoTrue matches the full URL minus its
+fragment, so the bare callback does not match nonce queries. This pattern was
+checked with gobwas/glob v0.2.3 and GoTrue’s `.` and `/` separators: it accepts
+`?flow=nonce&sb_flow_id=slot` and rejects another host, extra path, or `Xflow=`.
+The installed auth-js appends `sb_flow_id`; the app passes it to the PKCE exchange. Do not replace the website's URLs or add a wildcard.
+The Google provider must already be enabled with the existing Supabase HTTPS
+provider callback. The native callback belongs in Supabase's allowlist, not as a
+Google Console HTTPS redirect. A public provider-enabled check does not prove the
+native redirect is allowed. No live auth settings are changed by this PR.
+
+Use the same Google account as on the website. Supabase performs identity linking
+for eligible matching verified email identities; the client does not copy history
+or merge accounts. A different Google address can create a separate account under
+the project's existing signup policy. Check existing history after signing in.
+
+The app stores the PKCE verifier in device Keychain through Supabase, accepts only
+an exact-path code callback matching its cryptographic per-flow nonce, recovers cold-launch callbacks, deduplicates callback
+notifications, and allows another try after cancel/error. It never imports tokens
+from callback fragments. Pending flows expire after ten minutes; restart Google
+sign-in after an interrupted/expired flow.
+
+Physical-iPhone acceptance still required: complete Google login, restore the same
+history, cancel and retry, select a different account, background/return, cold
+launch, expired code, sign out/relaunch. Unit tests and a JS export are not proof
+of these outcomes. Keep this an internal beta; do not invite external testers or
+submit publicly until identity and other release gates are satisfied.
+
+Apple guideline 4.8 requires an equivalent privacy-preserving login option for
+apps using Google as primary login unless an exception applies. Email/password
+alone is not that option. Sign in with Apple is a likely follow-up, not implemented
+here; do not describe Google-only beta access as App Review-ready.
+
+References:
+- https://supabase.com/docs/guides/auth/native-mobile-deep-linking
+- https://supabase.com/docs/guides/auth/sessions/pkce-flow
+- https://supabase.com/docs/guides/auth/auth-identity-linking
+- https://developer.apple.com/app-store/review/guidelines/#login-services

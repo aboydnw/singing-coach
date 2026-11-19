@@ -3,7 +3,7 @@ import type { ExpoConfig } from "expo/config";
 const releaseBundleIdentifier = "com.anthonynboyd.singingcoach";
 const bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER || releaseBundleIdentifier;
 if (
-  process.env.EAS_BUILD_PROFILE === "beta" &&
+  ["beta", "beta-google"].includes(process.env.EAS_BUILD_PROFILE ?? "") &&
   bundleIdentifier !== releaseBundleIdentifier
 ) {
   throw new Error(
@@ -14,7 +14,7 @@ const projectId = process.env.EAS_PROJECT_ID;
 
 // The default iOS identifier is owner-approved. EAS project ownership remains explicit.
 const config: ExpoConfig = {
-  name: "Singing Coach",
+  name: "Voice Up: Singing Coach",
   slug: "singing-coach-beta",
   version: "0.1.0",
   scheme: "singingcoach",
@@ -23,9 +23,10 @@ const config: ExpoConfig = {
   platforms: ["ios"],
   ios: {
     bundleIdentifier,
-    buildNumber: "1",
+    buildNumber: "2",
     supportsTablet: false,
     infoPlist: {
+      CFBundleDisplayName: "Voice Up",
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: false,
         NSAllowsLocalNetworking: true,
